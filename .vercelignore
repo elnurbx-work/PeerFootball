@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+
+.git
+.agents
+.next
+node_modules
+
+.neon
+skills-lock.json
+tsconfig.tsbuildinfo
+*.log
