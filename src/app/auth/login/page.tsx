@@ -10,7 +10,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl items-center justify-center px-4 py-12">
+    <section className="mx-auto flex min-h-screen max-w-5xl items-center justify-center px-4 py-12">
       <LoginPanel />
     </section>
   );

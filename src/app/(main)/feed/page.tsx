@@ -34,7 +34,7 @@ export default async function FeedPage() {
   return (
     <section className="mx-auto grid max-w-3xl gap-5 px-4 py-10">
       <div>
-        <h1 className="text-3xl font-bold">Feed</h1>
+        <h1 className="text-3xl font-bold">Home</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Signed in as {currentUser.name} @{currentUser.username ?? "profile"}
         </p>

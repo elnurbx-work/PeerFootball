@@ -11,7 +11,7 @@ const highlights = [
 
 export default function HomePage() {
   return (
-    <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-10 px-4 py-12 md:grid-cols-[1.1fr_0.9fr]">
+    <section className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 md:grid-cols-[1.1fr_0.9fr]">
       <div className="space-y-8">
         <div className="space-y-5">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
@@ -36,7 +36,7 @@ export default function HomePage() {
           <Button asChild size="lg" variant="secondary">
             <Link href="/feed">
               <Radio className="h-4 w-4" />
-              View Feed
+              View Home
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
