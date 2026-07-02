@@ -1,6 +1,6 @@
 import { ProfileSummary } from "@/components/profile/profile-summary";
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getProfileSummaryByUserId } from "@/server/queries/profile.queries";
 import { redirect } from "next/navigation";
 
 export default async function ProfilePage() {
@@ -10,74 +10,17 @@ export default async function ProfilePage() {
     redirect("/auth/login");
   }
 
-  const profile = await prisma.user.findUnique({
-    where: { id: currentUser.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      image: true,
-      username: true,
-      bio: true,
-      favoriteClub: true,
-      preferredPosition: true,
-      avoidedPosition: true,
-      location: true,
-      followers: {
-        select: {
-          followerId: true
-        }
-      },
-      following: {
-        select: {
-          followingId: true
-        }
-      },
-      _count: {
-        select: {
-          posts: true,
-          followers: true,
-          following: true
-        }
-      },
-      playerStats: {
-        select: {
-          matchesPlayed: true,
-          goals: true,
-          assists: true,
-          preferredFoot: true
-        }
-      }
-    }
-  });
+  const profile = await getProfileSummaryByUserId(currentUser.id);
 
-  if (!profile?.email) {
+  if (!profile) {
     redirect("/auth/login");
   }
 
   return (
     <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">
       <ProfileSummary
-        user={{
-          ...profile,
-          social: {
-            posts: profile._count.posts,
-            followers: profile._count.followers,
-            following: profile._count.following,
-            friends: getMutualFollowCount(profile.followers, profile.following)
-          },
-          stats: profile.playerStats
-        }}
+        user={profile}
       />
     </section>
   );
-}
-
-function getMutualFollowCount(
-  followers: Array<{ followerId: string }>,
-  following: Array<{ followingId: string }>
-) {
-  const followerIds = new Set(followers.map((follow) => follow.followerId));
-
-  return following.filter((follow) => followerIds.has(follow.followingId)).length;
 }

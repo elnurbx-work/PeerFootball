@@ -1,10 +1,12 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { MapPin, Settings, Shield, Shirt, Sparkles, UserPlus, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 type ProfileSummaryProps = {
+  action?: ReactNode;
   user: {
     name: string | null;
     username: string | null;
@@ -27,9 +29,17 @@ type ProfileSummaryProps = {
   };
 };
 
-export function ProfileSummary({ user }: ProfileSummaryProps) {
+export function ProfileSummary({ action, user }: ProfileSummaryProps) {
   const displayName = user.name ?? "FanPitch Player";
   const stats = user.stats ?? { matchesPlayed: 0, goals: 0, assists: 0 };
+  const profileAction = action ?? (
+    <Button asChild variant="outline">
+      <Link href="/settings">
+        <Settings className="h-4 w-4" />
+        Settings
+      </Link>
+    </Button>
+  );
 
   return (
     <Card className="relative isolate overflow-hidden">
@@ -48,12 +58,7 @@ export function ProfileSummary({ user }: ProfileSummaryProps) {
                 <p className="text-muted-foreground">@{user.username ?? "set-your-username"}</p>
               </div>
             </div>
-            <Button asChild variant="outline">
-              <Link href="/settings">
-                <Settings className="h-4 w-4" />
-                Settings
-              </Link>
-            </Button>
+            {profileAction}
           </div>
 
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">

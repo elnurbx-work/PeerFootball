@@ -48,6 +48,7 @@ const panelContent = {
     description: "Messages",
     links: [
       { href: "/direct", label: "Inbox", description: "Your conversations", icon: MessageCircle },
+      { href: "/friends", label: "Friends", description: "Requests and friends", icon: Users },
       { href: "/profile", label: "Contacts", description: "Players you know", icon: UserCircle }
     ]
   },
@@ -68,6 +69,10 @@ function getActiveRoot(pathname: string) {
 
   if (pathname.startsWith("/settings")) {
     return "/profile";
+  }
+
+  if (pathname.startsWith("/friends")) {
+    return "/direct";
   }
 
   return primaryNavItems.find((item) => pathname.startsWith(item.href))?.href ?? "/feed";

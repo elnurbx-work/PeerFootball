@@ -1,9 +1,15 @@
 export type MediaType = "IMAGE" | "VIDEO";
+export type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "PRIVATE";
 
 export type Post = {
   id: string;
   authorId: string;
-  content: string;
+  content?: string | null;
+  visibility: PostVisibility;
+  ciphertext?: string | null;
+  iv?: string | null;
+  algorithm?: string | null;
+  keyVersion: number;
   mediaUrl?: string | null;
   mediaType?: MediaType | null;
   createdAt: Date;

@@ -2,6 +2,14 @@
 
 FanPitch is a football social network for amateur players and fans. Phase 2 wires real Google authentication, Auth.js sessions, protected app routes, and persisted user profile editing.
 
+## Privacy Architecture
+
+FanPitch is moving toward a privacy-first data model. The database keeps operational metadata in plaintext where the server needs it for routing, access control, abuse prevention, and product workflows. Examples include user IDs, email, username, profile image URL, relationship rows, conversation membership, timestamps, visibility settings, and delivery/read metadata.
+
+Sensitive user-authored content is designed to be encrypted before it reaches the server. The schema now includes encrypted profile storage, encrypted post content fields, and encrypted direct-message content fields. Direct messages must be stored as ciphertext only; the server should never persist direct-message plaintext.
+
+This phase prepares the database and permission helpers. It does not implement full client-side cryptography, real-time messaging, notifications, payment, or video features.
+
 ## Tech Stack
 
 - Next.js App Router
@@ -144,6 +152,7 @@ Not included yet:
 - Payments
 - Video editing
 - Real-time chat
+- Client-side cryptographic key management
 - Redis
 - Cloudinary uploads
 - Advanced notifications

@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { Bell, Lock, Paintbrush, UserCircle } from "lucide-react";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
 import { Card, CardContent } from "@/components/ui/card";
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getEditableProfileByUserId } from "@/server/queries/profile.queries";
 
 const settingsNav = [
   {
@@ -39,41 +39,11 @@ export default async function SettingsPage() {
     redirect("/auth/login");
   }
 
-  const profile = await prisma.user.findUnique({
-    where: { id: currentUser.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      image: true,
-      username: true,
-      bio: true,
-      favoriteClub: true,
-      preferredPosition: true,
-      avoidedPosition: true,
-      location: true,
-      playerStats: {
-        select: {
-          matchesPlayed: true,
-          goals: true,
-          assists: true,
-          preferredFoot: true
-        }
-      }
-    }
-  });
+  const editableProfile = await getEditableProfileByUserId(currentUser.id);
 
-  if (!profile?.email) {
+  if (!editableProfile) {
     redirect("/auth/login");
   }
-
-  const editableProfile = {
-    ...profile,
-    name: profile.name ?? "",
-    email: profile.email,
-    username: profile.username ?? "",
-    stats: profile.playerStats
-  };
 
   return (
     <section className="mx-auto grid max-w-6xl gap-6 px-4 py-10 lg:grid-cols-[280px_1fr]">
