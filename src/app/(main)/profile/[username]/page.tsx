@@ -3,11 +3,11 @@ import { FriendButton } from "@/components/friends/FriendButton";
 import { ProfileSummary } from "@/components/profile/profile-summary";
 import { getCurrentUser } from "@/lib/auth";
 import { getFriendshipStatusForUsers } from "@/server/queries/friendship.queries";
-import { getProfileSummaryByUserId } from "@/server/queries/profile.queries";
+import { getProfileSummaryBySlug } from "@/server/queries/profile.queries";
 
 type UserProfilePageProps = {
   params: Promise<{
-    userId: string;
+    username: string;
   }>;
 };
 
@@ -18,12 +18,21 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     redirect("/auth/login");
   }
 
-  const { userId } = await params;
+  const { username } = await params;
+  const result = await getProfileSummaryBySlug(decodeURIComponent(username));
 
-  const profile = await getProfileSummaryByUserId(userId);
-
-  if (!profile) {
+  if (!result?.profile) {
     notFound();
+  }
+
+  const { profile, canonicalUsername } = result;
+
+  if (!canonicalUsername) {
+    notFound();
+  }
+
+  if (username !== canonicalUsername) {
+    redirect(`/profile/${canonicalUsername}`);
   }
 
   const friendshipStatus =

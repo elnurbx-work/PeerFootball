@@ -94,11 +94,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           {players.map((player) => {
             const displayName = player.name ?? "FanPitch Player";
             const profileMeta = [player.favoriteClub, player.preferredPosition].filter(Boolean).join(" · ");
+            const profileHref = player.username ? `/profile/${player.username}` : "/profile";
 
             return (
               <Card key={player.id}>
                 <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <Link href={`/profile/${player.id}`} className="flex min-w-0 flex-1 gap-3">
+                  <Link href={profileHref} className="flex min-w-0 flex-1 gap-3">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-primary text-base font-bold text-primary-foreground">
                       {displayName.charAt(0)}
                     </div>

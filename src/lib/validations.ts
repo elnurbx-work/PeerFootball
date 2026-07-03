@@ -2,6 +2,19 @@ import { z } from "zod";
 
 const optionalUrl = z.string().url().optional().or(z.literal(""));
 
+export const loginSchema = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(8).max(128)
+});
+
+export const registerSchema = loginSchema.extend({
+  name: z.string().min(2).max(80)
+});
+
+export const resendVerificationSchema = z.object({
+  email: z.string().email().max(255)
+});
+
 export const profileSchema = z.object({
   name: z.string().min(2).max(80),
   username: z.string().min(3).max(32).regex(/^[a-zA-Z0-9_]+$/),

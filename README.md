@@ -1,6 +1,6 @@
 # FanPitch
 
-FanPitch is a football social network for amateur players and fans. Phase 2 wires real Google authentication, Auth.js sessions, protected app routes, and persisted user profile editing.
+FanPitch is a football social network for amateur players and fans. Phase 2 wires Google and email/password authentication, Auth.js sessions, protected app routes, email verification, and persisted user profile editing.
 
 ## Privacy Architecture
 
@@ -17,7 +17,7 @@ This phase prepares the database and permission helpers. It does not implement f
 - Tailwind CSS
 - Prisma ORM
 - Neon Postgres
-- Auth.js / NextAuth Google OAuth
+- Auth.js / NextAuth Google OAuth and credentials auth
 - Zod
 
 ## Environment
@@ -39,9 +39,13 @@ AUTH_SECRET=""
 AUTH_URL="http://localhost:3000"
 AUTH_GOOGLE_ID=""
 AUTH_GOOGLE_SECRET=""
+RESEND_API_KEY=""
+EMAIL_FROM="FanPitch <no-reply@example.com>"
 ```
 
 Use `npx auth secret` or another secure generator for `AUTH_SECRET`.
+
+Email verification uses Resend. Set `RESEND_API_KEY` and `EMAIL_FROM` before using email/password registration; verification links are only sent by email.
 
 ## Neon Setup
 
@@ -118,6 +122,8 @@ Deploy the Next.js app to Vercel and add these project environment variables:
 - `AUTH_URL` set to your production URL
 - `AUTH_GOOGLE_ID`
 - `AUTH_GOOGLE_SECRET`
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
 
 After Vercel gives you the production domain, add the production Google callback URL in Google Cloud and redeploy.
 
@@ -140,6 +146,8 @@ prisma/
 Included:
 
 - Google login with Auth.js v5
+- Email/password registration and login
+- Email verification tokens with optional Resend delivery
 - Prisma adapter models for accounts, sessions, and verification tokens
 - Protected Profile, Feed, Teams, and Matches routes
 - Current user helper

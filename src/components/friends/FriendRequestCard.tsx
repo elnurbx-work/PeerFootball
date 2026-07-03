@@ -23,6 +23,7 @@ export function FriendRequestCard({ friendship, mode }: FriendRequestCardProps) 
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
   const displayName = friendship.user.name ?? "FanPitch Player";
+  const profileHref = friendship.user.username ? `/profile/${friendship.user.username}` : "/profile";
 
   const runAction = (action: () => Promise<{ ok: boolean; message: string }>) => {
     setMessage("");
@@ -43,7 +44,7 @@ export function FriendRequestCard({ friendship, mode }: FriendRequestCardProps) 
   return (
     <Card>
       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-        <Link href={`/profile/${friendship.user.id}`} className="flex min-w-0 items-center gap-3">
+        <Link href={profileHref} className="flex min-w-0 items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
             {displayName.charAt(0)}
           </div>
