@@ -7,12 +7,28 @@ const profileSummarySelect = {
   name: true,
   email: true,
   image: true,
+  coverImage: true,
   username: true,
   bio: true,
   favoriteClub: true,
+  favoriteTeams: {
+    orderBy: {
+      createdAt: "asc"
+    },
+    select: {
+      id: true,
+      externalId: true,
+      name: true,
+      country: true,
+      league: true,
+      logoUrl: true,
+      badgeUrl: true
+    }
+  },
   preferredPosition: true,
   avoidedPosition: true,
   location: true,
+  profileVisibility: true,
   sentFriendRequests: {
     where: {
       status: "ACCEPTED"
@@ -31,9 +47,7 @@ const profileSummarySelect = {
   },
   _count: {
     select: {
-      posts: true,
-      followers: true,
-      following: true
+      posts: true
     }
   },
   playerStats: {
@@ -56,16 +70,18 @@ function toProfileSummary(profile: NonNullable<ProfileSummaryRecord>) {
   return {
     id: profile.id,
     name: profile.name,
+    image: profile.image,
+    coverImage: profile.coverImage,
     username: profile.username,
     favoriteClub: profile.favoriteClub,
+    favoriteTeams: profile.favoriteTeams,
     preferredPosition: profile.preferredPosition,
     avoidedPosition: profile.avoidedPosition,
     location: profile.location,
+    profileVisibility: profile.profileVisibility,
     bio: profile.bio,
     social: {
       posts: profile._count.posts,
-      followers: profile._count.followers,
-      following: profile._count.following,
       friends: profile.sentFriendRequests.length + profile.receivedFriendRequests.length
     },
     stats: profile.playerStats
@@ -136,12 +152,28 @@ export async function getEditableProfileByUserId(userId: string) {
       name: true,
       email: true,
       image: true,
+      coverImage: true,
       username: true,
       bio: true,
       favoriteClub: true,
+      favoriteTeams: {
+        orderBy: {
+          createdAt: "asc"
+        },
+        select: {
+          id: true,
+          externalId: true,
+          name: true,
+          country: true,
+          league: true,
+          logoUrl: true,
+          badgeUrl: true
+        }
+      },
       preferredPosition: true,
       avoidedPosition: true,
       location: true,
+      profileVisibility: true,
       playerStats: {
         select: {
           matchesPlayed: true,
@@ -162,6 +194,16 @@ export async function getEditableProfileByUserId(userId: string) {
     name: profile.name ?? "",
     email: profile.email,
     username: profile.username ?? "",
+    favoriteTeams: profile.favoriteTeams,
     stats: profile.playerStats
   };
+}
+
+export async function getProfileCityByUserId(userId: string) {
+  const profile = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { location: true }
+  });
+
+  return profile?.location?.trim() || null;
 }

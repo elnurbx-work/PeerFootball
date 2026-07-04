@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Bell, Lock, Paintbrush, UserCircle } from "lucide-react";
+import { FavoriteTeamsPicker } from "@/components/profile/favorite-teams-picker";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
@@ -80,6 +81,7 @@ export default async function SettingsPage() {
 
       <div className="grid gap-5">
         <ProfileEditForm profile={editableProfile} />
+        <FavoriteTeamsPicker favoriteTeams={editableProfile.favoriteTeams} />
       </div>
     </section>
   );

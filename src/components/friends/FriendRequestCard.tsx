@@ -45,8 +45,12 @@ export function FriendRequestCard({ friendship, mode }: FriendRequestCardProps) 
     <Card>
       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
         <Link href={profileHref} className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-            {displayName.charAt(0)}
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-primary-foreground">
+            {friendship.user.image ? (
+              <img src={friendship.user.image} alt="" className="h-full w-full object-cover" />
+            ) : (
+              displayName.charAt(0)
+            )}
           </div>
           <span className="min-w-0">
             <span className="block truncate text-sm font-medium">{displayName}</span>

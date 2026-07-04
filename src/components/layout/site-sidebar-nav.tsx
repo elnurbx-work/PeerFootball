@@ -31,7 +31,6 @@ const panelContent = {
     description: "Main football flow",
     links: [
       { href: "/feed", label: "Flow", description: "Posts and updates", icon: Home },
-      { href: "/feed?filter=following", label: "Following", description: "Players you follow", icon: Users },
       { href: "/create", label: "Create Post", description: "Share a new update", icon: Plus }
     ]
   },

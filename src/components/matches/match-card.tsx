@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 type MatchCardProps = {
   match: {
     title: string;
+    city: string;
     location: string;
     date: string;
     maxPlayers: number;
@@ -29,7 +30,7 @@ export function MatchCard({ match }: MatchCardProps) {
         <div className="grid gap-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
-            {match.location}
+            {match.location}, {match.city}
           </span>
           <span className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />

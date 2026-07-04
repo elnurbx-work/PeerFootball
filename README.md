@@ -28,7 +28,7 @@ Copy the template and fill in real values:
 cp .env.example .env.local
 ```
 
-Prisma CLI reads `.env` by default. For local Prisma commands, either copy the same values into `.env` too or run the commands from a shell where `DATABASE_URL` is already exported.
+Prisma CLI is configured through `prisma.config.ts`, which loads `.env.local` first and then `.env` when those files exist. Keep real local secrets in `.env.local`.
 
 Required variables:
 
@@ -46,6 +46,26 @@ EMAIL_FROM="FanPitch <no-reply@example.com>"
 Use `npx auth secret` or another secure generator for `AUTH_SECRET`.
 
 Email verification uses Resend. Set `RESEND_API_KEY` and `EMAIL_FROM` before using email/password registration; verification links are only sent by email.
+
+Cloudinary is optional for favorite-team logos:
+
+```bash
+CLOUDINARY_CLOUD_NAME=""
+CLOUDINARY_API_KEY=""
+CLOUDINARY_API_SECRET=""
+```
+
+When these variables are not configured, FanPitch stores the original TheSportsDB image URL for the selected team.
+
+## Favorite Teams
+
+Favorite teams are stored per user in PostgreSQL. FanPitch does not keep a global football club database, seed every club, or maintain a shared team catalog.
+
+Team search runs through the server route at `/api/profile/team-search`, which calls TheSportsDB server-side and returns a small normalized result list. Client components never call TheSportsDB directly.
+
+When Cloudinary is configured, selected team logos are mirrored into the `peerfootball/favorite-teams` folder. If Cloudinary upload fails or is not configured, the app keeps the original TheSportsDB logo URL and does not block the save flow.
+
+Profile rendering reads favorite teams only from PostgreSQL data. It does not call TheSportsDB while loading profile pages.
 
 ## Neon Setup
 

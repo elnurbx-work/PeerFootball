@@ -18,11 +18,14 @@ export const resendVerificationSchema = z.object({
 export const profileSchema = z.object({
   name: z.string().min(2).max(80),
   username: z.string().min(3).max(32).regex(/^[a-zA-Z0-9_]+$/),
+  image: optionalUrl,
+  coverImage: optionalUrl,
   bio: z.string().max(240).optional(),
   favoriteClub: z.string().max(80).optional(),
   preferredPosition: z.string().max(40).optional(),
   avoidedPosition: z.string().max(40).optional(),
-  location: z.string().max(80).optional()
+  location: z.string().max(80).optional(),
+  profileVisibility: z.enum(["PUBLIC", "FRIENDS_ONLY"])
 });
 
 export const postSchema = z.object({

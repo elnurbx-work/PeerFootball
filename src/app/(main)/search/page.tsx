@@ -100,8 +100,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               <Card key={player.id}>
                 <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <Link href={profileHref} className="flex min-w-0 flex-1 gap-3">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-primary text-base font-bold text-primary-foreground">
-                      {displayName.charAt(0)}
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-base font-bold text-primary-foreground">
+                      {player.image ? (
+                        <img src={player.image} alt="" className="h-full w-full rounded-full object-cover" />
+                      ) : (
+                        displayName.charAt(0)
+                      )}
                     </div>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold">{displayName}</span>
