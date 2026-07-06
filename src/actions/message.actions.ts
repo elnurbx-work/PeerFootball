@@ -12,6 +12,7 @@ import {
 import { canSendDirectMessage } from "@/server/services/privacy.service";
 import { encryptMessage } from "@/server/services/message-encryption.service";
 import {
+  publishConversationRead,
   publishConversationUpdated,
   publishMessageCreated,
   publishMessageDeleted
@@ -258,6 +259,62 @@ export async function deleteMessageAction(messageId: string): Promise<ApiRespons
   return {
     ok: true,
     message: "Message deleted."
+  };
+}
+
+export async function markConversationReadAction(conversationId: string): Promise<ApiResponse<{ conversationId: string; readAt: string }>> {
+  const user = await requireUser();
+
+  if (!user) {
+    return unauthenticatedResponse();
+  }
+
+  if (!conversationId || !(await isConversationMember(conversationId, user.id))) {
+    return {
+      ok: false,
+      message: "Conversation was not found."
+    };
+  }
+
+  const readAt = new Date();
+
+  await prisma.conversationMember.update({
+    where: {
+      conversationId_userId: {
+        conversationId,
+        userId: user.id
+      }
+    },
+    data: {
+      lastReadAt: readAt
+    },
+    select: {
+      id: true
+    }
+  });
+
+  const lastMessage = await getLatestConversationMessage(conversationId);
+  const conversationUpdate: ConversationUpdatePayload = {
+    conversationId,
+    lastMessage,
+    unreadCount: 0,
+    updatedAt: lastMessage?.createdAt ?? readAt.toISOString()
+  };
+
+  await publishRealtimeEvents([
+    () => publishConversationRead(conversationId, user.id),
+    () => publishConversationUpdated(user.id, conversationUpdate)
+  ]);
+
+  revalidateMessageSurfaces();
+
+  return {
+    ok: true,
+    message: "Conversation marked as read.",
+    data: {
+      conversationId,
+      readAt: readAt.toISOString()
+    }
   };
 }
 

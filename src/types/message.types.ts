@@ -51,6 +51,7 @@ export type ConversationSummary = {
 export type ConversationUpdatePayload = {
   conversationId: string;
   lastMessage: RealtimeChatMessage | null;
+  unreadCount?: number;
   updatedAt: string;
 };
 

@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Realtime, type InboundMessage, type PresenceMessage } from "ably";
 import { MessageCircle, Send, Trash2, Users } from "lucide-react";
-import { deleteMessageAction, sendMessageAction } from "@/actions/message.actions";
+import { deleteMessageAction, markConversationReadAction, sendMessageAction } from "@/actions/message.actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Toast } from "@/components/ui/toast";
@@ -57,6 +57,12 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
 
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (selectedConversationId) {
+      markConversationRead(selectedConversationId);
+    }
   }, [selectedConversationId]);
 
   const friendRows = useMemo(
@@ -125,6 +131,10 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
         lastMessage: payload,
         updatedAt: payload.createdAt
       });
+
+      if (payload.senderId !== currentUserId) {
+        markConversationRead(payload.conversationId);
+      }
     };
 
     const handleDeletedMessage = (message: InboundMessage) => {
@@ -284,7 +294,9 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
             conversationId: payload.conversationId,
             lastMessage: payload.lastMessage ? toChatMessage(payload.lastMessage, currentUserId) : friend.lastMessage,
             unreadCount:
-              payload.conversationId === selectedConversationIdRef.current
+              typeof payload.unreadCount === "number"
+                ? payload.unreadCount
+                : payload.conversationId === selectedConversationIdRef.current
                 ? 0
                 : shouldIncrementUnread
                   ? friend.unreadCount + 1
@@ -502,6 +514,12 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
       </div>
     </>
   );
+}
+
+function markConversationRead(conversationId: string) {
+  markConversationReadAction(conversationId).catch((error) => {
+    debugRealtime("mark read error", error);
+  });
 }
 
 function createRealtimeClient(channelName: string) {
