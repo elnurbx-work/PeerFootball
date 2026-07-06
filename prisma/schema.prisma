@@ -313,10 +313,11 @@ model Message {
   senderId       String
   ciphertext     String
   iv             String
-  algorithm      String       @default("AES-GCM")
+  authTag        String
+  algorithm      String       @default("aes-256-gcm")
   keyVersion     Int          @default(1)
   createdAt      DateTime     @default(now())
-  editedAt       DateTime?
+  updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)

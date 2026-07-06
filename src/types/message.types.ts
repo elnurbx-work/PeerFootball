@@ -9,15 +9,49 @@ export type ConversationMemberKey = {
   keyVersion: number;
 };
 
-export type EncryptedMessage = {
+export type EncryptedMessagePayload = {
+  ciphertext: string;
+  iv: string;
+  authTag: string;
+  algorithm: "aes-256-gcm";
+  keyVersion: 1;
+};
+
+export type MessageSender = {
+  id: string;
+  name: string | null;
+  username: string | null;
+  image: string | null;
+};
+
+export type ChatMessage = {
   id: string;
   conversationId: string;
   senderId: string;
-  ciphertext: string;
-  iv: string;
-  algorithm: "AES-GCM" | string;
-  keyVersion: number;
-  createdAt: Date;
-  editedAt?: Date | null;
-  deletedAt?: Date | null;
+  sender: MessageSender;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  isOwnMessage: boolean;
+};
+
+export type ConversationSummary = {
+  id: string;
+  type: ConversationType;
+  createdAt: string;
+  updatedAt: string;
+  members: MessageSender[];
+  lastMessage: ChatMessage | null;
+};
+
+export type DirectFriend = MessageSender & {
+  conversationId: string | null;
+  lastMessage: ChatMessage | null;
+};
+
+export type SendMessageInput = {
+  conversationId?: string;
+  recipientId?: string;
+  content: string;
 };

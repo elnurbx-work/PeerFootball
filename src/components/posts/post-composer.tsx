@@ -122,13 +122,20 @@ export function PostComposer() {
             />
 
             {previews.length ? (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className={previews.length === 1 ? "grid gap-2" : "grid gap-2 sm:grid-cols-2"}>
                 {previews.map((preview, index) => (
-                  <div key={`${preview.file.name}-${index}`} className="relative aspect-square overflow-hidden rounded-md border bg-secondary">
+                  <div
+                    key={`${preview.file.name}-${index}`}
+                    className={
+                      previews.length === 1
+                        ? "relative aspect-[4/3] max-h-[440px] overflow-hidden rounded-md border bg-secondary"
+                        : "relative aspect-[4/3] overflow-hidden rounded-md border bg-secondary"
+                    }
+                  >
                     {preview.file.type.startsWith("video/") ? (
-                      <video className="h-full w-full object-cover" src={preview.url} muted />
+                      <video className="h-full w-full bg-black object-contain object-top" src={preview.url} muted />
                     ) : (
-                      <img className="h-full w-full object-cover" src={preview.url} alt="" />
+                      <img className="h-full w-full object-contain object-top" src={preview.url} alt="" />
                     )}
                     <button
                       className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white"

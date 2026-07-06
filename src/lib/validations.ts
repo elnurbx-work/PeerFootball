@@ -59,3 +59,9 @@ export {
   getPostMediaValidationError,
   postMediaFileSchema
 } from "./validations/post";
+
+export {
+  MESSAGE_CONTENT_MAX_LENGTH,
+  deleteMessageSchema,
+  sendMessageSchema
+} from "./validations/message";
