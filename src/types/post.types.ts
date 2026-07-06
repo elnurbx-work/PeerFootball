@@ -1,32 +1,80 @@
 export type MediaType = "IMAGE" | "VIDEO";
 export type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "PRIVATE";
 
-export type Post = {
+export type PostAuthor = {
   id: string;
-  authorId: string;
-  content?: string | null;
+  name: string | null;
+  username: string | null;
+  image: string | null;
+};
+
+export type PostMedia = {
+  id: string;
+  type: MediaType;
+  url: string;
+  publicId: string;
+  width: number | null;
+  height: number | null;
+  duration: number | null;
+  format: string | null;
+  size: number | null;
+  order: number;
+  createdAt: string;
+};
+
+export type OriginalPostPreview = {
+  id: string;
+  content: string | null;
+  createdAt: string;
+  author: PostAuthor;
+  media: PostMedia[];
+  isDeleted?: boolean;
+};
+
+export type FeedPost = {
+  id: string;
+  content: string | null;
+  repostNote: string | null;
   visibility: PostVisibility;
-  ciphertext?: string | null;
-  iv?: string | null;
-  algorithm?: string | null;
-  keyVersion: number;
-  mediaUrl?: string | null;
-  mediaType?: MediaType | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
+  author: PostAuthor;
+  media: PostMedia[];
+  likesCount: number;
+  commentsCount: number;
+  repostsCount: number;
+  likedByMe: boolean;
+  isOwner: boolean;
+  originalPost: OriginalPostPreview | null;
 };
 
-export type Comment = {
+export type PostComment = {
   id: string;
   postId: string;
   authorId: string;
+  parentId: string | null;
   content: string;
-  createdAt: Date;
+  createdAt: string;
+  updatedAt: string;
+  author: PostAuthor;
+  replies: PostComment[];
+  isOwner: boolean;
+  canDelete: boolean;
 };
 
-export type Like = {
-  id: string;
+export type CreatePostInput = {
+  content?: string;
+  visibility?: PostVisibility;
+  media?: File[];
+};
+
+export type CreateCommentInput = {
   postId: string;
-  userId: string;
-  createdAt: Date;
+  parentId?: string;
+  content: string;
+};
+
+export type RepostInput = {
+  originalPostId: string;
+  repostNote?: string;
 };

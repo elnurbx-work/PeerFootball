@@ -28,12 +28,6 @@ export const profileSchema = z.object({
   profileVisibility: z.enum(["PUBLIC", "FRIENDS_ONLY"])
 });
 
-export const postSchema = z.object({
-  content: z.string().min(1).max(1000),
-  mediaUrl: optionalUrl,
-  mediaType: z.enum(["IMAGE", "VIDEO"]).optional()
-});
-
 export const teamSchema = z.object({
   name: z.string().min(2).max(80),
   description: z.string().min(1).max(300),
@@ -48,3 +42,20 @@ export const matchSchema = z.object({
   maxPlayers: z.coerce.number().int().min(2).max(40),
   teamId: z.string().optional()
 });
+
+export {
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_MEDIA_TYPES,
+  ALLOWED_VIDEO_TYPES,
+  COMMENT_CONTENT_MAX_LENGTH,
+  MAX_IMAGE_SIZE_BYTES,
+  MAX_POST_MEDIA_COUNT,
+  MAX_VIDEO_SIZE_BYTES,
+  POST_CONTENT_MAX_LENGTH,
+  REPOST_NOTE_MAX_LENGTH,
+  createCommentSchema,
+  createPostSchema,
+  createRepostSchema,
+  getPostMediaValidationError,
+  postMediaFileSchema
+} from "./validations/post";

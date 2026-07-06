@@ -2,10 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
 import { FriendButton } from "@/components/friends/FriendButton";
+import { PostCard } from "@/components/posts/post-card";
 import { ProfileSummary } from "@/components/profile/profile-summary";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { getFriendshipStatusForUsers } from "@/server/queries/friendship.queries";
+import { getPostComments, getProfilePosts } from "@/server/queries/post.queries";
 import { getProfileSummaryBySlug } from "@/server/queries/profile.queries";
 import { canViewProfile } from "@/server/services/privacy.service";
 
@@ -64,6 +66,13 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     );
   }
 
+  const posts = await getProfilePosts(profile.id, currentUser.id);
+  const commentsByPostId = new Map(
+    await Promise.all(
+      posts.map(async (post) => [post.id, await getPostComments(post.id, currentUser.id)] as const)
+    )
+  );
+
   return (
     <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">
       <ProfileSummary
@@ -78,6 +87,19 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
         }
         user={profile}
       />
+      <div className="mx-auto grid w-full max-w-3xl gap-5">
+        {posts.length ? (
+          posts.map((post) => (
+            <PostCard key={post.id} post={post} comments={commentsByPostId.get(post.id) ?? []} />
+          ))
+        ) : (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              No posts yet.
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarPlus, Radio, UserPlus } from "lucide-react";
+import { CalendarPlus, Download, Radio, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -43,6 +43,12 @@ export default function HomePage() {
             <Link href="/matches">
               <CalendarPlus className="h-4 w-4" />
               Create Match
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="ghost">
+            <Link href="/install">
+              <Download className="h-4 w-4" />
+              Install
             </Link>
           </Button>
         </div>

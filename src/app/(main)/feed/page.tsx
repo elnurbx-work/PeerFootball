@@ -1,28 +1,9 @@
 import { PostComposer } from "@/components/posts/post-composer";
 import { PostCard } from "@/components/posts/post-card";
+import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
+import { getFeedPosts, getPostComments } from "@/server/queries/post.queries";
 import { redirect } from "next/navigation";
-
-const samplePosts = [
-  {
-    id: "post-1",
-    authorName: "Maya Santos",
-    username: "mayawing",
-    content: "Need two players for a 7-a-side match on Friday. Prefer one defender and one winger.",
-    createdAt: "20 min ago",
-    likes: 14,
-    comments: 3
-  },
-  {
-    id: "post-2",
-    authorName: "Omar Aliyev",
-    username: "omarpress",
-    content: "Our team is looking for friendly matches next week. Midweek evenings work best.",
-    createdAt: "1 hr ago",
-    likes: 21,
-    comments: 6
-  }
-];
 
 export default async function FeedPage() {
   const currentUser = await getCurrentUser();
@@ -30,6 +11,13 @@ export default async function FeedPage() {
   if (!currentUser) {
     redirect("/auth/login");
   }
+
+  const posts = await getFeedPosts(currentUser.id);
+  const commentsByPostId = new Map(
+    await Promise.all(
+      posts.map(async (post) => [post.id, await getPostComments(post.id, currentUser.id)] as const)
+    )
+  );
 
   return (
     <section className="mx-auto grid max-w-3xl gap-5 px-4 py-10">
@@ -40,9 +28,17 @@ export default async function FeedPage() {
         </p>
       </div>
       <PostComposer />
-      {samplePosts.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
+      {posts.length ? (
+        posts.map((post) => (
+          <PostCard key={post.id} post={post} comments={commentsByPostId.get(post.id) ?? []} />
+        ))
+      ) : (
+        <Card>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            No posts yet.
+          </CardContent>
+        </Card>
+      )}
     </section>
   );
 }

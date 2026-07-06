@@ -75,7 +75,7 @@ model User {
   updatedAt         DateTime           @updatedAt
   posts             Post[]
   comments          Comment[]
-  likes             Like[]
+  likes             PostLike[]
   following         Follow[]           @relation("Following")
   followers         Follow[]           @relation("Followers")
   sentFriendRequests     Friendship[]  @relation("FriendshipRequester")
@@ -166,40 +166,69 @@ model UserEncryptedProfile {
 }
 
 model Post {
-  id          String         @id @default(cuid())
-  authorId    String
-  content     String?
-  visibility  PostVisibility @default(PUBLIC)
-  ciphertext  String?
-  iv          String?
-  algorithm   String?        @default("AES-GCM")
-  keyVersion  Int            @default(1)
-  mediaUrl    String?
-  mediaType   MediaType?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments    Comment[]
-  likes       Like[]
+  id             String         @id @default(cuid())
+  authorId       String
+  content        String?
+  visibility     PostVisibility @default(PUBLIC)
+  originalPostId String?
+  repostNote     String?
+  ciphertext     String?
+  iv             String?
+  algorithm      String?        @default("AES-GCM")
+  keyVersion     Int            @default(1)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  author         User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  originalPost   Post?          @relation("PostReposts", fields: [originalPostId], references: [id], onDelete: SetNull)
+  reposts        Post[]         @relation("PostReposts")
+  media          PostMedia[]
+  comments       Comment[]
+  likes          PostLike[]
 
-  @@index([authorId])
+  @@index([createdAt])
+  @@index([authorId, createdAt])
+  @@index([originalPostId])
   @@index([visibility])
+}
+
+model PostMedia {
+  id        String    @id @default(cuid())
+  postId    String
+  type      MediaType
+  url       String
+  publicId  String
+  width     Int?
+  height    Int?
+  duration  Float?
+  format    String?
+  size      Int?
+  order     Int
+  createdAt DateTime  @default(now())
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, order])
+  @@index([postId])
 }
 
 model Comment {
   id        String   @id @default(cuid())
   postId    String
   authorId  String
+  parentId  String?
   content   String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
 
-  @@index([postId])
+  @@index([postId, createdAt])
+  @@index([parentId])
   @@index([authorId])
 }
 
-model Like {
+model PostLike {
   id        String   @id @default(cuid())
   postId    String
   userId    String
@@ -207,7 +236,8 @@ model Like {
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([postId, userId])
+  @@unique([userId, postId])
+  @@index([postId])
   @@index([userId])
 }
 
