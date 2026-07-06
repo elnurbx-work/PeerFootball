@@ -4,16 +4,24 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteMessageSchema, sendMessageSchema } from "@/lib/validations/message";
-import { findDirectConversationForUsers, isConversationMember } from "@/server/queries/message.queries";
+import {
+  findDirectConversationForUsers,
+  getLatestConversationMessage,
+  isConversationMember
+} from "@/server/queries/message.queries";
 import { canSendDirectMessage } from "@/server/services/privacy.service";
 import { encryptMessage } from "@/server/services/message-encryption.service";
-import { publishMessageCreatedEvent, publishMessageDeletedEvent } from "@/server/services/ably.service";
+import {
+  publishConversationUpdated,
+  publishMessageCreated,
+  publishMessageDeleted
+} from "@/server/services/ably.service";
 import type { ApiResponse } from "@/types/api.types";
-import type { SendMessageInput } from "@/types/message.types";
+import type { ChatMessage, ConversationUpdatePayload, RealtimeChatMessage, SendMessageInput } from "@/types/message.types";
 
 type ActionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
-export async function sendMessageAction(input: SendMessageInput): Promise<ApiResponse<{ messageId: string; conversationId: string }>> {
+export async function sendMessageAction(input: SendMessageInput): Promise<ApiResponse<{ message: ChatMessage; messageId: string; conversationId: string }>> {
   const user = await requireUser();
 
   if (!user) {
@@ -88,11 +96,24 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
         algorithm: encryptedMessage.algorithm,
         keyVersion: encryptedMessage.keyVersion
       },
-      select: {
-        id: true,
-        conversationId: true,
-        senderId: true,
-        createdAt: true
+      include: {
+        conversation: {
+          select: {
+            members: {
+              select: {
+                userId: true
+              }
+            }
+          }
+        },
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true
+          }
+        }
       }
     });
 
@@ -111,12 +132,26 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
     return created;
   });
 
-  await publishMessageCreatedEvent({
+  const realtimeMessage: RealtimeChatMessage = {
+    id: message.id,
     conversationId: message.conversationId,
+    senderId: message.senderId,
+    sender: message.sender,
+    content: result.data.content,
     createdAt: message.createdAt.toISOString(),
-    messageId: message.id,
-    senderId: message.senderId
-  });
+    updatedAt: message.updatedAt.toISOString(),
+    deletedAt: null
+  };
+  const conversationUpdate: ConversationUpdatePayload = {
+    conversationId: message.conversationId,
+    lastMessage: realtimeMessage,
+    updatedAt: message.createdAt.toISOString()
+  };
+
+  await publishRealtimeEvents([
+    () => publishMessageCreated(message.conversationId, realtimeMessage),
+    ...message.conversation.members.map((member) => () => publishConversationUpdated(member.userId, conversationUpdate))
+  ]);
 
   revalidateMessageSurfaces();
 
@@ -124,6 +159,10 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
     ok: true,
     message: "Message sent.",
     data: {
+      message: {
+        ...realtimeMessage,
+        isOwnMessage: true
+      },
       messageId: message.id,
       conversationId: message.conversationId
     }
@@ -182,23 +221,37 @@ export async function deleteMessageAction(messageId: string): Promise<ApiRespons
 
   const deletedAt = new Date();
 
-  await prisma.message.update({
+  const messageUpdate = await prisma.message.update({
     where: {
       id: message.id
     },
     data: {
       deletedAt
     },
-    select: {
-      id: true
+    include: {
+      conversation: {
+        select: {
+          members: {
+            select: {
+              userId: true
+            }
+          }
+        }
+      }
     }
   });
 
-  await publishMessageDeletedEvent({
+  const lastMessage = await getLatestConversationMessage(message.conversationId);
+  const conversationUpdate: ConversationUpdatePayload = {
     conversationId: message.conversationId,
-    deletedAt: deletedAt.toISOString(),
-    messageId: message.id
-  });
+    lastMessage,
+    updatedAt: messageUpdate.updatedAt.toISOString()
+  };
+
+  await publishRealtimeEvents([
+    () => publishMessageDeleted(message.conversationId, message.id),
+    ...messageUpdate.conversation.members.map((member) => () => publishConversationUpdated(member.userId, conversationUpdate))
+  ]);
 
   revalidateMessageSurfaces();
 
@@ -254,4 +307,13 @@ function unauthenticatedResponse(): ApiResponse<never> {
 
 function revalidateMessageSurfaces() {
   revalidatePath("/direct");
+}
+
+async function publishRealtimeEvents(publishers: Array<() => Promise<void>>) {
+  const results = await Promise.allSettled(publishers.map((publish) => publish()));
+  const failures = results.filter((result) => result.status === "rejected");
+
+  if (failures.length && process.env.NODE_ENV === "development") {
+    console.error("[ably] realtime publish failed", failures);
+  }
 }

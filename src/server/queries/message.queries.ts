@@ -3,7 +3,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decryptMessage } from "@/server/services/message-encryption.service";
-import type { ChatMessage, ConversationSummary, EncryptedMessagePayload } from "@/types/message.types";
+import type { ChatMessage, ConversationSummary, EncryptedMessagePayload, RealtimeChatMessage } from "@/types/message.types";
 
 const messageSenderSelect = {
   id: true,
@@ -57,6 +57,20 @@ export async function getConversationMessages(conversationId: string, currentUse
   return messages.map((message) => toChatMessage(message, currentUserId));
 }
 
+export async function getLatestConversationMessage(conversationId: string): Promise<RealtimeChatMessage | null> {
+  const message = await prisma.message.findFirst({
+    where: {
+      conversationId
+    },
+    include: messageInclude,
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  return message ? toRealtimeChatMessage(message) : null;
+}
+
 export async function getConversationSummaries(currentUserId: string): Promise<ConversationSummary[]> {
   const conversations = await prisma.conversation.findMany({
     where: {
@@ -87,14 +101,37 @@ export async function getConversationSummaries(currentUserId: string): Promise<C
     }
   });
 
-  return conversations.map((conversation) => ({
-    id: conversation.id,
-    type: conversation.type,
-    createdAt: conversation.createdAt.toISOString(),
-    updatedAt: conversation.updatedAt.toISOString(),
-    members: conversation.members.map((member) => member.user),
-    lastMessage: conversation.messages[0] ? toChatMessage(conversation.messages[0], currentUserId) : null
-  }));
+  return Promise.all(
+    conversations.map(async (conversation) => {
+      const currentMember = conversation.members.find((member) => member.userId === currentUserId);
+      const unreadCount = await prisma.message.count({
+        where: {
+          conversationId: conversation.id,
+          deletedAt: null,
+          senderId: {
+            not: currentUserId
+          },
+          ...(currentMember?.lastReadAt
+            ? {
+                createdAt: {
+                  gt: currentMember.lastReadAt
+                }
+              }
+            : {})
+        }
+      });
+
+      return {
+        id: conversation.id,
+        type: conversation.type,
+        createdAt: conversation.createdAt.toISOString(),
+        updatedAt: conversation.updatedAt.toISOString(),
+        members: conversation.members.map((member) => member.user),
+        lastMessage: conversation.messages[0] ? toChatMessage(conversation.messages[0], currentUserId) : null,
+        unreadCount
+      };
+    })
+  );
 }
 
 export async function findDirectConversationForUsers(userAId: string, userBId: string) {
@@ -124,7 +161,14 @@ export async function findDirectConversationForUsers(userAId: string, userBId: s
   });
 }
 
-function toChatMessage(message: MessageRecord, currentUserId: string): ChatMessage {
+export function toChatMessage(message: MessageRecord, currentUserId: string): ChatMessage {
+  return {
+    ...toRealtimeChatMessage(message),
+    isOwnMessage: message.senderId === currentUserId
+  };
+}
+
+export function toRealtimeChatMessage(message: MessageRecord): RealtimeChatMessage {
   return {
     id: message.id,
     conversationId: message.conversationId,
@@ -133,8 +177,7 @@ function toChatMessage(message: MessageRecord, currentUserId: string): ChatMessa
     content: message.deletedAt ? "Message deleted" : decryptMessage(toEncryptedPayload(message)),
     createdAt: message.createdAt.toISOString(),
     updatedAt: message.updatedAt.toISOString(),
-    deletedAt: message.deletedAt?.toISOString() ?? null,
-    isOwnMessage: message.senderId === currentUserId
+    deletedAt: message.deletedAt?.toISOString() ?? null
   };
 }
 

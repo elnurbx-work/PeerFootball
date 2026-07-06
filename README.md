@@ -41,6 +41,8 @@ AUTH_GOOGLE_ID=""
 AUTH_GOOGLE_SECRET=""
 RESEND_API_KEY=""
 EMAIL_FROM="FanPitch <no-reply@example.com>"
+ABLY_API_KEY=""
+MESSAGE_ENCRYPTION_KEY=""
 ```
 
 Use `npx auth secret` or another secure generator for `AUTH_SECRET`.
@@ -132,6 +134,26 @@ npm run build
 
 The app also includes `npm run lint`, but Next.js 15 no longer ships the old `next lint` command. Replace that script with an ESLint CLI config when linting is needed.
 
+## Manual Realtime Chat Test
+
+1. Login as User A in Chrome.
+2. Login as User B in Incognito or another browser.
+3. Make sure A and B are accepted friends.
+4. Open the same Direct conversation in both browsers.
+5. Send a message from A.
+6. B must see it without refresh.
+7. Send a message from B.
+8. A must see it without refresh.
+9. Delete a message.
+10. The other side must see the deletion without refresh.
+11. Keep the Direct list open in one browser.
+12. Send a message from the other browser.
+13. The last message must update and move the conversation to the top without refresh.
+14. Open the chat room in both browsers.
+15. Online status must show when both users are in the room.
+16. Close one browser or tab.
+17. The other side should change to offline after disconnect or leave.
+
 ## Deployment
 
 Deploy the Next.js app to Vercel and add these project environment variables:
@@ -179,7 +201,6 @@ Not included yet:
 
 - Payments
 - Video editing
-- Real-time chat
 - Client-side cryptographic key management
 - Redis
 - Cloudinary uploads

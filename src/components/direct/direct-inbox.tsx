@@ -1,42 +1,195 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Realtime, type InboundMessage, type PresenceMessage } from "ably";
 import { MessageCircle, Send, Trash2, Users } from "lucide-react";
 import { deleteMessageAction, sendMessageAction } from "@/actions/message.actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Toast } from "@/components/ui/toast";
+import { getRoomChannelName, getUserInboxChannelName, INBOX_EVENTS, ROOM_EVENTS } from "@/lib/ably-channels";
 import { MESSAGE_CONTENT_MAX_LENGTH } from "@/lib/validations/message";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, DirectFriend } from "@/types/message.types";
+import type {
+  ChatMessage,
+  ConversationUpdatePayload,
+  DirectFriend,
+  MessageSender,
+  RealtimeChatMessage
+} from "@/types/message.types";
 
 type DirectInboxProps = {
-  currentUserId: string;
+  currentUser: MessageSender;
   friends: DirectFriend[];
   messagesByConversationId: Record<string, ChatMessage[]>;
 };
 
-export function DirectInbox({ currentUserId, friends, messagesByConversationId }: DirectInboxProps) {
-  const router = useRouter();
+type PresenceData = {
+  image: string | null;
+  name: string | null;
+  status: "online";
+  userId: string;
+};
+
+export function DirectInbox({ currentUser, friends, messagesByConversationId }: DirectInboxProps) {
+  const [friendsState, setFriendsState] = useState(friends);
+  const [messagesByConversationIdState, setMessagesByConversationIdState] = useState(messagesByConversationId);
   const [selectedFriendId, setSelectedFriendId] = useState(friends[0]?.id ?? "");
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
   const [pending, startTransition] = useTransition();
-  const selectedFriend = friends.find((friend) => friend.id === selectedFriendId) ?? friends[0] ?? null;
-  const messages = selectedFriend?.conversationId ? messagesByConversationId[selectedFriend.conversationId] ?? [] : [];
+  const currentUserId = currentUser.id;
+  const selectedFriend = friendsState.find((friend) => friend.id === selectedFriendId) ?? friendsState[0] ?? null;
+  const selectedConversationId = selectedFriend?.conversationId ?? null;
+  const selectedConversationIdRef = useRef<string | null>(selectedConversationId);
+  const messages = selectedFriend?.conversationId ? messagesByConversationIdState[selectedFriend.conversationId] ?? [] : [];
   const trimmedLength = content.trim().length;
+
+  useEffect(() => {
+    setFriendsState(friends);
+  }, [friends]);
+
+  useEffect(() => {
+    setMessagesByConversationIdState(messagesByConversationId);
+  }, [messagesByConversationId]);
+
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
 
   const friendRows = useMemo(
     () =>
-      friends.map((friend) => ({
+      friendsState.map((friend) => ({
         ...friend,
         displayName: friend.name ?? "FanPitch Player",
         preview: friend.lastMessage?.content ?? "Start a conversation"
       })),
-    [friends]
+    [friendsState]
   );
+
+  useEffect(() => {
+    const channelName = getUserInboxChannelName(currentUserId);
+    const ably = createRealtimeClient(channelName);
+    const channel = ably.channels.get(channelName);
+
+    const handleConversationUpdate = (message: InboundMessage) => {
+      const payload = message.data as ConversationUpdatePayload;
+
+      debugRealtime("received event", {
+        event: INBOX_EVENTS.conversationUpdate,
+        id: payload.conversationId
+      });
+      applyConversationUpdate(payload);
+    };
+
+    ably.connection.on("connected", () => debugRealtime("connected to Ably", { channelName }));
+    ably.connection.on("failed", (stateChange) => debugRealtime("connection failed", stateChange.reason));
+    channel.subscribe(INBOX_EVENTS.conversationUpdate, handleConversationUpdate).catch((subscribeError) => {
+      debugRealtime("subscription error", subscribeError);
+    });
+
+    debugRealtime("subscribed channel", { channelName });
+
+    return () => {
+      channel.unsubscribe(INBOX_EVENTS.conversationUpdate, handleConversationUpdate);
+      ably.close();
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
+    const conversationId = selectedFriend?.conversationId;
+
+    setIsOtherUserOnline(false);
+
+    if (!conversationId) {
+      return;
+    }
+
+    let active = true;
+    const channelName = getRoomChannelName(conversationId);
+    const ably = createRealtimeClient(channelName);
+    const channel = ably.channels.get(channelName);
+
+    const handleNewMessage = (message: InboundMessage) => {
+      const payload = message.data as RealtimeChatMessage;
+
+      debugRealtime("received event", {
+        event: ROOM_EVENTS.messageNew,
+        id: payload.id
+      });
+      upsertMessage(toChatMessage(payload, currentUserId));
+      applyConversationUpdate({
+        conversationId: payload.conversationId,
+        lastMessage: payload,
+        updatedAt: payload.createdAt
+      });
+    };
+
+    const handleDeletedMessage = (message: InboundMessage) => {
+      const payload = message.data as { conversationId: string; messageId: string };
+
+      debugRealtime("received event", {
+        event: ROOM_EVENTS.messageDelete,
+        id: payload.messageId
+      });
+      markMessageDeleted(payload.conversationId, payload.messageId);
+    };
+
+    const handlePresenceChange = (_message: PresenceMessage) => {
+      refreshPresence();
+    };
+
+    async function refreshPresence() {
+      try {
+        const members = await channel.presence.get();
+
+        if (active) {
+          setIsOtherUserOnline(members.some((member) => member.clientId !== currentUserId));
+        }
+      } catch (presenceError) {
+        debugRealtime("presence error", presenceError);
+      }
+    }
+
+    ably.connection.on("connected", () => debugRealtime("connected to Ably", { channelName }));
+    ably.connection.on("failed", (stateChange) => debugRealtime("connection failed", stateChange.reason));
+
+    Promise.all([
+      channel.subscribe(ROOM_EVENTS.messageNew, handleNewMessage),
+      channel.subscribe(ROOM_EVENTS.messageDelete, handleDeletedMessage),
+      channel.subscribe(ROOM_EVENTS.conversationRead, () => undefined),
+      channel.subscribe(ROOM_EVENTS.typingStart, () => undefined),
+      channel.subscribe(ROOM_EVENTS.typingStop, () => undefined),
+      channel.presence.subscribe(["enter", "update", "leave", "present"], handlePresenceChange)
+    ])
+      .then(async () => {
+        debugRealtime("subscribed channel", { channelName });
+        await channel.presence.enter({
+          image: currentUser.image ?? null,
+          name: currentUser.name ?? null,
+          status: "online",
+          userId: currentUserId
+        } satisfies PresenceData);
+        await refreshPresence();
+      })
+      .catch((subscribeError) => {
+        debugRealtime("subscription error", subscribeError);
+      });
+
+    return () => {
+      active = false;
+      channel.unsubscribe(ROOM_EVENTS.messageNew, handleNewMessage);
+      channel.unsubscribe(ROOM_EVENTS.messageDelete, handleDeletedMessage);
+      channel.unsubscribe(ROOM_EVENTS.conversationRead);
+      channel.unsubscribe(ROOM_EVENTS.typingStart);
+      channel.unsubscribe(ROOM_EVENTS.typingStop);
+      channel.presence.unsubscribe(["enter", "update", "leave", "present"], handlePresenceChange);
+      channel.presence.leave().catch((leaveError) => debugRealtime("presence leave error", leaveError));
+      ably.close();
+    };
+  }, [currentUser.image, currentUser.name, currentUserId, selectedFriend?.conversationId]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,8 +213,29 @@ export function DirectInbox({ currentUserId, friends, messagesByConversationId }
         return;
       }
 
+      if (!result.data) {
+        setError("Message was saved, but the response was incomplete.");
+        return;
+      }
+
+      const data = result.data;
+
       setContent("");
-      router.refresh();
+      upsertMessage(data.message);
+      setFriendsState((currentFriends) =>
+        sortFriendsByLastMessage(
+          currentFriends.map((friend) =>
+            friend.id === selectedFriend.id
+              ? {
+                  ...friend,
+                  conversationId: data.conversationId,
+                  lastMessage: data.message,
+                  unreadCount: 0
+                }
+              : friend
+          )
+        )
+      );
     });
   }
 
@@ -77,12 +251,103 @@ export function DirectInbox({ currentUserId, friends, messagesByConversationId }
         return;
       }
 
+      if (selectedFriend?.conversationId) {
+        markMessageDeleted(selectedFriend.conversationId, messageId);
+      }
+
       setToastMessage(result.message);
-      router.refresh();
     });
   }
 
-  if (!friends.length) {
+  function applyConversationUpdate(payload: ConversationUpdatePayload) {
+    if (payload.lastMessage) {
+      upsertMessage(toChatMessage(payload.lastMessage, currentUserId));
+    }
+
+    const shouldIncrementUnread =
+      Boolean(payload.lastMessage) &&
+      payload.lastMessage?.senderId !== currentUserId &&
+      payload.conversationId !== selectedConversationIdRef.current;
+
+    setFriendsState((currentFriends) =>
+      sortFriendsByLastMessage(
+        currentFriends.map((friend) => {
+          const isExistingConversation = friend.conversationId === payload.conversationId;
+          const isNewConversationFromFriend = !friend.conversationId && payload.lastMessage?.senderId === friend.id;
+
+          if (!isExistingConversation && !isNewConversationFromFriend) {
+            return friend;
+          }
+
+          return {
+            ...friend,
+            conversationId: payload.conversationId,
+            lastMessage: payload.lastMessage ? toChatMessage(payload.lastMessage, currentUserId) : friend.lastMessage,
+            unreadCount:
+              payload.conversationId === selectedConversationIdRef.current
+                ? 0
+                : shouldIncrementUnread
+                  ? friend.unreadCount + 1
+                  : friend.unreadCount
+          };
+        })
+      )
+    );
+  }
+
+  function upsertMessage(message: ChatMessage) {
+    setMessagesByConversationIdState((currentMessages) => {
+      const conversationMessages = currentMessages[message.conversationId] ?? [];
+      const existingIndex = conversationMessages.findIndex((item) => item.id === message.id);
+      const nextMessages =
+        existingIndex === -1
+          ? [...conversationMessages, message]
+          : conversationMessages.map((item) => (item.id === message.id ? { ...item, ...message } : item));
+
+      return {
+        ...currentMessages,
+        [message.conversationId]: sortMessages(nextMessages)
+      };
+    });
+  }
+
+  function markMessageDeleted(conversationId: string, messageId: string) {
+    const deletedAt = new Date().toISOString();
+
+    setMessagesByConversationIdState((currentMessages) => {
+      const conversationMessages = currentMessages[conversationId] ?? [];
+
+      return {
+        ...currentMessages,
+        [conversationId]: conversationMessages.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                content: "Message deleted",
+                deletedAt
+              }
+            : message
+        )
+      };
+    });
+
+    setFriendsState((currentFriends) =>
+      currentFriends.map((friend) =>
+        friend.conversationId === conversationId && friend.lastMessage?.id === messageId
+          ? {
+              ...friend,
+              lastMessage: {
+                ...friend.lastMessage,
+                content: "Message deleted",
+                deletedAt
+              }
+            }
+          : friend
+      )
+    );
+  }
+
+  if (!friendsState.length) {
     return (
       <div className="rounded-md border bg-card p-8 text-center">
         <Users className="mx-auto h-10 w-10 text-muted-foreground" />
@@ -118,13 +383,25 @@ export function DirectInbox({ currentUserId, friends, messagesByConversationId }
                 onClick={() => {
                   setSelectedFriendId(friend.id);
                   setError(null);
+                  setFriendsState((currentFriends) =>
+                    currentFriends.map((currentFriend) =>
+                      currentFriend.id === friend.id ? { ...currentFriend, unreadCount: 0 } : currentFriend
+                    )
+                  );
                 }}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-primary-foreground">
                   {friend.image ? <img src={friend.image} alt="" className="h-full w-full object-cover" /> : friend.displayName.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{friend.displayName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="min-w-0 flex-1 truncate text-sm font-semibold">{friend.displayName}</p>
+                    {friend.unreadCount ? (
+                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-semibold text-accent-foreground">
+                        {friend.unreadCount > 9 ? "9+" : friend.unreadCount}
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="truncate text-xs text-muted-foreground">@{friend.username ?? "profile"}</p>
                   <p className="mt-1 truncate text-xs text-muted-foreground">{friend.preview}</p>
                 </div>
@@ -146,7 +423,11 @@ export function DirectInbox({ currentUserId, friends, messagesByConversationId }
                 </div>
                 <div className="min-w-0">
                   <h2 className="truncate font-semibold">{selectedFriend.name ?? "FanPitch Player"}</h2>
-                  <p className="truncate text-sm text-muted-foreground">@{selectedFriend.username ?? "profile"}</p>
+                  <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className={cn("h-2 w-2 rounded-full", isOtherUserOnline ? "bg-primary" : "bg-muted-foreground")} />
+                    <span>{isOtherUserOnline ? "Online" : "Offline"}</span>
+                    <span className="truncate">@{selectedFriend.username ?? "profile"}</span>
+                  </div>
                 </div>
               </div>
 
@@ -221,6 +502,38 @@ export function DirectInbox({ currentUserId, friends, messagesByConversationId }
       </div>
     </>
   );
+}
+
+function createRealtimeClient(channelName: string) {
+  return new Realtime({
+    authUrl: `/api/ably/token?channel=${encodeURIComponent(channelName)}`,
+    closeOnUnload: true
+  });
+}
+
+function toChatMessage(message: RealtimeChatMessage, currentUserId: string): ChatMessage {
+  return {
+    ...message,
+    isOwnMessage: message.senderId === currentUserId
+  };
+}
+
+function sortMessages(messages: ChatMessage[]) {
+  return [...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
+function sortFriendsByLastMessage(friends: DirectFriend[]) {
+  return [...friends].sort((a, b) => getLastMessageTime(b) - getLastMessageTime(a));
+}
+
+function getLastMessageTime(friend: DirectFriend) {
+  return friend.lastMessage ? new Date(friend.lastMessage.createdAt).getTime() : 0;
+}
+
+function debugRealtime(message: string, details?: unknown) {
+  if (process.env.NODE_ENV === "development") {
+    console.debug(`[ably] ${message}`, details);
+  }
 }
 
 function formatRelativeTime(value: string) {

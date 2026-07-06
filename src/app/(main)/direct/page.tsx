@@ -24,7 +24,8 @@ export default async function DirectPage() {
     return {
       ...friendship.user,
       conversationId: conversation?.id ?? null,
-      lastMessage: conversation?.lastMessage ?? null
+      lastMessage: conversation?.lastMessage ?? null,
+      unreadCount: conversation?.unreadCount ?? 0
     };
   });
   const conversationIds = [...new Set(directFriends.map((friend) => friend.conversationId).filter(Boolean))] as string[];
@@ -36,11 +37,17 @@ export default async function DirectPage() {
       ] as const)
     )
   );
+  const currentMessageUser = {
+    id: currentUser.id,
+    name: currentUser.name,
+    username: currentUser.username ?? null,
+    image: currentUser.image ?? null
+  };
 
   return (
     <section className="grid min-h-[calc(100vh-5rem)] md:min-h-screen">
       <DirectInbox
-        currentUserId={currentUser.id}
+        currentUser={currentMessageUser}
         friends={directFriends}
         messagesByConversationId={messagesByConversationId}
       />

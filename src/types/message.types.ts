@@ -36,6 +36,8 @@ export type ChatMessage = {
   isOwnMessage: boolean;
 };
 
+export type RealtimeChatMessage = Omit<ChatMessage, "isOwnMessage">;
+
 export type ConversationSummary = {
   id: string;
   type: ConversationType;
@@ -43,11 +45,19 @@ export type ConversationSummary = {
   updatedAt: string;
   members: MessageSender[];
   lastMessage: ChatMessage | null;
+  unreadCount: number;
+};
+
+export type ConversationUpdatePayload = {
+  conversationId: string;
+  lastMessage: RealtimeChatMessage | null;
+  updatedAt: string;
 };
 
 export type DirectFriend = MessageSender & {
   conversationId: string | null;
   lastMessage: ChatMessage | null;
+  unreadCount: number;
 };
 
 export type SendMessageInput = {
