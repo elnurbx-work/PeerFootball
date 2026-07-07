@@ -10,6 +10,7 @@ import type { NotificationListItem, NotificationType } from "@/types/notificatio
 
 type NotificationItemProps = {
   notification: NotificationListItem;
+  onNavigate?: () => void;
   onRead?: (notificationId: string) => void;
 };
 
@@ -23,7 +24,7 @@ const typeIcon: Record<NotificationType, typeof Bell> = {
   MESSAGE: MessageCircle
 };
 
-export function NotificationItem({ notification, onRead }: NotificationItemProps) {
+export function NotificationItem({ notification, onNavigate, onRead }: NotificationItemProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const Icon = typeIcon[notification.type] ?? Bell;
@@ -36,6 +37,7 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
     }
 
     if (!isUnread) {
+      onNavigate?.();
       router.push(notification.href);
       return;
     }
@@ -48,6 +50,7 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
     }
 
     setPending(false);
+    onNavigate?.();
     router.push(notification.href);
   }
 

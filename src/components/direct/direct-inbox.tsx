@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Realtime, type InboundMessage, type PresenceMessage } from "ably";
 import { ArrowLeft, MessageCircle, Send, Trash2, Users } from "lucide-react";
@@ -375,6 +376,14 @@ export function DirectInbox({
         <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
           Accepted friends will appear here so you can start a direct message.
         </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Button asChild>
+            <Link href="/search">Find players</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/friends?tab=incoming">Friend requests</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -384,12 +393,17 @@ export function DirectInbox({
       <Toast message={toastMessage ?? ""} open={Boolean(toastMessage)} onOpenChange={(open) => !open && setToastMessage(null)} />
       <div className="grid h-full overflow-hidden bg-card md:grid-cols-[320px_1fr] md:border-r">
         <aside className={cn("min-h-0 flex-col border-r", isMobileChatOpen ? "hidden md:flex" : "flex")}>
-          <div className="border-b p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <MessageCircle className="h-4 w-4 text-primary" />
-              Friends
+          <div className="flex items-start justify-between gap-3 border-b p-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <MessageCircle className="h-4 w-4 text-primary" />
+                Friends
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">All accepted friends are available for direct messages.</p>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">All accepted friends are available for direct messages.</p>
+            <Button asChild size="sm" variant="outline" className="shrink-0">
+              <Link href="/friends?tab=incoming">Manage</Link>
+            </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {friendRows.map((friend) => (
@@ -443,13 +457,14 @@ export function DirectInbox({
             <>
               <div className="flex items-center gap-3 border-b p-3 sm:p-4">
                 <Button
-                  className="h-10 w-10 shrink-0 px-0 md:hidden"
-                  variant="ghost"
+                  className="shrink-0 md:hidden"
+                  variant="outline"
                   type="button"
                   aria-label="Back to messages"
                   onClick={() => setIsMobileChatOpen(false)}
                 >
                   <ArrowLeft className="h-5 w-5" />
+                  Chats
                 </Button>
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary font-semibold">
                   {selectedFriend.image ? (

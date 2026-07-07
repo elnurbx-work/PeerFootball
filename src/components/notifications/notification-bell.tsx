@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Realtime, type InboundMessage } from "ably";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export function NotificationBell({
   initialUnreadCount
 }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [notifications, setNotifications] = useState<NotificationListItem[]>(
     initialNotifications.map(toNotificationListItem)
   );
@@ -34,6 +35,32 @@ export function NotificationBell({
   useEffect(() => {
     setUnreadCount(initialUnreadCount);
   }, [initialUnreadCount]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   useEffect(() => {
     const channelName = getUserInboxChannelName(currentUserId);
@@ -125,7 +152,7 @@ export function NotificationBell({
   }
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <Button
         className={cn(
           "relative h-11 w-11 px-0 text-muted-foreground hover:text-foreground",
@@ -135,6 +162,7 @@ export function NotificationBell({
         type="button"
         variant="ghost"
         aria-label="Notifications"
+        aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
         <Bell className="h-5 w-5" />
@@ -148,6 +176,7 @@ export function NotificationBell({
       {open ? (
         <NotificationDropdown
           notifications={notifications}
+          onClose={() => setOpen(false)}
           onRead={markLocalRead}
           onReadAll={markLocalReadAll}
         />
