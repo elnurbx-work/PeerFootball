@@ -45,7 +45,7 @@ export default async function DirectPage() {
   };
 
   return (
-    <section className="grid min-h-[calc(100vh-5rem)] md:min-h-screen">
+    <section className="grid h-dvh overflow-hidden">
       <DirectInbox
         currentUser={currentMessageUser}
         friends={directFriends}

@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Realtime, type InboundMessage, type PresenceMessage } from "ably";
-import { MessageCircle, Send, Trash2, Users } from "lucide-react";
+import { ArrowLeft, MessageCircle, Send, Trash2, Users } from "lucide-react";
 import { deleteMessageAction, markConversationReadAction, sendMessageAction } from "@/actions/message.actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +35,7 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
   const [friendsState, setFriendsState] = useState(friends);
   const [messagesByConversationIdState, setMessagesByConversationIdState] = useState(messagesByConversationId);
   const [selectedFriendId, setSelectedFriendId] = useState(friends[0]?.id ?? "");
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -374,8 +375,8 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
   return (
     <>
       <Toast message={toastMessage ?? ""} open={Boolean(toastMessage)} onOpenChange={(open) => !open && setToastMessage(null)} />
-      <div className="grid min-h-[calc(100vh-12rem)] overflow-hidden border-y bg-card md:min-h-0 md:h-full md:grid-cols-[300px_1fr] md:border">
-        <aside className="border-b md:border-b-0 md:border-r">
+      <div className="grid h-dvh overflow-hidden bg-card md:grid-cols-[320px_1fr] md:border-r">
+        <aside className={cn("min-h-0 flex-col border-r", isMobileChatOpen ? "hidden md:flex" : "flex")}>
           <div className="border-b p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <MessageCircle className="h-4 w-4 text-primary" />
@@ -383,7 +384,7 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
             </div>
             <p className="mt-1 text-xs text-muted-foreground">All accepted friends are available for direct messages.</p>
           </div>
-          <div className="max-h-[300px] overflow-y-auto md:max-h-none">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {friendRows.map((friend) => (
               <button
                 key={friend.id}
@@ -394,6 +395,7 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
                 type="button"
                 onClick={() => {
                   setSelectedFriendId(friend.id);
+                  setIsMobileChatOpen(true);
                   setError(null);
                   setFriendsState((currentFriends) =>
                     currentFriends.map((currentFriend) =>
@@ -422,10 +424,19 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
           </div>
         </aside>
 
-        <section className="flex min-h-[520px] flex-col md:min-h-0">
+        <section className={cn("min-h-0 flex-col", isMobileChatOpen ? "flex" : "hidden md:flex")}>
           {selectedFriend ? (
             <>
-              <div className="flex items-center gap-3 border-b p-4">
+              <div className="flex items-center gap-3 border-b p-3 sm:p-4">
+                <Button
+                  className="h-10 w-10 shrink-0 px-0 md:hidden"
+                  variant="ghost"
+                  type="button"
+                  aria-label="Back to messages"
+                  onClick={() => setIsMobileChatOpen(false)}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary font-semibold">
                   {selectedFriend.image ? (
                     <img src={selectedFriend.image} alt="" className="h-full w-full object-cover" />
@@ -433,7 +444,7 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
                     (selectedFriend.name ?? "FanPitch Player").charAt(0)
                   )}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <h2 className="truncate font-semibold">{selectedFriend.name ?? "FanPitch Player"}</h2>
                   <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
                     <span className={cn("h-2 w-2 rounded-full", isOtherUserOnline ? "bg-primary" : "bg-muted-foreground")} />
@@ -443,7 +454,7 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
                 </div>
               </div>
 
-              <div className="flex-1 space-y-3 overflow-y-auto bg-background/50 p-4">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/50 p-3 sm:p-4">
                 {messages.length ? (
                   messages.map((message) => (
                     <div
@@ -487,7 +498,7 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
                 )}
               </div>
 
-              <form className="grid gap-2 border-t p-4" onSubmit={handleSubmit}>
+              <form className="grid shrink-0 gap-2 border-t p-3 pb-4 sm:p-4" onSubmit={handleSubmit}>
                 <Textarea
                   className="min-h-20"
                   maxLength={MESSAGE_CONTENT_MAX_LENGTH}

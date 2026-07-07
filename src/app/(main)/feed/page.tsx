@@ -1,4 +1,3 @@
-import { PostComposer } from "@/components/posts/post-composer";
 import { PostCard } from "@/components/posts/post-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
@@ -27,7 +26,6 @@ export default async function FeedPage() {
           Signed in as {currentUser.name} @{currentUser.username ?? "profile"}
         </p>
       </div>
-      <PostComposer />
       {posts.length ? (
         posts.map((post) => (
           <PostCard key={post.id} post={post} comments={commentsByPostId.get(post.id) ?? []} />
