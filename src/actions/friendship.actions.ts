@@ -7,6 +7,10 @@ import {
   getFriendshipBetweenUsers,
   getFriendshipById
 } from "@/server/queries/friendship.queries";
+import {
+  createFriendAcceptedNotification,
+  createFriendRequestNotification
+} from "@/server/services/notification.service";
 import { userExistsById } from "@/server/queries/user.queries";
 import type { FriendshipActionResult } from "@/types/friendship.types";
 
@@ -74,6 +78,14 @@ export async function sendFriendRequest(
     select: { id: true }
   });
 
+  await runNotificationTask(() =>
+    createFriendRequestNotification({
+      actorId: currentUserId,
+      friendshipId: friendship.id,
+      recipientId: targetUserId
+    })
+  );
+
   refreshFriendshipPaths();
   revalidatePath(`/profile/${targetUserId}`);
 
@@ -107,6 +119,14 @@ export async function acceptFriendRequest(
     },
     select: { id: true }
   });
+
+  await runNotificationTask(() =>
+    createFriendAcceptedNotification({
+      actorId: authResult.userId,
+      friendshipId: updated.id,
+      recipientId: friendship.requesterId
+    })
+  );
 
   refreshFriendshipPaths();
 
@@ -200,4 +220,14 @@ export async function removeFriend(
   refreshFriendshipPaths();
 
   return { ok: true, message: "Friend removed.", data: { friendshipId } };
+}
+
+async function runNotificationTask(task: () => Promise<unknown>) {
+  try {
+    await task();
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[notifications] creation failed", error);
+    }
+  }
 }

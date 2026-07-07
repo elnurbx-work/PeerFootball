@@ -16,9 +16,33 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    url: env("DATABASE_URL")
+    url: cleanDatabaseUrl(env("DATABASE_URL")),
+    directUrl: getDirectDatabaseUrl()
   }
 });
+
+function getDirectDatabaseUrl() {
+  const directUrl = process.env.DIRECT_URL;
+
+  if (directUrl && !directUrl.includes("123456")) {
+    return directUrl;
+  }
+
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    return env("DIRECT_URL");
+  }
+
+  return cleanDatabaseUrl(databaseUrl.replace("-pooler", ""));
+}
+
+function cleanDatabaseUrl(databaseUrl: string) {
+  const url = new URL(databaseUrl);
+  url.searchParams.delete("channel_binding");
+
+  return url.toString();
+}
 
 function parseEnvFile(path: string) {
   const values: Record<string, string> = {};

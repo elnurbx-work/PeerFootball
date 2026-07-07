@@ -6,6 +6,12 @@ import { createCommentSchema, createPostSchema, createRepostSchema } from "@/lib
 import { getCurrentUser } from "@/lib/auth";
 import { canViewPost } from "@/server/services/privacy.service";
 import {
+  createCommentReplyNotification,
+  createPostCommentNotification,
+  createPostLikeNotification,
+  createPostRepostNotification
+} from "@/server/services/notification.service";
+import {
   POST_MEDIA_FOLDER,
   deleteManyCloudinaryAssets,
   isCloudinaryConfigured,
@@ -187,6 +193,8 @@ export async function toggleLikePostAction(postId: string): Promise<ApiResponse<
         userId: user.id
       }
     });
+
+    await runNotificationTask(() => createPostLikeNotification({ actorId: user.id, postId }));
   }
 
   const likesCount = await prisma.postLike.count({
@@ -283,6 +291,25 @@ export async function createCommentAction(input: CreateCommentInput): Promise<Ap
       id: true
     }
   });
+
+  if (result.data.parentId) {
+    await runNotificationTask(() =>
+      createCommentReplyNotification({
+        actorId: user.id,
+        parentCommentId: result.data.parentId!,
+        postId: post.id,
+        replyCommentId: comment.id
+      })
+    );
+  } else {
+    await runNotificationTask(() =>
+      createPostCommentNotification({
+        actorId: user.id,
+        commentId: comment.id,
+        postId: post.id
+      })
+    );
+  }
 
   revalidatePostSurfaces(user);
   revalidatePathForAuthor(post.author);
@@ -429,6 +456,14 @@ export async function repostPostAction(input: RepostInput): Promise<ApiResponse<
     }
   });
 
+  await runNotificationTask(() =>
+    createPostRepostNotification({
+      actorId: user.id,
+      originalPostId: rootOriginalPost.id,
+      repostId: repost.id
+    })
+  );
+
   revalidatePostSurfaces(user);
   revalidatePathForAuthor(rootOriginalPost.author);
   revalidatePathForAuthor(selectedPost.author);
@@ -555,4 +590,14 @@ function revalidatePostSurfaces(user: Pick<ActionUser, "id" | "username">) {
 
 function revalidatePathForAuthor(author: { id: string; username: string | null }) {
   revalidatePath(`/profile/${author.username ?? author.id}`);
+}
+
+async function runNotificationTask(task: () => Promise<unknown>) {
+  try {
+    await task();
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[notifications] creation failed", error);
+    }
+  }
 }

@@ -5,13 +5,20 @@ import { getFriendsForUser } from "@/server/queries/friendship.queries";
 import { getConversationMessages, getConversationSummaries } from "@/server/queries/message.queries";
 import type { DirectFriend } from "@/types/message.types";
 
-export default async function DirectPage() {
+type DirectPageProps = {
+  searchParams: Promise<{
+    conversationId?: string;
+  }>;
+};
+
+export default async function DirectPage({ searchParams }: DirectPageProps) {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
     redirect("/auth/login");
   }
 
+  const params = await searchParams;
   const [friends, conversations] = await Promise.all([
     getFriendsForUser(currentUser.id),
     getConversationSummaries(currentUser.id)
@@ -45,10 +52,11 @@ export default async function DirectPage() {
   };
 
   return (
-    <section className="grid h-dvh overflow-hidden">
+    <section className="grid h-[calc(100dvh-5rem)] overflow-hidden md:h-screen">
       <DirectInbox
         currentUser={currentMessageUser}
         friends={directFriends}
+        initialConversationId={params.conversationId ?? null}
         messagesByConversationId={messagesByConversationId}
       />
     </section>

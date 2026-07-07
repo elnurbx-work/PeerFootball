@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
@@ -40,6 +42,8 @@ export default function RootLayout({
       <body className={cn("font-sans antialiased")}>
         <ServiceWorkerRegistration />
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

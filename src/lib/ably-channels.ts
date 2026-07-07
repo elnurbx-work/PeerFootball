@@ -10,6 +10,12 @@ export const INBOX_EVENTS = {
   conversationUpdate: "conversation:update"
 } as const;
 
+export const NOTIFICATION_EVENTS = {
+  notificationNew: "notification:new",
+  notificationRead: "notification:read",
+  notificationsReadAll: "notification:read-all"
+} as const;
+
 export function getRoomChannelName(conversationId: string) {
   return `private:room:${conversationId}`;
 }

@@ -22,7 +22,7 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
   const router = useRouter();
   const [liked, setLiked] = useState(post.likedByMe);
   const [likesCount, setLikesCount] = useState(post.likesCount);
-  const [showComments, setShowComments] = useState(true);
+  const [showComments, setShowComments] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRepostDialog, setShowRepostDialog] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -86,7 +86,7 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
   }
 
   return (
-    <Card>
+    <Card id={`post-${post.id}`} className="scroll-mt-6">
       <CardContent className="space-y-4 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">

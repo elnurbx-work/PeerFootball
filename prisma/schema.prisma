@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum MediaType {
@@ -56,43 +57,55 @@ enum ConversationType {
   MATCH
 }
 
+enum NotificationType {
+  POST_LIKE
+  POST_COMMENT
+  COMMENT_REPLY
+  POST_REPOST
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  MESSAGE
+}
+
 model User {
-  id                String             @id @default(cuid())
-  name              String?
-  email             String?            @unique
-  emailVerified     DateTime?
-  passwordHash      String?
-  image             String?
-  coverImage        String?
-  username          String?            @unique
-  bio               String?
-  favoriteClub      String?
-  preferredPosition String?
-  avoidedPosition   String?
-  location          String?
-  profileVisibility ProfileVisibility @default(PUBLIC)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  posts             Post[]
-  comments          Comment[]
-  likes             PostLike[]
-  following         Follow[]           @relation("Following")
-  followers         Follow[]           @relation("Followers")
-  sentFriendRequests     Friendship[]  @relation("FriendshipRequester")
-  receivedFriendRequests Friendship[]  @relation("FriendshipAddressee")
-  blockedUsers           Block[]       @relation("Blocker")
-  blockedByUsers         Block[]       @relation("Blocked")
-  encryptedProfile       UserEncryptedProfile?
+  id                      String                @id @default(cuid())
+  name                    String?
+  email                   String?               @unique
+  emailVerified           DateTime?
+  passwordHash            String?
+  image                   String?
+  coverImage              String?
+  username                String?               @unique
+  bio                     String?
+  favoriteClub            String?
+  preferredPosition       String?
+  avoidedPosition         String?
+  location                String?
+  profileVisibility       ProfileVisibility     @default(PUBLIC)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  posts                   Post[]
+  comments                Comment[]
+  likes                   PostLike[]
+  following               Follow[]              @relation("Following")
+  followers               Follow[]              @relation("Followers")
+  sentFriendRequests      Friendship[]          @relation("FriendshipRequester")
+  receivedFriendRequests  Friendship[]          @relation("FriendshipAddressee")
+  blockedUsers            Block[]               @relation("Blocker")
+  blockedByUsers          Block[]               @relation("Blocked")
+  encryptedProfile        UserEncryptedProfile?
   conversationMemberships ConversationMember[]
-  sentMessages            Message[]    @relation("MessageSender")
-  favoriteTeams     UserFavoriteTeam[]
-  ownedTeams        Team[]
-  teamMemberships   TeamMember[]
-  createdMatches    Match[]
-  matchParticipants MatchParticipant[]
-  playerStats       PlayerStats?
-  accounts          Account[]
-  sessions          Session[]
+  sentMessages            Message[]             @relation("MessageSender")
+  receivedNotifications   Notification[]        @relation("NotificationRecipient")
+  actedNotifications      Notification[]        @relation("NotificationActor")
+  favoriteTeams           UserFavoriteTeam[]
+  ownedTeams              Team[]
+  teamMemberships         TeamMember[]
+  createdMatches          Match[]
+  matchParticipants       MatchParticipant[]
+  playerStats             PlayerStats?
+  accounts                Account[]
+  sessions                Session[]
 }
 
 model UserFavoriteTeam {
@@ -184,6 +197,7 @@ model Post {
   media          PostMedia[]
   comments       Comment[]
   likes          PostLike[]
+  notifications  Notification[]
 
   @@index([createdAt])
   @@index([authorId, createdAt])
@@ -211,17 +225,18 @@ model PostMedia {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  postId    String
-  authorId  String
-  parentId  String?
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("CommentReplies")
+  id            String         @id @default(cuid())
+  postId        String
+  authorId      String
+  parentId      String?
+  content       String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent        Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       Comment[]      @relation("CommentReplies")
+  notifications Notification[]
 
   @@index([postId, createdAt])
   @@index([parentId])
@@ -254,15 +269,16 @@ model Follow {
 }
 
 model Friendship {
-  id          String           @id @default(cuid())
-  requesterId String
-  addresseeId String
-  status      FriendshipStatus @default(PENDING)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  acceptedAt  DateTime?
-  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  id            String           @id @default(cuid())
+  requesterId   String
+  addresseeId   String
+  status        FriendshipStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  acceptedAt    DateTime?
+  requester     User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee     User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  notifications Notification[]
 
   @@unique([requesterId, addresseeId])
   @@index([requesterId, status])
@@ -283,12 +299,13 @@ model Block {
 }
 
 model Conversation {
-  id        String               @id @default(cuid())
-  type      ConversationType
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  members   ConversationMember[]
-  messages  Message[]
+  id            String               @id @default(cuid())
+  type          ConversationType
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  members       ConversationMember[]
+  messages      Message[]
+  notifications Notification[]
 }
 
 model ConversationMember {
@@ -308,22 +325,54 @@ model ConversationMember {
 }
 
 model Message {
-  id             String       @id @default(cuid())
+  id             String         @id @default(cuid())
   conversationId String
   senderId       String
   ciphertext     String
   iv             String
   authTag        String
-  algorithm      String       @default("aes-256-gcm")
-  keyVersion     Int          @default(1)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  algorithm      String         @default("aes-256-gcm")
+  keyVersion     Int            @default(1)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
   deletedAt      DateTime?
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  conversation   Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User           @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  notifications  Notification[]
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  recipientId    String
+  actorId        String?
+  type           NotificationType
+  postId         String?
+  commentId      String?
+  conversationId String?
+  messageId      String?
+  friendshipId   String?
+  title          String?
+  body           String?
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+  recipient      User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor          User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  post           Post?            @relation(fields: [postId], references: [id], onDelete: SetNull)
+  comment        Comment?         @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  conversation   Conversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  message        Message?         @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  friendship     Friendship?      @relation(fields: [friendshipId], references: [id], onDelete: SetNull)
+
+  @@index([recipientId, createdAt])
+  @@index([recipientId, readAt])
+  @@index([actorId])
+  @@index([postId])
+  @@index([commentId])
+  @@index([conversationId])
+  @@index([type])
 }
 
 model Team {

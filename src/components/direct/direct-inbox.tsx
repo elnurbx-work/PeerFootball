@@ -21,6 +21,7 @@ import type {
 type DirectInboxProps = {
   currentUser: MessageSender;
   friends: DirectFriend[];
+  initialConversationId?: string | null;
   messagesByConversationId: Record<string, ChatMessage[]>;
 };
 
@@ -31,10 +32,16 @@ type PresenceData = {
   userId: string;
 };
 
-export function DirectInbox({ currentUser, friends, messagesByConversationId }: DirectInboxProps) {
+export function DirectInbox({
+  currentUser,
+  friends,
+  initialConversationId,
+  messagesByConversationId
+}: DirectInboxProps) {
   const [friendsState, setFriendsState] = useState(friends);
   const [messagesByConversationIdState, setMessagesByConversationIdState] = useState(messagesByConversationId);
-  const [selectedFriendId, setSelectedFriendId] = useState(friends[0]?.id ?? "");
+  const initialFriend = friends.find((friend) => friend.conversationId === initialConversationId) ?? friends[0];
+  const [selectedFriendId, setSelectedFriendId] = useState(initialFriend?.id ?? "");
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -375,7 +382,7 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
   return (
     <>
       <Toast message={toastMessage ?? ""} open={Boolean(toastMessage)} onOpenChange={(open) => !open && setToastMessage(null)} />
-      <div className="grid h-dvh overflow-hidden bg-card md:grid-cols-[320px_1fr] md:border-r">
+      <div className="grid h-full overflow-hidden bg-card md:grid-cols-[320px_1fr] md:border-r">
         <aside className={cn("min-h-0 flex-col border-r", isMobileChatOpen ? "hidden md:flex" : "flex")}>
           <div className="border-b p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
@@ -424,7 +431,14 @@ export function DirectInbox({ currentUser, friends, messagesByConversationId }: 
           </div>
         </aside>
 
-        <section className={cn("min-h-0 flex-col", isMobileChatOpen ? "flex" : "hidden md:flex")}>
+        <section
+          className={cn(
+            "min-h-0 flex-col bg-card",
+            isMobileChatOpen
+              ? "fixed inset-0 z-50 flex h-dvh md:relative md:inset-auto md:z-auto md:h-auto"
+              : "hidden md:flex"
+          )}
+        >
           {selectedFriend ? (
             <>
               <div className="flex items-center gap-3 border-b p-3 sm:p-4">
