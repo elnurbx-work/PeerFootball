@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { Realtime, type InboundMessage } from "ably";
 import { LogIn, LogOut } from "lucide-react";
 import { signOutAction } from "@/actions/auth.actions";
 import { Button } from "@/components/ui/button";
@@ -12,20 +14,33 @@ import {
   SiteSidebarPanelNav,
   SiteSidebarRailNav
 } from "@/components/layout/site-sidebar-nav";
+import { getUserInboxChannelName, INBOX_EVENTS } from "@/lib/ably-channels";
 import type { SessionUser } from "@/types/auth.types";
+import type { ConversationUpdatePayload } from "@/types/message.types";
 import type { AppNotification } from "@/types/notification.types";
 
 type SiteSidebarProps = {
   currentUser: SessionUser | null;
   initialNotifications: AppNotification[];
+  initialUnreadDirectConversationCounts: Record<string, number>;
   initialUnreadNotificationCount: number;
 };
 
 export function SiteSidebar({
   currentUser,
   initialNotifications,
+  initialUnreadDirectConversationCounts,
   initialUnreadNotificationCount
 }: SiteSidebarProps) {
+  const unreadDirectConversationCounts = useUnreadDirectConversationCounts(
+    currentUser?.id ?? null,
+    initialUnreadDirectConversationCounts
+  );
+  const hasUnreadDirectMessages = useMemo(
+    () => Object.values(unreadDirectConversationCounts).some((count) => count > 0),
+    [unreadDirectConversationCounts]
+  );
+
   return (
     <>
       {currentUser ? (
@@ -41,7 +56,7 @@ export function SiteSidebar({
         <div className="flex w-20 shrink-0 flex-col items-center border-r px-2 py-4">
           <MatchTopButton />
 
-          <SiteSidebarRailNav />
+          <SiteSidebarRailNav hasUnreadDirectMessages={hasUnreadDirectMessages} />
           <div className="mt-5">
             <CreatePostButton />
           </div>
@@ -71,7 +86,77 @@ export function SiteSidebar({
 
         <SiteSidebarPanelNav />
       </aside>
-      <MobileBottomNav />
+      <MobileBottomNav hasUnreadDirectMessages={hasUnreadDirectMessages} />
     </>
   );
+}
+
+function useUnreadDirectConversationCounts(
+  currentUserId: string | null,
+  initialCounts: Record<string, number>
+) {
+  const [counts, setCounts] = useState(initialCounts);
+
+  useEffect(() => {
+    setCounts(initialCounts);
+  }, [initialCounts]);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      return;
+    }
+
+    const channelName = getUserInboxChannelName(currentUserId);
+    const ably = new Realtime({
+      authUrl: `/api/ably/token?channel=${encodeURIComponent(channelName)}`,
+      closeOnUnload: true
+    });
+    const channel = ably.channels.get(channelName);
+
+    const handleConversationUpdate = (message: InboundMessage) => {
+      const payload = message.data as ConversationUpdatePayload;
+
+      setCounts((currentCounts) => {
+        const currentCount = currentCounts[payload.conversationId] ?? 0;
+        let nextCount = currentCount;
+
+        if (typeof payload.unreadCount === "number") {
+          nextCount = payload.unreadCount;
+        } else if (payload.lastMessage && payload.lastMessage.senderId !== currentUserId) {
+          nextCount = currentCount + 1;
+        }
+
+        if (nextCount === currentCount) {
+          return currentCounts;
+        }
+
+        const nextCounts = { ...currentCounts };
+
+        if (nextCount > 0) {
+          nextCounts[payload.conversationId] = nextCount;
+        } else {
+          delete nextCounts[payload.conversationId];
+        }
+
+        return nextCounts;
+      });
+    };
+
+    channel.subscribe(INBOX_EVENTS.conversationUpdate, handleConversationUpdate).catch((error) => {
+      debugRealtime("direct badge subscription error", error);
+    });
+
+    return () => {
+      channel.unsubscribe(INBOX_EVENTS.conversationUpdate, handleConversationUpdate);
+      ably.close();
+    };
+  }, [currentUserId]);
+
+  return counts;
+}
+
+function debugRealtime(message: string, details?: unknown) {
+  if (process.env.NODE_ENV === "development") {
+    console.debug(`[ably] ${message}`, details);
+  }
 }

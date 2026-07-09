@@ -5,6 +5,7 @@ import type { MediaType } from "@/types/post.types";
 
 const FAVORITE_TEAMS_FOLDER = "peerfootball/favorite-teams";
 const PROFILE_IMAGES_FOLDER = "peerfootball/profile-images";
+const CLUB_IMAGES_FOLDER = "peerfootball/clubs";
 export const POST_MEDIA_FOLDER = "peerfootball/posts";
 
 type CloudinaryResourceType = "image" | "video";
@@ -89,6 +90,23 @@ export async function uploadProfileImageFileToCloudinary(file: File, publicId: s
     });
 
     return result?.url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function uploadClubImageFileToCloudinary(file: File, publicId: string) {
+  try {
+    const result = await uploadCloudinaryAsset({
+      file,
+      folder: CLUB_IMAGES_FOLDER,
+      publicId,
+      resourceType: "image",
+      overwrite: true,
+      failIfMissingConfig: false
+    });
+
+    return result ? { url: result.url, publicId: result.publicId } : null;
   } catch {
     return null;
   }

@@ -11,6 +11,7 @@ type AppShellProps = {
   children: ReactNode;
   currentUser: SessionUser | null;
   initialNotifications: AppNotification[];
+  initialUnreadDirectConversationCounts: Record<string, number>;
   initialUnreadNotificationCount: number;
 };
 
@@ -18,6 +19,7 @@ export function AppShell({
   children,
   currentUser,
   initialNotifications,
+  initialUnreadDirectConversationCounts,
   initialUnreadNotificationCount
 }: AppShellProps) {
   const hasSecondaryPanel = useSecondaryPanel();
@@ -27,6 +29,7 @@ export function AppShell({
       <SiteSidebar
         currentUser={currentUser}
         initialNotifications={initialNotifications}
+        initialUnreadDirectConversationCounts={initialUnreadDirectConversationCounts}
         initialUnreadNotificationCount={initialUnreadNotificationCount}
       />
       <main

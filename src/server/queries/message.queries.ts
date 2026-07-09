@@ -134,6 +134,46 @@ export async function getConversationSummaries(currentUserId: string): Promise<C
   );
 }
 
+export async function getUnreadDirectConversationCounts(currentUserId: string): Promise<Record<string, number>> {
+  const memberships = await prisma.conversationMember.findMany({
+    where: {
+      userId: currentUserId,
+      conversation: {
+        type: "DIRECT"
+      }
+    },
+    select: {
+      conversationId: true,
+      lastReadAt: true
+    }
+  });
+
+  const unreadEntries = await Promise.all(
+    memberships.map(async (membership) => {
+      const unreadCount = await prisma.message.count({
+        where: {
+          conversationId: membership.conversationId,
+          deletedAt: null,
+          senderId: {
+            not: currentUserId
+          },
+          ...(membership.lastReadAt
+            ? {
+                createdAt: {
+                  gt: membership.lastReadAt
+                }
+              }
+            : {})
+        }
+      });
+
+      return [membership.conversationId, unreadCount] as const;
+    })
+  );
+
+  return Object.fromEntries(unreadEntries.filter(([, unreadCount]) => unreadCount > 0));
+}
+
 export async function findDirectConversationForUsers(userAId: string, userBId: string) {
   return prisma.conversation.findFirst({
     where: {

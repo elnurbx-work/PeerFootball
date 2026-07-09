@@ -294,7 +294,10 @@ export async function markAllNotificationsRead(userId: string) {
   const result = await prisma.notification.updateMany({
     where: {
       recipientId: userId,
-      readAt: null
+      readAt: null,
+      type: {
+        not: "MESSAGE"
+      }
     },
     data: {
       readAt: new Date()
@@ -312,7 +315,10 @@ export async function getUnreadNotificationCount(userId: string) {
   return prisma.notification.count({
     where: {
       recipientId: userId,
-      readAt: null
+      readAt: null,
+      type: {
+        not: "MESSAGE"
+      }
     }
   });
 }

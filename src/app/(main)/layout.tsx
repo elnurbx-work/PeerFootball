@@ -5,6 +5,7 @@ import {
   getNotifications,
   getUnreadNotificationCount
 } from "@/server/queries/notification.queries";
+import { getUnreadDirectConversationCounts } from "@/server/queries/message.queries";
 
 export default async function MainLayout({
   children
@@ -12,17 +13,19 @@ export default async function MainLayout({
   children: ReactNode;
 }>) {
   const currentUser = await getCurrentUser();
-  const [notifications, unreadNotificationCount] = currentUser
+  const [notifications, unreadNotificationCount, unreadDirectConversationCounts] = currentUser
     ? await Promise.all([
         getNotifications(currentUser.id),
-        getUnreadNotificationCount(currentUser.id)
+        getUnreadNotificationCount(currentUser.id),
+        getUnreadDirectConversationCounts(currentUser.id)
       ])
-    : [[], 0];
+    : [[], 0, {}];
 
   return (
     <AppShell
       currentUser={currentUser}
       initialNotifications={notifications}
+      initialUnreadDirectConversationCounts={unreadDirectConversationCounts}
       initialUnreadNotificationCount={unreadNotificationCount}
     >
       {children}

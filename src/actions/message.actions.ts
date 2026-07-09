@@ -17,7 +17,6 @@ import {
   publishMessageCreated,
   publishMessageDeleted
 } from "@/server/services/ably.service";
-import { createMessageNotification } from "@/server/services/notification.service";
 import type { ApiResponse } from "@/types/api.types";
 import type { ChatMessage, ConversationUpdatePayload, RealtimeChatMessage, SendMessageInput } from "@/types/message.types";
 
@@ -154,20 +153,6 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
     () => publishMessageCreated(message.conversationId, realtimeMessage),
     ...message.conversation.members.map((member) => () => publishConversationUpdated(member.userId, conversationUpdate))
   ]);
-  await Promise.all(
-    message.conversation.members
-      .filter((member) => member.userId !== user.id)
-      .map((member) =>
-        runNotificationTask(() =>
-          createMessageNotification({
-            actorId: user.id,
-            conversationId: message.conversationId,
-            messageId: message.id,
-            recipientId: member.userId
-          })
-        )
-      )
-  );
 
   revalidateMessageSurfaces();
 
@@ -387,15 +372,5 @@ async function publishRealtimeEvents(publishers: Array<() => Promise<void>>) {
 
   if (failures.length && process.env.NODE_ENV === "development") {
     console.error("[ably] realtime publish failed", failures);
-  }
-}
-
-async function runNotificationTask(task: () => Promise<unknown>) {
-  try {
-    await task();
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[notifications] creation failed", error);
-    }
   }
 }

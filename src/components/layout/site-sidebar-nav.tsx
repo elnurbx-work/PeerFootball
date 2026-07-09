@@ -8,6 +8,7 @@ import {
   MessageCircle,
   Plus,
   Search,
+  Shield,
   Trophy,
   UserCircle,
   Users
@@ -39,7 +40,7 @@ const panelContent = {
     description: "Games and squads",
     links: [
       { href: "/matches", label: "Matches", description: "Local games", icon: CalendarDays },
-      { href: "/teams", label: "Teams", description: "Groups and squads", icon: Users }
+      { href: "/clubs", label: "Clubs", description: "Club management", icon: Shield }
     ]
   },
   "/direct": {
@@ -56,13 +57,17 @@ const panelContent = {
     description: "Your football identity",
     links: [
       { href: "/profile", label: "Overview", description: "Public profile", icon: UserCircle },
-      { href: "/teams", label: "Teams", description: "Your squads", icon: Users }
+      { href: "/matches", label: "Matches", description: "Your football games", icon: CalendarDays }
     ]
   }
 };
 
 function getActiveRoot(pathname: string) {
   if (pathname.startsWith("/teams")) {
+    return "/matches";
+  }
+
+  if (pathname.startsWith("/clubs")) {
     return "/matches";
   }
 
@@ -104,7 +109,11 @@ function hasSecondaryPanel(pathname: string, activeRoot = getActiveRoot(pathname
   return activeRoot in panelContent;
 }
 
-export function SiteSidebarRailNav() {
+type DirectUnreadIndicatorProps = {
+  hasUnreadDirectMessages?: boolean;
+};
+
+export function SiteSidebarRailNav({ hasUnreadDirectMessages = false }: DirectUnreadIndicatorProps) {
   const pathname = usePathname();
   const activeRoot = getActiveRoot(pathname);
 
@@ -121,13 +130,16 @@ export function SiteSidebarRailNav() {
               asChild
               variant="ghost"
               className={cn(
-                "h-11 w-11 px-0 text-muted-foreground hover:text-foreground",
+                "relative h-11 w-11 px-0 text-muted-foreground hover:text-foreground",
                 isActive && "bg-secondary text-foreground"
               )}
               title={item.label}
             >
               <Link href={item.href} aria-label={item.label}>
                 <item.icon className="h-5 w-5" />
+                {item.href === "/direct" && hasUnreadDirectMessages ? (
+                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
+                ) : null}
               </Link>
             </Button>
           );
@@ -221,7 +233,7 @@ export function SiteSidebarPanelNav() {
   );
 }
 
-export function MobileBottomNav() {
+export function MobileBottomNav({ hasUnreadDirectMessages = false }: DirectUnreadIndicatorProps) {
   const pathname = usePathname();
   const activeRoot = getActiveRoot(pathname);
   const items = [...primaryNavItems, createItem];
@@ -237,7 +249,7 @@ export function MobileBottomNav() {
             href={item.href}
             aria-label={item.label}
             className={cn(
-              "flex items-center justify-center text-muted-foreground transition-colors hover:text-foreground",
+              "relative flex items-center justify-center text-muted-foreground transition-colors hover:text-foreground",
               isActive && "text-foreground"
             )}
           >
@@ -247,6 +259,9 @@ export function MobileBottomNav() {
                 item.href === "/create" && "rounded-md border p-1"
               )}
             />
+            {item.href === "/direct" && hasUnreadDirectMessages ? (
+              <span className="absolute right-[30%] top-3 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
+            ) : null}
           </Link>
         );
       })}

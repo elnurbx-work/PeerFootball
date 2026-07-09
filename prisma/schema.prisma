@@ -19,6 +19,39 @@ enum TeamRole {
   MEMBER
 }
 
+enum ClubVisibility {
+  OPEN
+  REQUEST_ONLY
+  INVITE_ONLY
+}
+
+enum ClubRole {
+  OWNER
+  TD
+  YTD
+  PLAYER
+}
+
+enum ClubMemberStatus {
+  ACTIVE
+  INVITED
+  REQUESTED
+  LEFT
+  REMOVED
+}
+
+enum ClubPermissionPolicy {
+  OWNER_ONLY
+  OWNER_TD
+  OWNER_TD_YTD
+}
+
+enum GuestInvitePolicy {
+  CLOSED
+  ONLY_OWNER_TD_YTD
+  PLAYERS_CAN_INVITE_FRIENDS
+}
+
 enum MatchStatus {
   OPEN
   FULL
@@ -101,6 +134,12 @@ model User {
   favoriteTeams           UserFavoriteTeam[]
   ownedTeams              Team[]
   teamMemberships         TeamMember[]
+  ownedClubs              Club[]               @relation("ClubOwner")
+  deactivatedClubs        Club[]               @relation("ClubDeactivatedBy")
+  clubMemberships         ClubMember[]         @relation("ClubMemberUser")
+  clubInvitesSent         ClubMember[]         @relation("ClubMemberInviter")
+  clubGuestsCreated       ClubGuest[]          @relation("ClubGuestCreator")
+  clubMetricDefinitions   ClubMetricDefinition[] @relation("ClubMetricCreator")
   createdMatches          Match[]
   matchParticipants       MatchParticipant[]
   playerStats             PlayerStats?
@@ -402,6 +441,102 @@ model TeamMember {
 
   @@unique([teamId, userId])
   @@index([userId])
+}
+
+model Club {
+  id                String                 @id @default(cuid())
+  name              String
+  slug              String                 @unique
+  description       String?
+  logoUrl           String?
+  logoPublicId      String?
+  coverUrl          String?
+  coverPublicId     String?
+  country           String?
+  city              String?
+  ownerId           String
+  visibility        ClubVisibility         @default(REQUEST_ONLY)
+  isActive          Boolean                @default(true)
+  deactivatedAt     DateTime?
+  deactivatedById   String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  owner             User                   @relation("ClubOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  deactivatedBy     User?                  @relation("ClubDeactivatedBy", fields: [deactivatedById], references: [id], onDelete: SetNull)
+  settings          ClubSettings?
+  members           ClubMember[]
+  guests            ClubGuest[]
+  metricDefinitions ClubMetricDefinition[]
+
+  @@index([ownerId])
+  @@index([isActive])
+}
+
+model ClubSettings {
+  id                          String               @id @default(cuid())
+  clubId                      String               @unique
+  joinApprovalPolicy          ClubPermissionPolicy @default(OWNER_TD)
+  invitePermissionPolicy      ClubPermissionPolicy @default(OWNER_TD)
+  matchCreatePermissionPolicy ClubPermissionPolicy @default(OWNER_TD)
+  guestInvitePolicy           GuestInvitePolicy    @default(ONLY_OWNER_TD_YTD)
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
+  club                        Club                 @relation(fields: [clubId], references: [id], onDelete: Cascade)
+}
+
+model ClubMember {
+  id          String           @id @default(cuid())
+  clubId      String
+  userId      String
+  role        ClubRole         @default(PLAYER)
+  status      ClubMemberStatus @default(REQUESTED)
+  invitedById String?
+  joinedAt    DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  club        Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user        User             @relation("ClubMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy   User?            @relation("ClubMemberInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([clubId])
+  @@index([userId])
+  @@index([clubId, role])
+  @@index([clubId, status])
+  @@index([userId, clubId])
+}
+
+model ClubGuest {
+  id          String   @id @default(cuid())
+  clubId      String
+  fullName    String
+  position    String?
+  phone       String?
+  note        String?
+  createdById String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  club        Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation("ClubGuestCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([clubId])
+}
+
+model ClubMetricDefinition {
+  id          String   @id @default(cuid())
+  clubId      String
+  name        String
+  description String?
+  order       Int
+  isActive    Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  club        Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation("ClubMetricCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([clubId])
+  @@index([clubId, isActive])
 }
 
 model Match {

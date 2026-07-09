@@ -11,7 +11,10 @@ import type { AppNotification } from "@/types/notification.types";
 export async function getNotifications(userId: string): Promise<AppNotification[]> {
   const notifications = await prisma.notification.findMany({
     where: {
-      recipientId: userId
+      recipientId: userId,
+      type: {
+        not: "MESSAGE"
+      }
     },
     include: notificationInclude,
     orderBy: {
@@ -31,7 +34,10 @@ export async function getNotificationById(notificationId: string, userId: string
   const notification = await prisma.notification.findFirst({
     where: {
       id: notificationId,
-      recipientId: userId
+      recipientId: userId,
+      type: {
+        not: "MESSAGE"
+      }
     },
     include: notificationInclude
   });

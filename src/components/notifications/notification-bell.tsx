@@ -73,6 +73,10 @@ export function NotificationBell({
     const handleNewNotification = (message: InboundMessage) => {
       const notification = toNotificationListItem(message.data as AppNotification);
 
+      if (notification.type === "MESSAGE") {
+        return;
+      }
+
       setNotifications((current) => {
         if (current.some((item) => item.id === notification.id)) {
           return current;

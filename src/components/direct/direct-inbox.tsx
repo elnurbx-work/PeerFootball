@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Realtime, type InboundMessage, type PresenceMessage } from "ably";
 import { ArrowLeft, MessageCircle, Send, Trash2, Users } from "lucide-react";
 import { deleteMessageAction, markConversationReadAction, sendMessageAction } from "@/actions/message.actions";
@@ -53,6 +53,9 @@ export function DirectInbox({
   const selectedFriend = friendsState.find((friend) => friend.id === selectedFriendId) ?? friendsState[0] ?? null;
   const selectedConversationId = selectedFriend?.conversationId ?? null;
   const selectedConversationIdRef = useRef<string | null>(selectedConversationId);
+  const messagesViewportRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
   const messages = selectedFriend?.conversationId ? messagesByConversationIdState[selectedFriend.conversationId] ?? [] : [];
   const trimmedLength = content.trim().length;
 
@@ -70,9 +73,22 @@ export function DirectInbox({
 
   useEffect(() => {
     if (selectedConversationId) {
+      shouldStickToBottomRef.current = true;
       markConversationRead(selectedConversationId);
     }
   }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (!shouldStickToBottomRef.current) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages.length, selectedConversationId]);
 
   const friendRows = useMemo(
     () =>
@@ -240,6 +256,7 @@ export function DirectInbox({
       const data = result.data;
 
       setContent("");
+      shouldStickToBottomRef.current = true;
       upsertMessage(data.message);
       setFriendsState((currentFriends) =>
         sortFriendsByLastMessage(
@@ -256,6 +273,20 @@ export function DirectInbox({
         )
       );
     });
+  }
+
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (pending || !selectedFriend || !trimmedLength) {
+      return;
+    }
+
+    event.currentTarget.form?.requestSubmit();
   }
 
   function handleDeleteMessage(messageId: string) {
@@ -483,7 +514,17 @@ export function DirectInbox({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/50 p-3 sm:p-4">
+              <div
+                ref={messagesViewportRef}
+                className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/50 p-3 sm:p-4"
+                onScroll={() => {
+                  const viewport = messagesViewportRef.current;
+
+                  if (viewport) {
+                    shouldStickToBottomRef.current = isNearBottom(viewport);
+                  }
+                }}
+              >
                 {messages.length ? (
                   messages.map((message) => (
                     <div
@@ -525,6 +566,7 @@ export function DirectInbox({
                     </p>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
 
               <form className="grid shrink-0 gap-2 border-t p-3 pb-4 sm:p-4" onSubmit={handleSubmit}>
@@ -534,6 +576,7 @@ export function DirectInbox({
                   placeholder={`Message ${selectedFriend.name ?? "your friend"}`}
                   value={content}
                   onChange={(event) => setContent(event.target.value)}
+                  onKeyDown={handleComposerKeyDown}
                 />
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -586,6 +629,10 @@ function sortFriendsByLastMessage(friends: DirectFriend[]) {
 
 function getLastMessageTime(friend: DirectFriend) {
   return friend.lastMessage ? new Date(friend.lastMessage.createdAt).getTime() : 0;
+}
+
+function isNearBottom(element: HTMLElement) {
+  return element.scrollHeight - element.scrollTop - element.clientHeight < 160;
 }
 
 function debugRealtime(message: string, details?: unknown) {

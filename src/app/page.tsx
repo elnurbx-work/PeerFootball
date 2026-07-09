@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 const highlights = [
   "Build a player profile that feels like your football CV.",
   "Post match plans, quick takes, photos, and future highlights.",
-  "Create teams and organize local football matches."
+  "Create clubs and organize local football matches."
 ];
 
 export default function HomePage() {
@@ -18,10 +18,10 @@ export default function HomePage() {
             Football starts with your people
           </p>
           <h1 className="max-w-3xl text-4xl font-bold leading-tight text-foreground md:text-6xl">
-            FanPitch brings players, fans, teams, and local matches into one place.
+            FanPitch brings players, fans, clubs, and local matches into one place.
           </h1>
           <p className="max-w-2xl text-lg text-muted-foreground">
-            Create your profile, share football posts, find players nearby, form teams,
+            Create your profile, share football posts, find players nearby, build clubs,
             and organize the next match without losing the thread.
           </p>
         </div>
