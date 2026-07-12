@@ -53,6 +53,7 @@ export function DirectInbox({
   const selectedFriend = friendsState.find((friend) => friend.id === selectedFriendId) ?? friendsState[0] ?? null;
   const selectedConversationId = selectedFriend?.conversationId ?? null;
   const selectedConversationIdRef = useRef<string | null>(selectedConversationId);
+  const mobileChatRef = useRef<HTMLElement>(null);
   const messagesViewportRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
@@ -70,6 +71,47 @@ export function DirectInbox({
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversationId;
   }, [selectedConversationId]);
+
+  useEffect(() => {
+    const chat = mobileChatRef.current;
+    const visualViewport = window.visualViewport;
+
+    if (!isMobileChatOpen || !chat || !visualViewport) {
+      return;
+    }
+
+    let frame = 0;
+
+    const syncChatToVisibleViewport = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        if (window.matchMedia("(min-width: 768px)").matches) {
+          chat.style.removeProperty("height");
+          chat.style.removeProperty("top");
+          return;
+        }
+
+        // On mobile browsers the keyboard may cover `100dvh` instead of resizing it.
+        // visualViewport represents the portion that is actually visible above it.
+        chat.style.height = `${visualViewport.height}px`;
+        chat.style.top = `${visualViewport.offsetTop}px`;
+      });
+    };
+
+    syncChatToVisibleViewport();
+    visualViewport.addEventListener("resize", syncChatToVisibleViewport);
+    visualViewport.addEventListener("scroll", syncChatToVisibleViewport);
+    window.addEventListener("orientationchange", syncChatToVisibleViewport);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      visualViewport.removeEventListener("resize", syncChatToVisibleViewport);
+      visualViewport.removeEventListener("scroll", syncChatToVisibleViewport);
+      window.removeEventListener("orientationchange", syncChatToVisibleViewport);
+      chat.style.removeProperty("height");
+      chat.style.removeProperty("top");
+    };
+  }, [isMobileChatOpen]);
 
   useEffect(() => {
     if (selectedConversationId) {
@@ -477,10 +519,11 @@ export function DirectInbox({
         </aside>
 
         <section
+          ref={mobileChatRef}
           className={cn(
             "min-h-0 flex-col bg-card",
             isMobileChatOpen
-              ? "fixed inset-0 z-50 flex h-dvh md:relative md:inset-auto md:z-auto md:h-auto"
+              ? "fixed inset-x-0 top-0 z-50 flex h-dvh overflow-hidden md:relative md:inset-auto md:z-auto md:h-auto"
               : "hidden md:flex"
           )}
         >
