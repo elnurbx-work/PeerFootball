@@ -31,11 +31,32 @@ export async function isConversationMember(conversationId: string, userId: strin
       }
     },
     select: {
-      id: true
+      id: true,
+      conversation: {
+        select: { clubId: true }
+      }
     }
   });
 
-  return Boolean(membership);
+  if (!membership) {
+    return false;
+  }
+
+  if (!membership.conversation.clubId) {
+    return true;
+  }
+
+  const activeClubMembership = await prisma.clubMember.findFirst({
+    where: {
+      clubId: membership.conversation.clubId,
+      userId,
+      status: "ACTIVE",
+      club: { isActive: true }
+    },
+    select: { id: true }
+  });
+
+  return Boolean(activeClubMembership);
 }
 
 export async function getConversationMessages(conversationId: string, currentUserId: string): Promise<ChatMessage[]> {

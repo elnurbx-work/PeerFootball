@@ -38,6 +38,7 @@ import {
   uploadClubImageFileToCloudinary
 } from "@/server/services/cloudinary.service";
 import type { ApiResponse } from "@/types/api.types";
+import { addUserToClubChat, removeUserFromClubChat } from "@/server/services/club-chat.service";
 
 type ActionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 type ClubImageUploadData = {
@@ -128,6 +129,8 @@ export async function createClubAction(input: unknown): Promise<ApiResponse<{ cl
         slug: true
       }
     });
+
+    await addUserToClubChat(tx, createdClub.id, user.id);
 
     return createdClub;
   });
@@ -434,15 +437,18 @@ export async function joinOpenClubAction(clubId: string): Promise<ApiResponse> {
     };
   }
 
-  await prisma.clubMember.create({
-    data: {
-      clubId,
-      userId: user.id,
-      role: "PLAYER",
-      status: "ACTIVE",
-      joinedAt: new Date()
-    },
-    select: { id: true }
+  await prisma.$transaction(async (tx) => {
+    await tx.clubMember.create({
+      data: {
+        clubId,
+        userId: user.id,
+        role: "PLAYER",
+        status: "ACTIVE",
+        joinedAt: new Date()
+      },
+      select: { id: true }
+    });
+    await addUserToClubChat(tx, clubId, user.id);
   });
 
   revalidateClubSurfaces(club.data.slug);
@@ -526,13 +532,16 @@ export async function approveJoinRequestAction(memberId: string): Promise<ApiRes
     };
   }
 
-  await prisma.clubMember.update({
-    where: { id: member.id },
-    data: {
-      status: "ACTIVE",
-      joinedAt: new Date()
-    },
-    select: { id: true }
+  await prisma.$transaction(async (tx) => {
+    await tx.clubMember.update({
+      where: { id: member.id },
+      data: {
+        status: "ACTIVE",
+        joinedAt: new Date()
+      },
+      select: { id: true }
+    });
+    await addUserToClubChat(tx, member.clubId, member.userId);
   });
 
   revalidateClubSurfaces(member.club.slug);
@@ -671,13 +680,16 @@ export async function acceptClubInviteAction(memberId: string): Promise<ApiRespo
     };
   }
 
-  await prisma.clubMember.update({
-    where: { id: member.id },
-    data: {
-      status: "ACTIVE",
-      joinedAt: new Date()
-    },
-    select: { id: true }
+  await prisma.$transaction(async (tx) => {
+    await tx.clubMember.update({
+      where: { id: member.id },
+      data: {
+        status: "ACTIVE",
+        joinedAt: new Date()
+      },
+      select: { id: true }
+    });
+    await addUserToClubChat(tx, member.clubId, member.userId);
   });
 
   revalidateClubSurfaces(member.club.slug);
@@ -721,10 +733,13 @@ export async function leaveClubAction(clubId: string): Promise<ApiResponse> {
     };
   }
 
-  await prisma.clubMember.update({
-    where: { id: member.id },
-    data: { status: "LEFT" },
-    select: { id: true }
+  await prisma.$transaction(async (tx) => {
+    await tx.clubMember.update({
+      where: { id: member.id },
+      data: { status: "LEFT" },
+      select: { id: true }
+    });
+    await removeUserFromClubChat(tx, clubId, user.id);
   });
 
   revalidateClubSurfaces(member.club.slug);
@@ -761,10 +776,13 @@ export async function removeClubMemberAction(memberId: string): Promise<ApiRespo
     };
   }
 
-  await prisma.clubMember.update({
-    where: { id: member.id },
-    data: { status: "REMOVED" },
-    select: { id: true }
+  await prisma.$transaction(async (tx) => {
+    await tx.clubMember.update({
+      where: { id: member.id },
+      data: { status: "REMOVED" },
+      select: { id: true }
+    });
+    await removeUserFromClubChat(tx, member.clubId, member.userId);
   });
 
   revalidateClubSurfaces(member.club.slug);

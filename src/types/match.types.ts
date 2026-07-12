@@ -12,6 +12,7 @@ export type Match = {
   status: MatchStatus;
   creatorId: string;
   teamId?: string | null;
+  clubId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

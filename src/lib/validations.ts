@@ -43,6 +43,16 @@ export const matchSchema = z.object({
   teamId: z.string().optional()
 });
 
+export const clubMatchSchema = matchSchema.omit({ teamId: true }).extend({
+  clubId: z.string().min(1),
+  participantUserIds: z.array(z.string().min(1)).max(40).default([])
+});
+
+export const addClubMatchMembersSchema = z.object({
+  matchId: z.string().min(1),
+  userIds: z.array(z.string().min(1)).min(1).max(40)
+});
+
 export {
   ALLOWED_IMAGE_TYPES,
   ALLOWED_MEDIA_TYPES,

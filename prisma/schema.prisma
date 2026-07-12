@@ -88,6 +88,7 @@ enum ConversationType {
   DIRECT
   TEAM
   MATCH
+  CLUB
 }
 
 enum NotificationType {
@@ -101,44 +102,44 @@ enum NotificationType {
 }
 
 model User {
-  id                      String                @id @default(cuid())
+  id                      String                 @id @default(cuid())
   name                    String?
-  email                   String?               @unique
+  email                   String?                @unique
   emailVerified           DateTime?
   passwordHash            String?
   image                   String?
   coverImage              String?
-  username                String?               @unique
+  username                String?                @unique
   bio                     String?
   favoriteClub            String?
   preferredPosition       String?
   avoidedPosition         String?
   location                String?
-  profileVisibility       ProfileVisibility     @default(PUBLIC)
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
+  profileVisibility       ProfileVisibility      @default(PUBLIC)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
   posts                   Post[]
   comments                Comment[]
   likes                   PostLike[]
-  following               Follow[]              @relation("Following")
-  followers               Follow[]              @relation("Followers")
-  sentFriendRequests      Friendship[]          @relation("FriendshipRequester")
-  receivedFriendRequests  Friendship[]          @relation("FriendshipAddressee")
-  blockedUsers            Block[]               @relation("Blocker")
-  blockedByUsers          Block[]               @relation("Blocked")
+  following               Follow[]               @relation("Following")
+  followers               Follow[]               @relation("Followers")
+  sentFriendRequests      Friendship[]           @relation("FriendshipRequester")
+  receivedFriendRequests  Friendship[]           @relation("FriendshipAddressee")
+  blockedUsers            Block[]                @relation("Blocker")
+  blockedByUsers          Block[]                @relation("Blocked")
   encryptedProfile        UserEncryptedProfile?
   conversationMemberships ConversationMember[]
-  sentMessages            Message[]             @relation("MessageSender")
-  receivedNotifications   Notification[]        @relation("NotificationRecipient")
-  actedNotifications      Notification[]        @relation("NotificationActor")
+  sentMessages            Message[]              @relation("MessageSender")
+  receivedNotifications   Notification[]         @relation("NotificationRecipient")
+  actedNotifications      Notification[]         @relation("NotificationActor")
   favoriteTeams           UserFavoriteTeam[]
   ownedTeams              Team[]
   teamMemberships         TeamMember[]
-  ownedClubs              Club[]               @relation("ClubOwner")
-  deactivatedClubs        Club[]               @relation("ClubDeactivatedBy")
-  clubMemberships         ClubMember[]         @relation("ClubMemberUser")
-  clubInvitesSent         ClubMember[]         @relation("ClubMemberInviter")
-  clubGuestsCreated       ClubGuest[]          @relation("ClubGuestCreator")
+  ownedClubs              Club[]                 @relation("ClubOwner")
+  deactivatedClubs        Club[]                 @relation("ClubDeactivatedBy")
+  clubMemberships         ClubMember[]           @relation("ClubMemberUser")
+  clubInvitesSent         ClubMember[]           @relation("ClubMemberInviter")
+  clubGuestsCreated       ClubGuest[]            @relation("ClubGuestCreator")
   clubMetricDefinitions   ClubMetricDefinition[] @relation("ClubMetricCreator")
   createdMatches          Match[]
   matchParticipants       MatchParticipant[]
@@ -340,11 +341,13 @@ model Block {
 model Conversation {
   id            String               @id @default(cuid())
   type          ConversationType
+  clubId        String?              @unique
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   members       ConversationMember[]
   messages      Message[]
   notifications Notification[]
+  club          Club?                @relation(fields: [clubId], references: [id], onDelete: Cascade)
 }
 
 model ConversationMember {
@@ -467,6 +470,8 @@ model Club {
   members           ClubMember[]
   guests            ClubGuest[]
   metricDefinitions ClubMetricDefinition[]
+  conversation      Conversation?
+  matches           Match[]
 
   @@index([ownerId])
   @@index([isActive])
@@ -549,14 +554,17 @@ model Match {
   status       MatchStatus        @default(OPEN)
   creatorId    String
   teamId       String?
+  clubId       String?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   creator      User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   team         Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  club         Club?              @relation(fields: [clubId], references: [id], onDelete: SetNull)
   participants MatchParticipant[]
 
   @@index([creatorId])
   @@index([teamId])
+  @@index([clubId])
   @@index([matchDate])
 }
 
