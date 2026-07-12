@@ -15,7 +15,6 @@ type ClubPageProps = {
 };
 
 const futureModules = [
-  { title: "Matches", description: "Future club match hub.", icon: Swords },
   { title: "Internal training matches", description: "Future internal squad games.", icon: Users },
   { title: "Club vs Club matches", description: "Future external match requests.", icon: Shield },
   { title: "Tactics", description: "Future formations and tactical notes.", icon: ClipboardList },
@@ -105,6 +104,23 @@ export default async function ClubPage({ params }: ClubPageProps) {
         </Card>
         <ClubCard club={club} />
       </div>
+
+      {club.currentUserMemberStatus === "ACTIVE" ? (
+        <Card className="border-primary/30">
+          <CardContent className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div>
+              <Swords className="h-6 w-6 text-primary" />
+              <h2 className="mt-3 text-lg font-semibold">Club oyunları</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Postlardan ayrı olaraq yeni match yarat, club üzvlərini oyuna əlavə et və bitmiş oyunları izlə.
+              </p>
+            </div>
+            <Button asChild>
+              <Link href={`/clubs/${club.slug}/matches`}>Oyunlara keç</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {futureModules.map((module) => (

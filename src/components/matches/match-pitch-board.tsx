@@ -1,0 +1,14 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { MatchSideDto } from "@/types/match.types";
+
+export function MatchPitchBoard({ sides }: { sides: MatchSideDto[] }) {
+  return <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><CardTitle>Meydança</CardTitle><div className="flex gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-blue-600" />{sides[0]?.name ?? "Team A"}</span><span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-red-600" />{sides[1]?.name ?? "Team B"}</span></div></div></CardHeader><CardContent><div className="relative mx-auto aspect-[16/9] min-h-[340px] w-full overflow-hidden rounded-xl border-4 border-white/80 bg-emerald-700 shadow-inner sm:min-h-[460px]"><PitchLines />{sides.slice(0, 2).flatMap((side, sideIndex) => side.players.map((player, index) => { const point = getPlayerPoint(player.position, index, side.players.length, sideIndex); const name = player.user?.name ?? player.clubGuest?.fullName ?? player.guestName ?? "Oyunçu"; return <div key={player.id} className="absolute z-10 -translate-x-1/2 -translate-y-1/2 text-center" style={{ left: `${point.x}%`, top: `${point.y}%` }}><div className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white shadow-lg sm:h-11 sm:w-11 ${sideIndex === 0 ? "bg-blue-600" : "bg-red-600"}`}>{player.shirtNumber ?? (player.position === "GK" ? "GK" : index + 1)}</div><span className="mt-1 block max-w-24 truncate rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white sm:text-xs">{name}</span></div>; }))}</div></CardContent></Card>;
+}
+
+function PitchLines() { return <div className="pointer-events-none absolute inset-0"><div className="absolute inset-3 rounded border-2 border-white/70" /><div className="absolute inset-y-3 left-1/2 border-l-2 border-white/70" /><div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/70" /><div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80" /><div className="absolute bottom-[28%] left-3 top-[28%] w-[15%] border-2 border-l-0 border-white/70" /><div className="absolute bottom-[28%] right-3 top-[28%] w-[15%] border-2 border-r-0 border-white/70" /></div>; }
+
+function getPlayerPoint(position: string | null, index: number, total: number, side: number) {
+  const lane = ((index + 1) / (total + 1)) * 78 + 11;
+  const depth = position === "GK" ? 8 : ["CB", "LB", "RB", "LWB", "RWB"].includes(position ?? "") ? 23 : ["CDM", "CM", "CAM", "LM", "RM"].includes(position ?? "") ? 35 : 44;
+  return { x: side === 0 ? depth : 100 - depth, y: lane };
+}

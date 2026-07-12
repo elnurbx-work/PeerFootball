@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 
 type ClubInviteFormProps = {
   clubId: string;
+  canAssignTd: boolean;
 };
 
 type InviteSearchResult = {
@@ -21,7 +22,7 @@ type InviteSearchResult = {
   location: string | null;
 };
 
-export function ClubInviteForm({ clubId }: ClubInviteFormProps) {
+export function ClubInviteForm({ clubId, canAssignTd }: ClubInviteFormProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [role, setRole] = useState("PLAYER");
@@ -96,7 +97,7 @@ export function ClubInviteForm({ clubId }: ClubInviteFormProps) {
           <select value={role} onChange={(event) => setRole(event.target.value)} className={selectClassName}>
             <option value="PLAYER">Player</option>
             <option value="YTD">YTD</option>
-            <option value="TD">TD</option>
+            {canAssignTd ? <option value="TD">TD</option> : null}
           </select>
           <Button type="submit" disabled={pending}>
             <Search className="h-4 w-4" />

@@ -438,8 +438,15 @@ export async function joinOpenClubAction(clubId: string): Promise<ApiResponse> {
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.clubMember.create({
-      data: {
+    await tx.clubMember.upsert({
+      where: { clubId_userId: { clubId, userId: user.id } },
+      update: {
+        role: "PLAYER",
+        status: "ACTIVE",
+        joinedAt: new Date(),
+        invitedById: null
+      },
+      create: {
         clubId,
         userId: user.id,
         role: "PLAYER",
@@ -488,8 +495,15 @@ export async function requestJoinClubAction(clubId: string): Promise<ApiResponse
     };
   }
 
-  await prisma.clubMember.create({
-    data: {
+  await prisma.clubMember.upsert({
+    where: { clubId_userId: { clubId, userId: user.id } },
+    update: {
+      role: "PLAYER",
+      status: "REQUESTED",
+      joinedAt: null,
+      invitedById: null
+    },
+    create: {
       clubId,
       userId: user.id,
       role: "PLAYER",
@@ -611,6 +625,10 @@ export async function inviteUserToClubAction(input: unknown): Promise<ApiRespons
     return forbiddenResponse("You cannot invite players to this club.");
   }
 
+  if (role === "TD" && !(await isClubOwner(user.id, clubId))) {
+    return forbiddenResponse("Only the club owner can invite a Technical Director.");
+  }
+
   await ensureClubActive(clubId);
 
   const [club, invitedUser, existingMembership] = await Promise.all([
@@ -639,8 +657,15 @@ export async function inviteUserToClubAction(input: unknown): Promise<ApiRespons
     };
   }
 
-  await prisma.clubMember.create({
-    data: {
+  await prisma.clubMember.upsert({
+    where: { clubId_userId: { clubId, userId } },
+    update: {
+      role,
+      status: "INVITED",
+      joinedAt: null,
+      invitedById: user.id
+    },
+    create: {
       clubId,
       userId,
       role,

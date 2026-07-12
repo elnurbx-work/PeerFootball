@@ -5,7 +5,12 @@ import { ClubInviteForm } from "@/components/clubs/club-invite-form";
 import { ClubMembersTable } from "@/components/clubs/club-members-table";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
-import { getClubBySlug, getClubMembers, getPendingJoinRequests } from "@/server/queries/club.queries";
+import {
+  getClubBySlug,
+  getClubInvitationForUser,
+  getClubMembers,
+  getPendingJoinRequests
+} from "@/server/queries/club.queries";
 import { canApproveJoinRequests, canInvitePlayers, isClubOwner } from "@/server/services/club-permissions.service";
 
 type ClubMembersPageProps = {
@@ -28,13 +33,16 @@ export default async function ClubMembersPage({ params }: ClubMembersPageProps) 
     notFound();
   }
 
-  const [members, canManageRequests, canInvite, owner, pendingRequests] = await Promise.all([
+  const [activeMembers, canManageRequests, canInvite, owner, pendingRequests, ownInvite] = await Promise.all([
     getClubMembers(club.id),
     canApproveJoinRequests(currentUser.id, club.id),
     canInvitePlayers(currentUser.id, club.id),
     isClubOwner(currentUser.id, club.id),
-    getPendingJoinRequests(club.id, currentUser.id)
+    getPendingJoinRequests(club.id, currentUser.id),
+    getClubInvitationForUser(club.id, currentUser.id)
   ]);
+  const members = [...activeMembers, ...pendingRequests, ...(ownInvite ? [ownInvite] : [])]
+    .filter((member, index, all) => all.findIndex((item) => item.id === member.id) === index);
 
   return (
     <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">
@@ -47,10 +55,10 @@ export default async function ClubMembersPage({ params }: ClubMembersPageProps) 
       <div>
         <h1 className="text-3xl font-bold">Club members</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {members.length} active or pending memberships. {pendingRequests.length} join requests need attention.
+          {activeMembers.length} active members. {pendingRequests.length} join requests need attention.
         </p>
       </div>
-      {canInvite && club.isActive ? <ClubInviteForm clubId={club.id} /> : null}
+      {canInvite && club.isActive ? <ClubInviteForm clubId={club.id} canAssignTd={owner} /> : null}
       <ClubMembersTable
         members={members}
         canManageRequests={canManageRequests}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { footballPositionSchema } from "@/lib/football-positions";
 
 export const clubRoleSchema = z.enum(["OWNER", "TD", "YTD", "PLAYER"]);
 export const assignableClubRoleSchema = z.enum(["TD", "YTD", "PLAYER"]);
@@ -64,7 +65,8 @@ export const changeClubMemberRoleSchema = z.object({
 export const createClubGuestSchema = z.object({
   clubId: z.string().min(1),
   fullName: z.string().trim().min(1).max(120),
-  position: optionalText(40),
+  position: footballPositionSchema.optional().or(z.literal("").transform(() => undefined)),
+  phone: optionalText(40),
   note: optionalText(300)
 });
 

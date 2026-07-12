@@ -1,54 +1,33 @@
-import { Calendar, MapPin, Users } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { MatchDto } from "@/types/match.types";
 
-type MatchCardProps = {
-  match: {
-    title: string;
-    city: string;
-    location: string;
-    date: string;
-    maxPlayers: number;
-    joinedPlayers: number;
-    positionsNeeded: string[];
-    status: string;
-  };
-};
-
-export function MatchCard({ match }: MatchCardProps) {
-  const missingPlayers = match.maxPlayers - match.joinedPlayers;
-
+export function MatchCard({ match }: { match: MatchDto }) {
+  const playerCount = match.sides.reduce((total, side) => total + side.players.length, 0);
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <CardTitle>{match.title}</CardTitle>
-          <Badge>{match.status}</Badge>
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle>{match.title ?? match.sides.map((side) => side.name).join(" vs ")}</CardTitle>
+          <Badge variant="secondary">{match.status.replaceAll("_", " ")}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="grid gap-3">
         <div className="grid gap-2 text-sm text-muted-foreground">
-          <span className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            {match.location}, {match.city}
-          </span>
-          <span className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            {match.date}
-          </span>
-          <span className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            {missingPlayers} players missing
-          </span>
+          <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />{formatDate(match.startTime)}</p>
+          <p className="flex items-center gap-2"><MapPin className="h-4 w-4" />{match.venue ?? "Venue not set"}</p>
+          <p className="flex items-center gap-2"><Users className="h-4 w-4" />{playerCount} selected players</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {match.positionsNeeded.map((position) => (
-            <Badge key={position} variant="secondary">
-              {position}
-            </Badge>
-          ))}
-        </div>
+        <div className="flex flex-wrap gap-2"><Badge>{match.type.replaceAll("_", " ")}</Badge><Badge variant="secondary">{match.category}</Badge></div>
+        <Button asChild variant="outline" className="w-fit"><Link href={`/matches/${match.id}`}>Open match</Link></Button>
       </CardContent>
     </Card>
   );
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("az-AZ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

@@ -69,8 +69,13 @@ export async function canCreateClubMatches(userId: string, clubId: string) {
 }
 
 export async function canManageGuestList(userId: string, clubId: string) {
-  const role = await getClubRole(userId, clubId);
-
+  const [role, settings] = await Promise.all([
+    getClubRole(userId, clubId),
+    prisma.clubSettings.findUnique({ where: { clubId }, select: { guestInvitePolicy: true } })
+  ]);
+  const policy = settings?.guestInvitePolicy ?? "ONLY_OWNER_TD_YTD";
+  if (!role || policy === "CLOSED") return false;
+  if (policy === "PLAYERS_CAN_INVITE_FRIENDS") return true;
   return role === "OWNER" || role === "TD" || role === "YTD";
 }
 

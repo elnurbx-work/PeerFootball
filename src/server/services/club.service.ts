@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Prisma } from "@prisma/client";
+import type { FootballPosition, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type {
   ClubDetails,
@@ -177,7 +177,7 @@ export function toClubGuestDto(guest: {
   id: string;
   clubId: string;
   fullName: string;
-  position: string | null;
+  position: FootballPosition | null;
   phone: string | null;
   note: string | null;
   createdById: string;

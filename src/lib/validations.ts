@@ -34,25 +34,6 @@ export const teamSchema = z.object({
   logoUrl: optionalUrl
 });
 
-export const matchSchema = z.object({
-  title: z.string().min(2).max(100),
-  description: z.string().max(500).optional(),
-  location: z.string().min(2).max(120),
-  matchDate: z.coerce.date(),
-  maxPlayers: z.coerce.number().int().min(2).max(40),
-  teamId: z.string().optional()
-});
-
-export const clubMatchSchema = matchSchema.omit({ teamId: true }).extend({
-  clubId: z.string().min(1),
-  participantUserIds: z.array(z.string().min(1)).max(40).default([])
-});
-
-export const addClubMatchMembersSchema = z.object({
-  matchId: z.string().min(1),
-  userIds: z.array(z.string().min(1)).min(1).max(40)
-});
-
 export {
   ALLOWED_IMAGE_TYPES,
   ALLOWED_MEDIA_TYPES,
@@ -94,3 +75,17 @@ export {
   updateClubSchema,
   updateClubSettingsSchema
 } from "./validations/club";
+
+export {
+  addMatchPlayerSchema,
+  addMatchGoalSchema,
+  addMatchVideoSchema,
+  createClubVsClubMatchProposalSchema,
+  createInternalMatchSchema,
+  createMatchCommentSchema,
+  disputeMatchResultSchema,
+  respondToMatchProposalSchema,
+  submitMatchResultSchema,
+  updateInternalMatchSidesSchema,
+  updateMatchVideoSchema
+} from "./validations/match";

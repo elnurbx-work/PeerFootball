@@ -3,7 +3,8 @@ import type {
   ClubPermissionPolicy,
   ClubRole,
   ClubVisibility,
-  GuestInvitePolicy
+  GuestInvitePolicy,
+  FootballPosition
 } from "@prisma/client";
 import type {
   CreateClubInput,
@@ -84,7 +85,7 @@ export type ClubGuestDto = {
   id: string;
   clubId: string;
   fullName: string;
-  position: string | null;
+  position: FootballPosition | null;
   phone: string | null;
   note: string | null;
   createdById: string;

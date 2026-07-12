@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClubGuestDto } from "@/types/club.types";
+import { FOOTBALL_POSITIONS } from "@/lib/football-positions";
 
 type ClubGuestFormProps = {
   clubId: string;
@@ -45,7 +46,11 @@ export function ClubGuestForm({ clubId, guest, onDone }: ClubGuestFormProps) {
     <form className="grid gap-3" onSubmit={handleSubmit}>
       <div className="grid gap-3 md:grid-cols-2">
         <Input name="fullName" placeholder="Full name" defaultValue={guest?.fullName ?? ""} required />
-        <Input name="position" placeholder="Position" defaultValue={guest?.position ?? ""} />
+        <select name="position" defaultValue={guest?.position ?? ""} className={selectClassName}>
+          <option value="">Mövqe seçilməyib</option>
+          {FOOTBALL_POSITIONS.map((position) => <option key={position} value={position}>{position}</option>)}
+        </select>
+        <Input name="phone" placeholder="Phone" defaultValue={guest?.phone ?? ""} />
       </div>
       <Textarea name="note" placeholder="Note" defaultValue={guest?.note ?? ""} rows={3} />
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
@@ -56,3 +61,5 @@ export function ClubGuestForm({ clubId, guest, onDone }: ClubGuestFormProps) {
     </form>
   );
 }
+
+const selectClassName = "h-10 rounded-md border bg-background px-3 text-sm";

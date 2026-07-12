@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getCurrentUser } from "@/lib/auth";
-import { getMyClubs, searchClubs } from "@/server/queries/club.queries";
+import { getMyClubs, getMyPendingClubs, searchClubs } from "@/server/queries/club.queries";
 
 type ClubsPageProps = {
   searchParams: Promise<{
@@ -31,10 +31,12 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
 
   const params = await searchParams;
   const query = getSearchQuery(params.q);
-  const [myClubs, clubs] = await Promise.all([
+  const [activeClubs, pendingClubs, clubs] = await Promise.all([
     getMyClubs(currentUser.id),
-    searchClubs(query)
+    getMyPendingClubs(currentUser.id),
+    searchClubs(query, currentUser.id)
   ]);
+  const myClubs = [...activeClubs, ...pendingClubs];
 
   return (
     <section className="mx-auto grid max-w-6xl gap-8 px-4 py-10">
@@ -65,7 +67,7 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
       <div className="grid gap-4">
         <div>
           <h2 className="text-xl font-semibold">My clubs</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Owned, joined, invited, and requested clubs.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Active memberships, invitations, and join requests.</p>
         </div>
         {myClubs.length ? (
           <div className="grid gap-4 md:grid-cols-2">

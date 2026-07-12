@@ -1,7 +1,11 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { canApproveJoinRequests } from "@/server/services/club-permissions.service";
+import {
+  canApproveJoinRequests,
+  canCreateClubMatches,
+  canInvitePlayers
+} from "@/server/services/club-permissions.service";
 import {
   clubDetailsInclude,
   clubMemberInclude,
@@ -27,9 +31,7 @@ export async function getMyClubs(userId: string): Promise<ClubSummary[]> {
   const memberships = await prisma.clubMember.findMany({
     where: {
       userId,
-      status: {
-        in: ["ACTIVE", "INVITED", "REQUESTED"]
-      }
+      status: "ACTIVE"
     },
     include: {
       club: {
@@ -46,6 +48,17 @@ export async function getMyClubs(userId: string): Promise<ClubSummary[]> {
       role: membership.role,
       status: membership.status
     })
+  );
+}
+
+export async function getMyPendingClubs(userId: string): Promise<ClubSummary[]> {
+  const memberships = await prisma.clubMember.findMany({
+    where: { userId, status: { in: ["INVITED", "REQUESTED"] } },
+    include: { club: { include: clubSummaryInclude } },
+    orderBy: { updatedAt: "desc" }
+  });
+  return memberships.map((membership) =>
+    toClubSummaryDto(membership.club, { role: membership.role, status: membership.status })
   );
 }
 
@@ -82,15 +95,35 @@ export async function getClubMembers(clubId: string): Promise<ClubMemberDto[]> {
   const members = await prisma.clubMember.findMany({
     where: {
       clubId,
-      status: {
-        in: ["ACTIVE", "INVITED", "REQUESTED"]
-      }
+      status: "ACTIVE"
     },
     include: clubMemberInclude,
     orderBy: [{ status: "asc" }, { role: "asc" }, { createdAt: "asc" }]
   });
 
   return members.map(toClubMemberDto);
+}
+
+export async function getClubMembershipState(clubId: string, userId: string) {
+  const [membership, canInviteUsers, canApproveRequests, canCreateMatches] = await Promise.all([
+    prisma.clubMember.findFirst({
+      where: { clubId, userId, status: { in: ["ACTIVE", "INVITED", "REQUESTED"] } },
+      select: { role: true, status: true }
+    }),
+    canInvitePlayers(userId, clubId),
+    canApproveJoinRequests(userId, clubId),
+    canCreateClubMatches(userId, clubId)
+  ]);
+
+  return {
+    isMember: membership?.status === "ACTIVE",
+    role: membership?.role ?? null,
+    status: membership?.status ?? null,
+    canManageMembers: membership?.role === "OWNER",
+    canInviteUsers,
+    canApproveRequests,
+    canCreateMatches
+  };
 }
 
 export async function getClubSettings(clubId: string): Promise<ClubSettingsDto | null> {
@@ -143,7 +176,17 @@ export async function getPendingJoinRequests(clubId: string, currentUserId: stri
   return members.map(toClubMemberDto);
 }
 
-export async function searchClubs(query?: string): Promise<ClubSummary[]> {
+export async function getClubInvitationForUser(clubId: string, userId: string): Promise<ClubMemberDto | null> {
+  const invite = await prisma.clubMember.findFirst({
+    where: { clubId, userId, status: "INVITED" },
+    include: clubMemberInclude,
+    orderBy: { createdAt: "desc" }
+  });
+
+  return invite ? toClubMemberDto(invite) : null;
+}
+
+export async function searchClubs(query?: string, currentUserId?: string): Promise<ClubSummary[]> {
   const trimmedQuery = query?.trim();
   const clubs = await prisma.club.findMany({
     where: {
@@ -165,5 +208,14 @@ export async function searchClubs(query?: string): Promise<ClubSummary[]> {
     take: 30
   });
 
-  return clubs.map((club) => toClubSummaryDto(club));
+  const memberships = currentUserId
+    ? await prisma.clubMember.findMany({
+        where: { userId: currentUserId, clubId: { in: clubs.map((club) => club.id) }, status: { in: ["ACTIVE", "INVITED", "REQUESTED"] } },
+        select: { clubId: true, role: true, status: true }
+      })
+    : [];
+  return clubs.map((club) => {
+    const membership = memberships.find((item) => item.clubId === club.id);
+    return toClubSummaryDto(club, membership ?? null);
+  });
 }

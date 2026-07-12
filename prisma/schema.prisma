@@ -53,16 +53,72 @@ enum GuestInvitePolicy {
 }
 
 enum MatchStatus {
-  OPEN
-  FULL
-  COMPLETED
+  DRAFT
+  PENDING_OPPONENT_APPROVAL
+  SCHEDULED
+  LIVE
+  RESULT_PENDING_CONFIRMATION
+  FINISHED
+  DISPUTED
   CANCELLED
 }
 
-enum MatchParticipantStatus {
-  JOINED
-  WAITING
-  CANCELLED
+enum MatchType {
+  INTERNAL
+  CLUB_VS_CLUB
+}
+
+enum MatchCategory {
+  FRIENDLY
+  TRAINING
+  OFFICIAL
+}
+
+enum MatchSideType {
+  HOME
+  AWAY
+  TEAM_A
+  TEAM_B
+}
+
+enum MatchPlayerStatus {
+  SELECTED
+  INVITED
+  ACCEPTED
+  DECLINED
+  REMOVED
+}
+
+enum FootballPosition {
+  GK
+  CB
+  LB
+  RB
+  LWB
+  RWB
+  CDM
+  CM
+  CAM
+  LM
+  RM
+  LW
+  RW
+  CF
+  ST
+  OTHER
+}
+
+enum MatchVideoProvider {
+  GOOGLE_DRIVE
+  YOUTUBE
+  EXTERNAL
+}
+
+enum MatchVideoType {
+  FULL_MATCH
+  FIRST_HALF
+  SECOND_HALF
+  OTHER
 }
 
 enum FriendshipStatus {
@@ -141,8 +197,13 @@ model User {
   clubInvitesSent         ClubMember[]           @relation("ClubMemberInviter")
   clubGuestsCreated       ClubGuest[]            @relation("ClubGuestCreator")
   clubMetricDefinitions   ClubMetricDefinition[] @relation("ClubMetricCreator")
-  createdMatches          Match[]
-  matchParticipants       MatchParticipant[]
+  createdMatches          Match[]                @relation("MatchCreatedBy")
+  submittedMatchResults   Match[]                @relation("MatchResultSubmittedBy")
+  confirmedMatchResults   Match[]                @relation("MatchResultConfirmedBy")
+  matchPlayers            MatchPlayer[]          @relation("MatchPlayerUser")
+  matchPlayerInvites      MatchPlayer[]          @relation("MatchPlayerInviter")
+  matchVideos             MatchVideo[]           @relation("MatchVideoUploader")
+  matchComments           MatchComment[]         @relation("MatchCommentAuthor")
   playerStats             PlayerStats?
   accounts                Account[]
   sessions                Session[]
@@ -427,7 +488,6 @@ model Team {
   updatedAt   DateTime     @updatedAt
   owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   members     TeamMember[]
-  matches     Match[]
 
   @@index([ownerId])
 }
@@ -471,7 +531,10 @@ model Club {
   guests            ClubGuest[]
   metricDefinitions ClubMetricDefinition[]
   conversation      Conversation?
-  matches           Match[]
+  createdMatches    Match[]                @relation("MatchCreatorClub")
+  homeMatches       Match[]                @relation("MatchHomeClub")
+  awayMatches       Match[]                @relation("MatchAwayClub")
+  matchSides        MatchSide[]
 
   @@index([ownerId])
   @@index([isActive])
@@ -503,26 +566,27 @@ model ClubMember {
   user        User             @relation("ClubMemberUser", fields: [userId], references: [id], onDelete: Cascade)
   invitedBy   User?            @relation("ClubMemberInviter", fields: [invitedById], references: [id], onDelete: SetNull)
 
+  @@unique([clubId, userId])
   @@index([clubId])
   @@index([userId])
   @@index([clubId, role])
   @@index([clubId, status])
-  @@index([userId, clubId])
 }
 
 model ClubGuest {
-  id          String   @id @default(cuid())
-  clubId      String
-  fullName    String
-  position    String?
-  phone       String?
-  note        String?
-  createdById String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  club        Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  createdBy   User     @relation("ClubGuestCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  id           String            @id @default(cuid())
+  clubId       String
+  fullName     String
+  position     FootballPosition?
+  phone        String?
+  note         String?
+  createdById  String
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  club         Club              @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  createdBy    User              @relation("ClubGuestCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  matchPlayers MatchPlayer[]
 
   @@index([clubId])
 }
@@ -545,41 +609,146 @@ model ClubMetricDefinition {
 }
 
 model Match {
-  id           String             @id @default(cuid())
-  title        String
-  description  String?
-  location     String
-  matchDate    DateTime
-  maxPlayers   Int
-  status       MatchStatus        @default(OPEN)
-  creatorId    String
-  teamId       String?
-  clubId       String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  creator      User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  team         Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
-  club         Club?              @relation(fields: [clubId], references: [id], onDelete: SetNull)
-  participants MatchParticipant[]
+  id                  String         @id @default(cuid())
+  type                MatchType
+  category            MatchCategory  @default(FRIENDLY)
+  status              MatchStatus    @default(DRAFT)
+  creatorClubId       String
+  homeClubId          String?
+  awayClubId          String?
+  title               String?
+  venue               String?
+  startTime           DateTime
+  endTime             DateTime?
+  homeScore           Int?
+  awayScore           Int?
+  resultNote          String?
+  resultSubmittedById String?
+  resultSubmittedAt   DateTime?
+  resultConfirmedById String?
+  resultConfirmedAt   DateTime?
+  disputeReason       String?
+  adminDecisionNote   String?
+  createdById         String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  creatorClub         Club           @relation("MatchCreatorClub", fields: [creatorClubId], references: [id], onDelete: Restrict)
+  homeClub            Club?          @relation("MatchHomeClub", fields: [homeClubId], references: [id], onDelete: Restrict)
+  awayClub            Club?          @relation("MatchAwayClub", fields: [awayClubId], references: [id], onDelete: Restrict)
+  createdBy           User           @relation("MatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  resultSubmittedBy   User?          @relation("MatchResultSubmittedBy", fields: [resultSubmittedById], references: [id], onDelete: SetNull)
+  resultConfirmedBy   User?          @relation("MatchResultConfirmedBy", fields: [resultConfirmedById], references: [id], onDelete: SetNull)
+  sides               MatchSide[]
+  players             MatchPlayer[]
+  videos              MatchVideo[]
+  goals               MatchGoal[]
+  comments            MatchComment[]
 
-  @@index([creatorId])
-  @@index([teamId])
-  @@index([clubId])
-  @@index([matchDate])
+  @@index([creatorClubId])
+  @@index([homeClubId])
+  @@index([awayClubId])
+  @@index([status])
+  @@index([startTime])
 }
 
-model MatchParticipant {
-  id       String                 @id @default(cuid())
-  matchId  String
-  userId   String
-  position String
-  status   MatchParticipantStatus @default(JOINED)
-  joinedAt DateTime               @default(now())
-  match    Match                  @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  user     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+model MatchSide {
+  id        String        @id @default(cuid())
+  matchId   String
+  clubId    String?
+  name      String
+  side      MatchSideType
+  score     Int?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  match     Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  club      Club?         @relation(fields: [clubId], references: [id], onDelete: Restrict)
+  players   MatchPlayer[]
+  goals     MatchGoal[]
+
+  @@unique([matchId, side])
+  @@index([matchId])
+}
+
+model MatchPlayer {
+  id          String            @id @default(cuid())
+  matchId     String
+  matchSideId String
+  userId      String?
+  clubGuestId String?
+  guestName   String?
+  position    FootballPosition?
+  shirtNumber Int?
+  status      MatchPlayerStatus @default(SELECTED)
+  invitedById String?
+  acceptedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  match       Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchSide   MatchSide         @relation(fields: [matchSideId], references: [id], onDelete: Cascade)
+  user        User?             @relation("MatchPlayerUser", fields: [userId], references: [id], onDelete: Restrict)
+  clubGuest   ClubGuest?        @relation(fields: [clubGuestId], references: [id], onDelete: Restrict)
+  invitedBy   User?             @relation("MatchPlayerInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+  goals       MatchGoal[]
 
   @@unique([matchId, userId])
+  @@index([matchId])
+  @@index([matchSideId])
   @@index([userId])
+  @@index([clubGuestId])
+}
+
+model MatchVideo {
+  id               String             @id @default(cuid())
+  matchId          String
+  originalUrl      String
+  embedUrl         String
+  provider         MatchVideoProvider
+  videoType        MatchVideoType     @default(FULL_MATCH)
+  matchStartSecond Int                @default(0)
+  publicId         String?
+  title            String?
+  description      String?
+  uploadedById     String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @default(now()) @updatedAt
+  match            Match              @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  uploadedBy       User               @relation("MatchVideoUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([matchId])
+}
+
+model MatchGoal {
+  id            String       @id @default(cuid())
+  matchId       String
+  matchSideId   String
+  matchPlayerId String?
+  playerName    String
+  minute        Int?
+  extraMinute   Int?
+  createdAt     DateTime     @default(now())
+  match         Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchSide     MatchSide    @relation(fields: [matchSideId], references: [id], onDelete: Cascade)
+  matchPlayer   MatchPlayer? @relation(fields: [matchPlayerId], references: [id], onDelete: SetNull)
+
+  @@index([matchId])
+  @@index([matchSideId])
+}
+
+model MatchComment {
+  id        String         @id @default(cuid())
+  matchId   String
+  authorId  String
+  parentId  String?
+  content   String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  match     Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  author    User           @relation("MatchCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  parent    MatchComment?  @relation("MatchCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   MatchComment[] @relation("MatchCommentReplies")
+
+  @@index([matchId, createdAt])
+  @@index([parentId])
 }
 
 model PlayerStats {
