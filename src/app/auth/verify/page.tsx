@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResendVerificationForm } from "@/components/auth/resend-verification-form";
 import { verifyEmailToken } from "@/server/services/auth.service";
+import { getServerTranslator } from "@/i18n/server";
 
 type VerifyPageProps = {
   searchParams: Promise<{
@@ -17,6 +18,7 @@ function firstParam(value?: string | string[]) {
 }
 
 export default async function VerifyPage({ searchParams }: VerifyPageProps) {
+  const t = await getServerTranslator();
   const params = await searchParams;
   const email = firstParam(params.email);
   const token = firstParam(params.token);
@@ -33,17 +35,17 @@ export default async function VerifyPage({ searchParams }: VerifyPageProps) {
               <XCircle className="h-6 w-6 text-destructive" />
             )}
           </div>
-          <CardTitle>{verified ? "Email verified" : "Verification failed"}</CardTitle>
+          <CardTitle>{verified ? t("auth.verification.successTitle") : t("auth.verification.failedTitle")}</CardTitle>
           <CardDescription>
             {verified
-              ? "Your FanPitch account is ready. You can sign in now."
-              : "This verification link is invalid or expired."}
+              ? t("auth.verification.successDescription")
+              : t("auth.verification.failedDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {verified ? (
             <Button asChild>
-              <Link href="/auth/login">Sign in</Link>
+              <Link href="/auth/login">{t("auth.verification.signIn")}</Link>
             </Button>
           ) : (
             <ResendVerificationForm />

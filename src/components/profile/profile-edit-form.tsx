@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ApiResponse } from "@/types/api.types";
 import type { UserProfile } from "@/types/profile.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 const initialState: ApiResponse = {
   ok: true,
@@ -22,6 +23,7 @@ type ProfileEditFormProps = {
 };
 
 export function ProfileEditForm({ profile }: ProfileEditFormProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [state, formAction, pending] = useActionState(updateProfileAction, initialState);
   const issues = state.ok ? undefined : state.issues;
@@ -36,19 +38,19 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Edit profile</CardTitle>
+        <CardTitle>{t("profile.editForm.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={formAction} encType="multipart/form-data" className="grid gap-4">
-          <Field label="Name" name="name" defaultValue={profile.name} error={issues?.name?.[0]} />
-          <Field label="Username" name="username" defaultValue={profile.username} error={issues?.username?.[0]} />
+          <Field label={t("profile.editForm.name")} name="name" defaultValue={profile.name} error={issues?.name?.[0]} />
+          <Field label={t("profile.editForm.username")} name="username" defaultValue={profile.username} error={issues?.username?.[0]} />
           <input type="hidden" name="image" value={profile.image ?? ""} />
           <input type="hidden" name="coverImage" value={profile.coverImage ?? ""} />
           <div className="grid gap-4 md:grid-cols-2">
             <label className="grid gap-3 rounded-md border bg-secondary/35 p-4 text-sm font-medium">
               <span className="flex items-center gap-2">
                 <Camera className="h-4 w-4" />
-                Profile photo
+                {t("profile.editForm.photo")}
               </span>
               <span className="flex items-center gap-4">
                 <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background text-xl font-semibold text-muted-foreground">
@@ -73,14 +75,14 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
             <label className="grid gap-3 rounded-md border bg-secondary/35 p-4 text-sm font-medium">
               <span className="flex items-center gap-2">
                 <Image className="h-4 w-4" />
-                Cover photo
+                {t("profile.editForm.cover")}
               </span>
               <span className="grid gap-3">
                 <span className="flex aspect-[5/2] w-full items-center justify-center overflow-hidden rounded-md border bg-background text-sm text-muted-foreground">
                   {profile.coverImage ? (
                     <img src={profile.coverImage} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    "No cover photo"
+                    t("profile.editForm.noCover")
                   )}
                 </span>
                 <Input
@@ -97,14 +99,14 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
             </label>
           </div>
           <label className="grid gap-2 text-sm font-medium">
-            Account visibility
+            {t("profile.editForm.visibility")}
             <select
               name="profileVisibility"
               defaultValue={profile.profileVisibility === "PUBLIC" ? "PUBLIC" : "FRIENDS_ONLY"}
               className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="PUBLIC">Public account</option>
-              <option value="FRIENDS_ONLY">Private account</option>
+              <option value="PUBLIC">{t("profile.editForm.publicAccount")}</option>
+              <option value="FRIENDS_ONLY">{t("profile.editForm.privateAccount")}</option>
             </select>
             <span className="flex items-center gap-2 text-xs text-muted-foreground">
               {profile.profileVisibility === "PUBLIC" ? (
@@ -112,27 +114,27 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
               ) : (
                 <Lock className="h-3.5 w-3.5" />
               )}
-              Private profiles are visible only to accepted friends.
+              {t("profile.editForm.privateHint")}
             </span>
             {issues?.profileVisibility?.[0] ? (
               <span className="text-xs text-destructive">{issues.profileVisibility[0]}</span>
             ) : null}
           </label>
           <label className="grid gap-2 text-sm font-medium">
-            Bio
+            {t("profile.editForm.bio")}
             <Textarea name="bio" defaultValue={profile.bio ?? ""} rows={4} maxLength={240} />
           </label>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="City" name="location" defaultValue={profile.location ?? ""} />
-            <Field label="Preferred position" name="preferredPosition" defaultValue={profile.preferredPosition ?? ""} />
-            <Field label="Avoided position" name="avoidedPosition" defaultValue={profile.avoidedPosition ?? ""} />
+            <Field label={t("profile.editForm.city")} name="location" defaultValue={profile.location ?? ""} />
+            <Field label={t("profile.editForm.preferredPosition")} name="preferredPosition" defaultValue={profile.preferredPosition ?? ""} />
+            <Field label={t("profile.editForm.avoidedPosition")} name="avoidedPosition" defaultValue={profile.avoidedPosition ?? ""} />
           </div>
           {state.message ? (
             <p className={state.ok ? "text-sm text-primary" : "text-sm text-destructive"}>{state.message}</p>
           ) : null}
           <Button type="submit" disabled={pending} className="w-fit">
             <Save className="h-4 w-4" />
-            {pending ? "Saving..." : "Save profile"}
+            {pending ? t("common.saving") : t("profile.editForm.save")}
           </Button>
         </form>
       </CardContent>

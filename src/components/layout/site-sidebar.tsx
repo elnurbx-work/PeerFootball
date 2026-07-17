@@ -18,6 +18,7 @@ import { getUserInboxChannelName, INBOX_EVENTS } from "@/lib/ably-channels";
 import type { SessionUser } from "@/types/auth.types";
 import type { ConversationUpdatePayload } from "@/types/message.types";
 import type { AppNotification } from "@/types/notification.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type SiteSidebarProps = {
   currentUser: SessionUser | null;
@@ -32,6 +33,7 @@ export function SiteSidebar({
   initialUnreadDirectConversationCounts,
   initialUnreadNotificationCount
 }: SiteSidebarProps) {
+  const { t } = useI18n();
   const unreadDirectConversationCounts = useUnreadDirectConversationCounts(
     currentUser?.id ?? null,
     initialUnreadDirectConversationCounts
@@ -68,15 +70,15 @@ export function SiteSidebar({
                   type="submit"
                   variant="ghost"
                   className="h-11 w-11 px-0 text-muted-foreground hover:text-foreground"
-                  title="Logout"
-                  aria-label="Logout"
+                  title={t("nav.logout")}
+                  aria-label={t("nav.logout")}
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
               </form>
             ) : (
-              <Button asChild className="h-11 w-11 px-0" title="Login">
-                <Link href="/auth/login" aria-label="Login">
+              <Button asChild className="h-11 w-11 px-0" title={t("nav.login")}>
+                <Link href="/auth/login" aria-label={t("nav.login")}>
                   <LogIn className="h-4 w-4" />
                 </Link>
               </Button>

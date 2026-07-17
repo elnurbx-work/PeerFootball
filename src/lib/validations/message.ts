@@ -9,7 +9,7 @@ export const sendMessageSchema = z
     content: z.string().trim().min(1).max(MESSAGE_CONTENT_MAX_LENGTH)
   })
   .refine((value) => value.conversationId || value.recipientId, {
-    message: "Choose a conversation or recipient.",
+    message: "validation.messageTarget",
     path: ["conversationId"]
   });
 

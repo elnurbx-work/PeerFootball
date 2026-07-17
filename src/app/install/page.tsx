@@ -3,19 +3,20 @@ import Link from "next/link";
 import { ArrowLeft, Bell, Cloud, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InstallAppCard } from "@/components/pwa/install-app-card";
+import { getServerTranslator } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Install FanPitch",
-  description: "Install FanPitch as a fast app on your device."
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerTranslator();
+  return { title: t("pwa.page.metadataTitle"), description: t("pwa.page.metadataDescription") };
+}
 
-const benefits = [
-  { label: "Faster launch", icon: Zap },
-  { label: "Home screen access", icon: Bell },
-  { label: "Offline fallback", icon: Cloud }
-];
-
-export default function InstallPage() {
+export default async function InstallPage() {
+  const t = await getServerTranslator();
+  const benefits = [
+    { label: t("pwa.page.faster"), icon: Zap },
+    { label: t("pwa.page.homeScreen"), icon: Bell },
+    { label: t("pwa.page.offlineFallback"), icon: Cloud }
+  ];
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center px-4 py-10">
       <div className="grid items-center gap-8 md:grid-cols-[1fr_0.9fr]">
@@ -29,14 +30,13 @@ export default function InstallPage() {
 
           <div className="space-y-4">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-              PWA ready
+              {t("pwa.page.eyebrow")}
             </p>
             <h1 className="max-w-3xl text-4xl font-bold leading-tight text-foreground md:text-6xl">
-              FanPitch belongs on your home screen.
+              {t("pwa.page.title")}
             </h1>
             <p className="max-w-2xl text-lg text-muted-foreground">
-              Open matches, posts, friends, and teams in a focused app window with
-              the same FanPitch account.
+              {t("pwa.page.description")}
             </p>
           </div>
 

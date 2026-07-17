@@ -14,18 +14,23 @@ export const createInternalMatchSchema = z.object({
   initialStatus: z.enum(["DRAFT", "SCHEDULED"]).default("SCHEDULED"),
   teamAName: z.string().trim().min(1).max(80).default("Team A"),
   teamBName: z.string().trim().min(1).max(80).default("Team B")
-}).refine((value) => !value.endTime || value.endTime > value.startTime, { message: "End time must be after start time.", path: ["endTime"] });
+}).refine((value) => !value.endTime || value.endTime > value.startTime, { message: "validation.endAfterStart", path: ["endTime"] });
 
 export const updateInternalMatchSidesSchema = z.object({
   matchId: z.string().min(1), teamAName: z.string().trim().min(1).max(80), teamBName: z.string().trim().min(1).max(80)
+});
+
+export const updateMatchPlayerPositionSchema = z.object({
+  matchPlayerId: z.string().min(1),
+  position: footballPositionSchema
 });
 
 export const createClubVsClubMatchProposalSchema = z.object({
   homeClubId: z.string().min(1), awayClubId: z.string().min(1), title: optionalText(120),
   venue: optionalText(160), startTime: z.coerce.date(), endTime: z.coerce.date().optional(),
   category: matchCategorySchema.default("FRIENDLY")
-}).refine((value) => value.homeClubId !== value.awayClubId, { message: "Choose a different opponent club.", path: ["awayClubId"] })
-  .refine((value) => !value.endTime || value.endTime > value.startTime, { message: "End time must be after start time.", path: ["endTime"] });
+}).refine((value) => value.homeClubId !== value.awayClubId, { message: "validation.opponentDifferent", path: ["awayClubId"] })
+  .refine((value) => !value.endTime || value.endTime > value.startTime, { message: "validation.endAfterStart", path: ["endTime"] });
 
 export const respondToMatchProposalSchema = z.object({ matchId: z.string().min(1), response: z.enum(["ACCEPT", "REJECT"]) });
 
@@ -35,7 +40,7 @@ export const addMatchPlayerSchema = z.object({
   position: footballPositionSchema.optional().or(z.literal("").transform(() => undefined)),
   shirtNumber: z.coerce.number().int().min(1).max(99).optional()
 }).refine((value) => [value.userId, value.clubGuestId, value.guestName].filter(Boolean).length === 1, {
-  message: "Choose exactly one registered player or guest.", path: ["userId"]
+  message: "validation.playerChoice", path: ["userId"]
 });
 
 export const submitMatchResultSchema = z.object({
@@ -54,7 +59,7 @@ const matchVideoFieldsSchema = z.object({
 
 function validateSupportedVideo(value: { url: string }, context: z.RefinementCtx) {
   if (normalizeMatchVideoUrl(value.url).provider === "EXTERNAL") {
-    context.addIssue({ code: "custom", path: ["url"], message: "Hazırda yalnız Google Drive və YouTube video linkləri dəstəklənir." });
+    context.addIssue({ code: "custom", path: ["url"], message: "validation.supportedVideo" });
   }
 }
 
@@ -64,8 +69,7 @@ export const updateMatchVideoSchema = matchVideoFieldsSchema.omit({ matchId: tru
 export const addMatchGoalSchema = z.object({
   matchId: z.string().min(1),
   matchSideId: z.string().min(1),
-  matchPlayerId: z.string().min(1).optional(),
-  playerName: z.string().trim().min(1).max(120),
+  matchPlayerId: z.string().min(1),
   minute: z.coerce.number().int().min(1).max(150).optional(),
   extraMinute: z.coerce.number().int().min(0).max(15).optional()
 });

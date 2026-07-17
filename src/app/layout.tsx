@@ -5,11 +5,16 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { getRequestLocale } from "@/i18n/server";
+import { getServerTranslator } from "@/i18n/server";
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerTranslator();
+  return {
   applicationName: "FanPitch",
   title: "FanPitch",
-  description: "A football social network for players and fans.",
+  description: t("common.metadataDescription"),
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -26,22 +31,26 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/icons/apple-touch-icon", sizes: "180x180", type: "image/png" }]
   }
-};
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#166b43"
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const locale = await getRequestLocale();
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className={cn("font-sans antialiased")}>
-        <ServiceWorkerRegistration />
-        {children}
+        <I18nProvider locale={locale}>
+          <ServiceWorkerRegistration />
+          {children}
+        </I18nProvider>
         <Analytics />
         <SpeedInsights />
       </body>

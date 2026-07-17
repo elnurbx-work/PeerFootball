@@ -1,5 +1,7 @@
 "use server";
 
+import { localizedFieldErrors } from "@/i18n/zod";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
@@ -13,6 +15,7 @@ import {
 import { lookupTeamById } from "@/server/services/thesportsdb.service";
 import type { ApiResponse } from "@/types/api.types";
 import type { AddFavoriteTeamInput, UserFavoriteTeamSummary } from "@/types/profile.types";
+import { getServerTranslator } from "@/i18n/server";
 
 const MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
 const PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -37,52 +40,53 @@ const favoriteTeamSelect = {
 } as const;
 
 export async function updateProfileAction(_prevState: ApiResponse, formData: FormData): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const profileImageFile = getImageFile(formData, "imageFile");
   const coverImageFile = getImageFile(formData, "coverImageFile");
 
   if (profileImageFile && !PROFILE_IMAGE_TYPES.has(profileImageFile.type)) {
     return {
       ok: false,
-      message: "Profile details are invalid.",
-      issues: { imageFile: ["Choose a JPG, PNG, WebP, or GIF image."] }
+      message: t("responses.profile.invalid"),
+      issues: { imageFile: [t("responses.profile.imageType")] }
     };
   }
 
   if (coverImageFile && !PROFILE_IMAGE_TYPES.has(coverImageFile.type)) {
     return {
       ok: false,
-      message: "Profile details are invalid.",
-      issues: { coverImageFile: ["Choose a JPG, PNG, WebP, or GIF image."] }
+      message: t("responses.profile.invalid"),
+      issues: { coverImageFile: [t("responses.profile.imageType")] }
     };
   }
 
   if (profileImageFile && profileImageFile.size > MAX_PROFILE_IMAGE_SIZE) {
     return {
       ok: false,
-      message: "Profile details are invalid.",
-      issues: { imageFile: ["Profile photo must be 5 MB or smaller."] }
+      message: t("responses.profile.invalid"),
+      issues: { imageFile: [t("responses.profile.photoTooLarge")] }
     };
   }
 
   if (coverImageFile && coverImageFile.size > MAX_PROFILE_IMAGE_SIZE) {
     return {
       ok: false,
-      message: "Profile details are invalid.",
-      issues: { coverImageFile: ["Cover photo must be 5 MB or smaller."] }
+      message: t("responses.profile.invalid"),
+      issues: { coverImageFile: [t("responses.profile.coverTooLarge")] }
     };
   }
 
   const result = profileSchema.safeParse(Object.fromEntries(formData));
 
   if (!result.success) {
-    return { ok: false, message: "Profile details are invalid.", issues: result.error.flatten().fieldErrors };
+    return { ok: false, message: t("responses.profile.invalid"), issues: localizedFieldErrors(result.error, t) };
   }
 
   const session = await auth();
   const userId = session?.user?.id;
 
   if (!userId) {
-    return { ok: false, message: "You need to sign in before editing your profile." };
+    return { ok: false, message: t("responses.profile.signInEdit") };
   }
 
   const existingUsername = await prisma.user.findUnique({
@@ -93,8 +97,8 @@ export async function updateProfileAction(_prevState: ApiResponse, formData: For
   if (existingUsername && existingUsername.id !== userId) {
     return {
       ok: false,
-      message: "That username is already taken.",
-      issues: { username: ["Choose another username."] }
+      message: t("responses.profile.usernameTaken"),
+      issues: { username: [t("responses.profile.chooseUsername")] }
     };
   }
 
@@ -110,10 +114,10 @@ export async function updateProfileAction(_prevState: ApiResponse, formData: For
     if (!isCloudinaryConfigured()) {
       return {
         ok: false,
-        message: "Image upload is not configured yet. Add Cloudinary settings and try again.",
+        message: t("responses.profile.uploadNotConfigured"),
         issues: {
-          imageFile: profileImageFile ? ["Image upload is not configured."] : undefined,
-          coverImageFile: coverImageFile ? ["Image upload is not configured."] : undefined
+          imageFile: profileImageFile ? [t("responses.profile.uploadUnavailable")] : undefined,
+          coverImageFile: coverImageFile ? [t("responses.profile.uploadUnavailable")] : undefined
         }
       };
     }
@@ -125,8 +129,8 @@ export async function updateProfileAction(_prevState: ApiResponse, formData: For
     if (!uploadedImageUrl) {
       return {
         ok: false,
-        message: "We could not upload that profile photo. Try another image.",
-        issues: { imageFile: ["Upload failed."] }
+        message: t("responses.profile.photoUploadFailed"),
+        issues: { imageFile: [t("responses.profile.uploadFailed")] }
       };
     }
 
@@ -139,8 +143,8 @@ export async function updateProfileAction(_prevState: ApiResponse, formData: For
     if (!uploadedCoverUrl) {
       return {
         ok: false,
-        message: "We could not upload that cover photo. Try another image.",
-        issues: { coverImageFile: ["Upload failed."] }
+        message: t("responses.profile.coverUploadFailed"),
+        issues: { coverImageFile: [t("responses.profile.uploadFailed")] }
       };
     }
 
@@ -170,23 +174,24 @@ export async function updateProfileAction(_prevState: ApiResponse, formData: For
     revalidatePath(`/profile/${profile.username}`);
   }
 
-  return { ok: true, message: "Profile saved.", data: profile };
+  return { ok: true, message: t("responses.profile.saved"), data: profile };
 }
 
 export async function addFavoriteTeamAction(
   input: AddFavoriteTeamInput
 ): Promise<ApiResponse<UserFavoriteTeamSummary>> {
+  const t = await getServerTranslator();
   const result = favoriteTeamInputSchema.safeParse(input);
 
   if (!result.success) {
-    return { ok: false, message: "Team details are invalid.", issues: result.error.flatten().fieldErrors };
+    return { ok: false, message: t("responses.team.invalid"), issues: localizedFieldErrors(result.error, t) };
   }
 
   const session = await auth();
   const userId = session?.user?.id;
 
   if (!userId) {
-    return { ok: false, message: "You need to sign in before editing favorite teams." };
+    return { ok: false, message: t("responses.profile.signInFavorites") };
   }
 
   const data = {
@@ -210,13 +215,13 @@ export async function addFavoriteTeamAction(
   });
 
   if (duplicate) {
-    return { ok: false, message: "That team is already in your favorites." };
+    return { ok: false, message: t("responses.profile.favoriteExists") };
   }
 
   const favoriteTeamsCount = await prisma.userFavoriteTeam.count({ where: { userId } });
 
   if (favoriteTeamsCount >= 5) {
-    return { ok: false, message: "You can save up to 5 favorite teams." };
+    return { ok: false, message: t("responses.profile.favoriteLimit") };
   }
 
   let freshTeam: AddFavoriteTeamInput | null = null;
@@ -260,17 +265,18 @@ export async function addFavoriteTeamAction(
 
   await revalidateProfilePaths(userId);
 
-  return { ok: true, message: "Favorite team added.", data: created };
+  return { ok: true, message: t("responses.profile.favoriteAdded"), data: created };
 }
 
 export async function removeFavoriteTeamAction(
   favoriteTeamId: string
 ): Promise<ApiResponse<{ id: string }>> {
+  const t = await getServerTranslator();
   const session = await auth();
   const userId = session?.user?.id;
 
   if (!userId) {
-    return { ok: false, message: "You need to sign in before editing favorite teams." };
+    return { ok: false, message: t("responses.profile.signInFavorites") };
   }
 
   const result = await prisma.userFavoriteTeam.deleteMany({
@@ -281,12 +287,12 @@ export async function removeFavoriteTeamAction(
   });
 
   if (result.count === 0) {
-    return { ok: false, message: "Favorite team was not found." };
+    return { ok: false, message: t("responses.profile.favoriteNotFound") };
   }
 
   await revalidateProfilePaths(userId);
 
-  return { ok: true, message: "Favorite team removed.", data: { id: favoriteTeamId } };
+  return { ok: true, message: t("responses.profile.favoriteRemoved"), data: { id: favoriteTeamId } };
 }
 
 async function revalidateProfilePaths(userId: string) {

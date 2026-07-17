@@ -11,6 +11,7 @@ import {
 } from "@/actions/friendship.actions";
 import { Button } from "@/components/ui/button";
 import type { FriendshipButtonState } from "@/types/friendship.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type FriendButtonProps = {
   targetUserId: string;
@@ -19,6 +20,7 @@ type FriendButtonProps = {
 };
 
 export function FriendButton({ targetUserId, initialState, friendshipId }: FriendButtonProps) {
+  const { t } = useI18n();
   const [state, setState] = useState(initialState);
   const [activeFriendshipId, setActiveFriendshipId] = useState(friendshipId);
   const [message, setMessage] = useState("");
@@ -44,7 +46,7 @@ export function FriendButton({ targetUserId, initialState, friendshipId }: Frien
   if (state === "BLOCKED") {
     return (
       <Button type="button" variant="outline" disabled>
-        Blocked
+        {t("friends.button.blocked")}
       </Button>
     );
   }
@@ -58,7 +60,7 @@ export function FriendButton({ targetUserId, initialState, friendshipId }: Frien
           onClick={() => runAction(() => acceptFriendRequest(activeFriendshipId), "FRIENDS")}
         >
           <Check className="h-4 w-4" />
-          Accept
+          {t("friends.button.accept")}
         </Button>
         <Button
           type="button"
@@ -67,7 +69,7 @@ export function FriendButton({ targetUserId, initialState, friendshipId }: Frien
           onClick={() => runAction(() => declineFriendRequest(activeFriendshipId), "ADD_FRIEND", true)}
         >
           <X className="h-4 w-4" />
-          Decline
+          {t("friends.button.decline")}
         </Button>
         {message ? <p className="w-full text-xs text-muted-foreground">{message}</p> : null}
       </div>
@@ -84,7 +86,7 @@ export function FriendButton({ targetUserId, initialState, friendshipId }: Frien
           onClick={() => runAction(() => cancelFriendRequest(activeFriendshipId), "ADD_FRIEND", true)}
         >
           <X className="h-4 w-4" />
-          Request sent
+          {t("friends.button.requestSent")}
         </Button>
         {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
       </div>
@@ -101,7 +103,7 @@ export function FriendButton({ targetUserId, initialState, friendshipId }: Frien
           onClick={() => runAction(() => removeFriend(activeFriendshipId), "ADD_FRIEND", true)}
         >
           <UserCheck className="h-4 w-4" />
-          Friends
+          {t("friends.button.friends")}
         </Button>
         {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
       </div>
@@ -116,7 +118,7 @@ export function FriendButton({ targetUserId, initialState, friendshipId }: Frien
         onClick={() => runAction(() => sendFriendRequest(targetUserId), "REQUEST_SENT")}
       >
         <UserPlus className="h-4 w-4" />
-        Add Friend
+        {t("friends.button.add")}
       </Button>
       {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
     </div>

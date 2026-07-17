@@ -7,6 +7,7 @@ import { markAllNotificationsReadAction } from "@/actions/notification.actions";
 import { Button } from "@/components/ui/button";
 import { NotificationItem } from "@/components/notifications/notification-item";
 import type { NotificationListItem } from "@/types/notification.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type NotificationDropdownProps = {
   notifications: NotificationListItem[];
@@ -16,6 +17,7 @@ type NotificationDropdownProps = {
 };
 
 export function NotificationDropdown({ notifications, onClose, onRead, onReadAll }: NotificationDropdownProps) {
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const hasUnread = notifications.some((notification) => !notification.readAt);
 
@@ -38,8 +40,8 @@ export function NotificationDropdown({ notifications, onClose, onRead, onReadAll
     <div className="fixed bottom-20 right-3 z-50 w-[calc(100vw-1.5rem)] max-w-sm overflow-hidden rounded-md border bg-card shadow-xl md:bottom-auto md:left-16 md:right-auto md:top-4">
       <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
         <div>
-          <p className="text-sm font-semibold">Notifications</p>
-          <p className="text-xs text-muted-foreground">Latest activity</p>
+          <p className="text-sm font-semibold">{t("notifications.title")}</p>
+          <p className="text-xs text-muted-foreground">{t("notifications.latest")}</p>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -48,7 +50,7 @@ export function NotificationDropdown({ notifications, onClose, onRead, onReadAll
             size="sm"
             type="button"
             variant="ghost"
-            aria-label="Mark all notifications as read"
+            aria-label={t("notifications.markAllAria")}
             onClick={handleMarkAllRead}
           >
             <CheckCheck className="h-4 w-4" />
@@ -58,7 +60,7 @@ export function NotificationDropdown({ notifications, onClose, onRead, onReadAll
             size="sm"
             type="button"
             variant="ghost"
-            aria-label="Close notifications"
+            aria-label={t("notifications.closeAria")}
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -79,8 +81,8 @@ export function NotificationDropdown({ notifications, onClose, onRead, onReadAll
         ) : (
           <div className="grid gap-2 px-4 py-8 text-center">
             <Inbox className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="text-sm font-medium">No notifications yet</p>
-            <p className="text-xs text-muted-foreground">Likes, comments, messages, and friend requests will appear here.</p>
+            <p className="text-sm font-medium">{t("notifications.emptyTitle")}</p>
+            <p className="text-xs text-muted-foreground">{t("notifications.emptyDescription")}</p>
           </div>
         )}
       </div>
@@ -90,7 +92,7 @@ export function NotificationDropdown({ notifications, onClose, onRead, onReadAll
         href="/notifications"
         onClick={onClose}
       >
-        View all
+        {t("notifications.viewAll")}
       </Link>
     </div>
   );

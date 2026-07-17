@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { searchPlayersForUser } from "@/server/queries/user.queries";
+import { createTranslator } from "@/i18n/dictionary";
 
 type SearchPageProps = {
   searchParams: Promise<{
@@ -28,6 +29,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
 
   const params = await searchParams;
   const query = getSearchQuery(params.q);
@@ -36,9 +38,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <section className="mx-auto grid max-w-3xl gap-5 px-4 py-10">
       <div>
-        <h1 className="text-3xl font-bold">Search</h1>
+        <h1 className="text-3xl font-bold">{t("search.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Find players by name, username, club, position, or city.
+          {t("search.description")}
         </p>
       </div>
       <form action="/search" className="flex flex-col gap-2 sm:flex-row">
@@ -48,18 +50,18 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             className="pl-9"
             defaultValue={query}
             name="q"
-            placeholder="Search players"
+            placeholder={t("search.placeholder")}
             type="search"
           />
         </div>
         <div className="flex gap-2">
           <Button type="submit">
             <Search className="h-4 w-4" />
-            Search
+            {t("search.submit")}
           </Button>
           {query ? (
             <Button asChild type="button" variant="outline">
-              <Link href="/search">Clear</Link>
+              <Link href="/search">{t("search.clear")}</Link>
             </Button>
           ) : null}
         </div>
@@ -68,7 +70,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       {!query ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            Search for players to view profiles and send friend requests.
+            {t("search.initialHint")}
           </CardContent>
         </Card>
       ) : null}
@@ -76,7 +78,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       {query && query.length < 2 ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            Type at least 2 characters to search players.
+            {t("search.minLength")}
           </CardContent>
         </Card>
       ) : null}
@@ -84,7 +86,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       {query.length >= 2 && players.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            No players found for "{query}".
+            {t("search.noResults", { query })}
           </CardContent>
         </Card>
       ) : null}
@@ -92,7 +94,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       {players.length > 0 ? (
         <div className="grid gap-3">
           {players.map((player) => {
-            const displayName = player.name ?? "FanPitch Player";
+            const displayName = player.name ?? t("profile.summary.playerFallback");
             const profileMeta = [player.favoriteClub, player.preferredPosition].filter(Boolean).join(" · ");
             const profileHref = player.username ? `/profile/${player.username}` : "/profile";
 
@@ -110,7 +112,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold">{displayName}</span>
                       <span className="block truncate text-xs text-muted-foreground">
-                        @{player.username ?? "profile"}
+                        @{player.username ?? t("profile.summary.profileFallback")}
                       </span>
                       {profileMeta ? (
                         <span className="mt-1 block truncate text-xs text-muted-foreground">{profileMeta}</span>

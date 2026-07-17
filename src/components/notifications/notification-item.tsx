@@ -7,6 +7,8 @@ import { markNotificationReadAction } from "@/actions/notification.actions";
 import { cn } from "@/lib/utils";
 import { getActorDisplayName } from "@/lib/notifications/notification-copy";
 import type { NotificationListItem, NotificationType } from "@/types/notification.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { RelativeTime } from "@/components/i18n/relative-time";
 
 type NotificationItemProps = {
   notification: NotificationListItem;
@@ -25,10 +27,11 @@ const typeIcon: Record<NotificationType, typeof Bell> = {
 };
 
 export function NotificationItem({ notification, onNavigate, onRead }: NotificationItemProps) {
+  const { locale, t } = useI18n();
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const Icon = typeIcon[notification.type] ?? Bell;
-  const actorName = getActorDisplayName(notification.actor);
+  const actorName = getActorDisplayName(notification.actor, t("notifications.someone"));
   const isUnread = !notification.readAt;
 
   async function handleClick() {
@@ -81,42 +84,12 @@ export function NotificationItem({ notification, onNavigate, onRead }: Notificat
         <span className={cn("block break-words text-sm leading-5", isUnread ? "font-semibold" : "font-medium")}>
           {notification.text}
         </span>
-        <span className="mt-1 block text-xs text-muted-foreground">{formatRelativeTime(notification.createdAt)}</span>
+        <span className="mt-1 block text-xs text-muted-foreground">
+          <RelativeTime value={notification.createdAt} locale={locale} />
+        </span>
       </span>
 
       {isUnread ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" /> : null}
     </button>
   );
-}
-
-function formatRelativeTime(value: string) {
-  const timestamp = new Date(value).getTime();
-  const diffSeconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
-
-  if (diffSeconds < 60) {
-    return "just now";
-  }
-
-  const diffMinutes = Math.floor(diffSeconds / 60);
-
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m`;
-  }
-
-  const diffHours = Math.floor(diffMinutes / 60);
-
-  if (diffHours < 24) {
-    return `${diffHours}h`;
-  }
-
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays < 7) {
-    return `${diffDays}d`;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric"
-  }).format(new Date(value));
 }

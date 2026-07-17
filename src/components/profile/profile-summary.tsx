@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Globe2, Lock, MapPin, Settings, Shield, Shirt, Sparkles, UserPlus, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type ProfileSummaryProps = {
   action?: ReactNode;
@@ -37,14 +40,15 @@ type ProfileSummaryProps = {
 };
 
 export function ProfileSummary({ action, user }: ProfileSummaryProps) {
-  const displayName = user.name ?? "FanPitch Player";
+  const { t } = useI18n();
+  const displayName = user.name ?? t("profile.summary.playerFallback");
   const stats = user.stats ?? { matchesPlayed: 0, goals: 0, assists: 0 };
   const isPrivate = user.profileVisibility !== "PUBLIC";
   const profileAction = action ?? (
     <Button asChild variant="outline">
       <Link href="/settings">
         <Settings className="h-4 w-4" />
-        Settings
+        {t("profile.summary.settings")}
       </Link>
     </Button>
   );
@@ -78,35 +82,35 @@ export function ProfileSummary({ action, user }: ProfileSummaryProps) {
                   <h1 className="text-3xl font-bold">{displayName}</h1>
                   <Badge variant="secondary">
                     {isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Globe2 className="h-3.5 w-3.5" />}
-                    {isPrivate ? "Private" : "Public"}
+                    {isPrivate ? t("profile.summary.private") : t("profile.summary.public")}
                   </Badge>
                 </div>
-                <p className="text-muted-foreground">@{user.username ?? "set-your-username"}</p>
+                <p className="text-muted-foreground">@{user.username ?? t("profile.summary.usernameFallback")}</p>
               </div>
             </div>
             {profileAction}
           </div>
 
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            {user.bio ?? "Add a short football bio so nearby players know your style."}
+            {user.bio ?? t("profile.summary.bioFallback")}
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Badge variant="secondary">
               <Shirt className="h-3.5 w-3.5" />
-              {user.preferredPosition ?? "Preferred position"}
+              {user.preferredPosition ?? t("profile.summary.preferredPosition")}
             </Badge>
             <Badge variant="secondary">
               <MapPin className="h-3.5 w-3.5" />
-              {user.location ?? "City"}
+              {user.location ?? t("profile.summary.city")}
             </Badge>
           </div>
 
           <FavoriteTeamsSummary teams={user.favoriteTeams} />
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <SocialStat label="Posts" value={user.social.posts} />
-            <SocialStat label="Friends" value={user.social.friends} />
+            <SocialStat label={t("profile.summary.posts")} value={user.social.posts} friends={false} />
+            <SocialStat label={t("profile.summary.friends")} value={user.social.friends} friends />
           </div>
         </div>
 
@@ -114,18 +118,18 @@ export function ProfileSummary({ action, user }: ProfileSummaryProps) {
           <div className="rounded-md border bg-background p-4">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Sparkles className="h-4 w-4 text-primary" />
-              Player metrics
+              {t("profile.summary.metrics")}
             </div>
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <Stat label="Matches" value={stats.matchesPlayed} />
-              <Stat label="Goals" value={stats.goals} />
-              <Stat label="Assists" value={stats.assists} />
+              <Stat label={t("profile.summary.matches")} value={stats.matchesPlayed} />
+              <Stat label={t("profile.summary.goals")} value={stats.goals} />
+              <Stat label={t("profile.summary.assists")} value={stats.assists} />
             </div>
           </div>
           <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
-            Avoided position:{" "}
+            {t("profile.summary.avoidedPosition")}{" "}
             <span className="font-medium text-foreground">
-              {user.avoidedPosition ?? "Not set"}
+              {user.avoidedPosition ?? t("profile.summary.notSet")}
             </span>
           </div>
         </div>
@@ -144,11 +148,12 @@ function FavoriteTeamsSummary({
     badgeUrl?: string | null;
   }[];
 }) {
+  const { t } = useI18n();
   return (
     <div className="grid gap-3">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Shield className="h-4 w-4 text-primary" />
-        Favorite teams
+        {t("profile.favoriteTeams.title")}
       </div>
       {teams.length ? (
         <div className="flex flex-wrap gap-2">
@@ -167,15 +172,15 @@ function FavoriteTeamsSummary({
         </div>
       ) : (
         <div className="rounded-md border bg-background p-3 text-sm text-muted-foreground">
-          No favorite teams yet.
+          {t("profile.favoriteTeams.empty")}
         </div>
       )}
     </div>
   );
 }
 
-function SocialStat({ label, value }: { label: string; value: number }) {
-  const Icon = label === "Friends" ? UserPlus : Users;
+function SocialStat({ label, value, friends }: { label: string; value: number; friends: boolean }) {
+  const Icon = friends ? UserPlus : Users;
 
   return (
     <div className="rounded-md border bg-background p-3">

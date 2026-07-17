@@ -7,6 +7,7 @@ import { inviteUserToClubAction } from "@/actions/club.actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type ClubInviteFormProps = {
   clubId: string;
@@ -23,6 +24,7 @@ type InviteSearchResult = {
 };
 
 export function ClubInviteForm({ clubId, canAssignTd }: ClubInviteFormProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [role, setRole] = useState("PLAYER");
@@ -38,7 +40,7 @@ export function ClubInviteForm({ clubId, canAssignTd }: ClubInviteFormProps) {
 
     if (trimmedQuery.length < 2) {
       setPlayers([]);
-      setMessage("Type at least 2 characters.");
+      setMessage(t("clubs.inviteForm.minSearch"));
       return;
     }
 
@@ -51,12 +53,12 @@ export function ClubInviteForm({ clubId, canAssignTd }: ClubInviteFormProps) {
 
       if (!data?.ok) {
         setPlayers([]);
-        setMessage(data?.message ?? "Could not search players.");
+        setMessage(data?.message ?? t("clubs.inviteForm.searchFailed"));
         return;
       }
 
       setPlayers(data.players);
-      setMessage(data.players.length ? "" : "No players found.");
+      setMessage(data.players.length ? "" : t("clubs.inviteForm.empty"));
     });
   }
 
@@ -80,7 +82,7 @@ export function ClubInviteForm({ clubId, canAssignTd }: ClubInviteFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Invite player</CardTitle>
+        <CardTitle>{t("clubs.inviteForm.title")}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
         <form className="grid gap-3 md:grid-cols-[1fr_160px_auto]" onSubmit={handleSearch}>
@@ -90,18 +92,18 @@ export function ClubInviteForm({ clubId, canAssignTd }: ClubInviteFormProps) {
               className="pl-9"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name or username"
+              placeholder={t("clubs.inviteForm.searchPlaceholder")}
               type="search"
             />
           </div>
           <select value={role} onChange={(event) => setRole(event.target.value)} className={selectClassName}>
-            <option value="PLAYER">Player</option>
+            <option value="PLAYER">{t("clubs.common.rolePlayer")}</option>
             <option value="YTD">YTD</option>
             {canAssignTd ? <option value="TD">TD</option> : null}
           </select>
           <Button type="submit" disabled={pending}>
             <Search className="h-4 w-4" />
-            Search
+            {t("clubs.inviteForm.search")}
           </Button>
         </form>
 
@@ -110,7 +112,7 @@ export function ClubInviteForm({ clubId, canAssignTd }: ClubInviteFormProps) {
         {players.length ? (
           <div className="grid gap-2">
             {players.map((player) => {
-              const displayName = player.name ?? "PeerFootball player";
+              const displayName = player.name ?? t("clubs.inviteForm.playerFallback");
               const meta = [player.preferredPosition, player.location].filter(Boolean).join(" / ");
 
               return (
@@ -121,13 +123,13 @@ export function ClubInviteForm({ clubId, canAssignTd }: ClubInviteFormProps) {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{displayName}</p>
-                      <p className="truncate text-xs text-muted-foreground">@{player.username ?? "profile"}</p>
+                      <p className="truncate text-xs text-muted-foreground">@{player.username ?? t("clubs.inviteForm.profileFallback")}</p>
                       {meta ? <p className="mt-1 truncate text-xs text-muted-foreground">{meta}</p> : null}
                     </div>
                   </div>
                   <Button type="button" size="sm" disabled={pending} onClick={() => invitePlayer(player.id)}>
                     <UserPlus className="h-4 w-4" />
-                    Invite
+                    {t("clubs.inviteForm.invite")}
                   </Button>
                 </div>
               );

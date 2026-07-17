@@ -1,10 +1,12 @@
 import type { MetadataRoute } from "next";
+import { getServerTranslator } from "@/i18n/server";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const t = await getServerTranslator();
   return {
     name: "FanPitch",
     short_name: "FanPitch",
-    description: "A football social network for players and fans.",
+    description: t("common.metadataDescription"),
     start_url: "/",
     scope: "/",
     display: "standalone",
@@ -33,16 +35,16 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
-        name: "Feed",
-        short_name: "Feed",
-        description: "Open your FanPitch feed.",
+        name: t("nav.home"),
+        short_name: t("nav.home"),
+        description: t("common.feedShortcutDescription"),
         url: "/feed",
         icons: [{ src: "/icons/icon-192", sizes: "192x192", type: "image/png" }]
       },
       {
-        name: "Matches",
-        short_name: "Matches",
-        description: "Find and organize local football matches.",
+        name: t("nav.matches"),
+        short_name: t("nav.matches"),
+        description: t("common.matchesShortcutDescription"),
         url: "/matches",
         icons: [{ src: "/icons/icon-192", sizes: "192x192", type: "image/png" }]
       }

@@ -12,6 +12,8 @@ import { DeletePostDialog } from "@/components/posts/delete-post-dialog";
 import { PostMediaGrid } from "@/components/posts/post-media-grid";
 import { RepostDialog } from "@/components/posts/repost-dialog";
 import type { FeedPost, OriginalPostPreview, PostComment } from "@/types/post.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { RelativeTime } from "@/components/i18n/relative-time";
 
 type PostCardProps = {
   post: FeedPost;
@@ -19,6 +21,7 @@ type PostCardProps = {
 };
 
 export function PostCard({ post, comments = [] }: PostCardProps) {
+  const { locale, t } = useI18n();
   const router = useRouter();
   const [liked, setLiked] = useState(post.likedByMe);
   const [likesCount, setLikesCount] = useState(post.likesCount);
@@ -28,7 +31,7 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const authorName = post.author.name ?? "FanPitch Player";
+  const authorName = post.author.name ?? t("profile.summary.playerFallback");
   const profileHref = `/profile/${post.author.username ?? post.author.id}`;
   const displayedContent = post.originalPost ? post.repostNote : post.content;
   const repostTarget = useMemo<OriginalPostPreview | null>(() => {
@@ -101,12 +104,12 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
                 {authorName}
               </Link>
               <p className="truncate text-sm text-muted-foreground">
-                @{post.author.username ?? "profile"} - {formatRelativeTime(post.createdAt)}
+                @{post.author.username ?? t("profile.summary.profileFallback")} - <RelativeTime value={post.createdAt} locale={locale} />
               </p>
               {post.originalPost ? (
                 <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                   <Repeat2 className="h-3.5 w-3.5" />
-                  Reposted
+                  {t("posts.card.reposted")}
                 </p>
               ) : null}
             </div>
@@ -176,7 +179,8 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
 }
 
 function OriginalPostPreviewCard({ post }: { post: OriginalPostPreview }) {
-  const authorName = post.author.name ?? "FanPitch Player";
+  const { locale, t } = useI18n();
+  const authorName = post.author.name ?? t("profile.summary.playerFallback");
 
   return (
     <div className="grid gap-3 rounded-md border bg-background p-3">
@@ -192,7 +196,7 @@ function OriginalPostPreviewCard({ post }: { post: OriginalPostPreview }) {
             {authorName}
           </Link>
           <p className="truncate text-xs text-muted-foreground">
-            @{post.author.username ?? "profile"} - {formatRelativeTime(post.createdAt)}
+            @{post.author.username ?? t("profile.summary.profileFallback")} - <RelativeTime value={post.createdAt} locale={locale} />
           </p>
         </div>
       </div>
@@ -200,36 +204,4 @@ function OriginalPostPreviewCard({ post }: { post: OriginalPostPreview }) {
       <PostMediaGrid media={post.media} compact />
     </div>
   );
-}
-
-function formatRelativeTime(value: string) {
-  const timestamp = new Date(value).getTime();
-  const diffSeconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
-
-  if (diffSeconds < 60) {
-    return "just now";
-  }
-
-  const diffMinutes = Math.floor(diffSeconds / 60);
-
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m`;
-  }
-
-  const diffHours = Math.floor(diffMinutes / 60);
-
-  if (diffHours < 24) {
-    return `${diffHours}h`;
-  }
-
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays < 7) {
-    return `${diffDays}d`;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric"
-  }).format(new Date(value));
 }

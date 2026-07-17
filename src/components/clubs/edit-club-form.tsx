@@ -9,12 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClubDetails } from "@/types/club.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type EditClubFormProps = {
   club: ClubDetails;
 };
 
 export function EditClubForm({ club }: EditClubFormProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [issues, setIssues] = useState<Record<string, string[] | undefined> | undefined>();
@@ -45,28 +47,28 @@ export function EditClubForm({ club }: EditClubFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Club info</CardTitle>
+        <CardTitle>{t("clubs.editForm.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4" onSubmit={handleSubmit}>
-          <Field label="Club name" name="name" defaultValue={club.name} required error={issues?.name?.[0]} />
-          <Field label="Slug" name="slug" defaultValue={club.slug} required error={issues?.slug?.[0]} />
+          <Field label={t("clubs.form.name")} name="name" defaultValue={club.name} required error={issues?.name?.[0]} />
+          <Field label={t("clubs.form.slug")} name="slug" defaultValue={club.slug} required error={issues?.slug?.[0]} />
           <label className="grid gap-2 text-sm font-medium">
-            Visibility
+            {t("clubs.form.visibility")}
             <select name="visibility" defaultValue={club.visibility} className={selectClassName}>
-              <option value="OPEN">Open</option>
-              <option value="REQUEST_ONLY">Request only</option>
-              <option value="INVITE_ONLY">Invite only</option>
+              <option value="OPEN">{t("clubs.common.visibilityOpen")}</option>
+              <option value="REQUEST_ONLY">{t("clubs.common.visibilityRequestOnly")}</option>
+              <option value="INVITE_ONLY">{t("clubs.common.visibilityInviteOnly")}</option>
             </select>
           </label>
           <label className="grid gap-2 text-sm font-medium">
-            Description
+            {t("clubs.form.description")}
             <Textarea name="description" defaultValue={club.description ?? ""} maxLength={500} rows={4} />
             {issues?.description?.[0] ? <span className="text-xs text-destructive">{issues.description[0]}</span> : null}
           </label>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="City" name="city" defaultValue={club.city ?? ""} error={issues?.city?.[0]} />
-            <Field label="Country" name="country" defaultValue={club.country ?? ""} error={issues?.country?.[0]} />
+            <Field label={t("clubs.form.city")} name="city" defaultValue={club.city ?? ""} error={issues?.city?.[0]} />
+            <Field label={t("clubs.form.country")} name="country" defaultValue={club.country ?? ""} error={issues?.country?.[0]} />
           </div>
           <input type="hidden" name="logoUrl" value={club.logoUrl ?? ""} />
           <input type="hidden" name="coverUrl" value={club.coverUrl ?? ""} />
@@ -74,26 +76,26 @@ export function EditClubForm({ club }: EditClubFormProps) {
             <ImageFileField
               error={issues?.logoFile?.[0]}
               icon="logo"
-              label="Club logo"
+              label={t("clubs.form.logo")}
               name="logoFile"
               preview={
                 club.logoUrl ? (
                   <img src={club.logoUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-sm text-muted-foreground">No logo</span>
+                  <span className="text-sm text-muted-foreground">{t("clubs.form.noLogo")}</span>
                 )
               }
             />
             <ImageFileField
               error={issues?.coverFile?.[0]}
               icon="cover"
-              label="Cover photo"
+              label={t("clubs.form.cover")}
               name="coverFile"
               preview={
                 club.coverUrl ? (
                   <img src={club.coverUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-sm text-muted-foreground">No cover photo</span>
+                  <span className="text-sm text-muted-foreground">{t("clubs.form.noCover")}</span>
                 )
               }
             />
@@ -101,7 +103,7 @@ export function EditClubForm({ club }: EditClubFormProps) {
           {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
           <Button type="submit" disabled={pending} className="w-fit">
             <Save className="h-4 w-4" />
-            {pending ? "Saving..." : "Save club"}
+            {pending ? t("common.saving") : t("clubs.editForm.submit")}
           </Button>
         </form>
       </CardContent>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { FavoriteTeamSearchResult, UserFavoriteTeamSummary } from "@/types/profile.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type FavoriteTeamsPickerProps = {
   favoriteTeams: UserFavoriteTeamSummary[];
@@ -23,6 +24,7 @@ type TeamSearchResponse =
     };
 
 export function FavoriteTeamsPicker({ favoriteTeams }: FavoriteTeamsPickerProps) {
+  const { t } = useI18n();
   const [savedTeams, setSavedTeams] = useState(favoriteTeams);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<FavoriteTeamSearchResult[]>([]);
@@ -52,7 +54,7 @@ export function FavoriteTeamsPicker({ favoriteTeams }: FavoriteTeamsPickerProps)
 
     if (trimmed.length < 2) {
       setResults([]);
-      setMessage("Search must be at least 2 characters.");
+      setMessage(t("profile.favoriteTeams.minSearch"));
       return;
     }
 
@@ -69,10 +71,10 @@ export function FavoriteTeamsPicker({ favoriteTeams }: FavoriteTeamsPickerProps)
       }
 
       setResults(data.teams);
-      setMessage(data.teams.length ? "" : "No teams found.");
+      setMessage(data.teams.length ? "" : t("profile.favoriteTeams.noResults"));
     } catch {
       setResults([]);
-      setMessage("Team search is unavailable right now.");
+      setMessage(t("profile.favoriteTeams.searchUnavailable"));
     } finally {
       setIsSearching(false);
     }
@@ -123,7 +125,7 @@ export function FavoriteTeamsPicker({ favoriteTeams }: FavoriteTeamsPickerProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Favorite teams</CardTitle>
+        <CardTitle>{t("profile.favoriteTeams.title")}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-5">
         <div className="grid gap-3">
@@ -140,7 +142,7 @@ export function FavoriteTeamsPicker({ favoriteTeams }: FavoriteTeamsPickerProps)
             </div>
           ) : (
             <div className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
-              No favorite teams yet.
+              {t("profile.favoriteTeams.empty")}
             </div>
           )}
         </div>
@@ -149,12 +151,12 @@ export function FavoriteTeamsPicker({ favoriteTeams }: FavoriteTeamsPickerProps)
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search football teams"
+            placeholder={t("profile.favoriteTeams.searchPlaceholder")}
             className="sm:flex-1"
           />
           <Button type="submit" disabled={isSearching}>
             <Search className="h-4 w-4" />
-            {isSearching ? "Searching..." : "Search"}
+            {isSearching ? t("profile.favoriteTeams.searching") : t("profile.favoriteTeams.search")}
           </Button>
         </form>
 
@@ -171,7 +173,7 @@ export function FavoriteTeamsPicker({ favoriteTeams }: FavoriteTeamsPickerProps)
                   key={team.externalId}
                   team={team}
                   disabled={duplicate || atLimit || (isPending && busyTeamId === team.externalId)}
-                  label={duplicate ? "Added" : atLimit ? "Limit reached" : "Add"}
+                  label={duplicate ? t("profile.favoriteTeams.added") : atLimit ? t("profile.favoriteTeams.limitReached") : t("profile.favoriteTeams.add")}
                   onAdd={() => handleAdd(team)}
                 />
               );
@@ -192,13 +194,14 @@ function SavedTeamCard({
   disabled: boolean;
   onRemove: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex min-w-0 items-center gap-3 rounded-md border bg-background p-3">
       <TeamLogo src={team.badgeUrl ?? team.logoUrl} name={team.name} />
       <TeamDetails name={team.name} country={team.country} league={team.league} />
       <Button type="button" variant="ghost" size="sm" className="ml-auto shrink-0 px-2" disabled={disabled} onClick={onRemove}>
         <X className="h-4 w-4" />
-        <span className="sr-only">Remove {team.name}</span>
+        <span className="sr-only">{t("profile.favoriteTeams.remove", { team: team.name })}</span>
       </Button>
     </div>
   );
@@ -251,11 +254,12 @@ function TeamDetails({
   country?: string | null;
   league?: string | null;
 }) {
+  const { t } = useI18n();
   return (
     <div className="min-w-0">
       <p className="truncate text-sm font-medium">{name}</p>
       <p className="truncate text-xs text-muted-foreground">
-        {[country, league].filter(Boolean).join(" - ") || "Football team"}
+        {[country, league].filter(Boolean).join(" - ") || t("profile.favoriteTeams.teamFallback")}
       </p>
     </div>
   );

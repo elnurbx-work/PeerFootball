@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { getClubBySlug, getClubMetricDefinitions } from "@/server/queries/club.queries";
 import { canManageClubMetrics } from "@/server/services/club-permissions.service";
+import { createTranslator } from "@/i18n/dictionary";
 
 type ClubMetricsPageProps = {
   params: Promise<{
@@ -19,6 +20,7 @@ export default async function ClubMetricsPage({ params }: ClubMetricsPageProps) 
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
 
   const { slug } = await params;
   const club = await getClubBySlug(decodeURIComponent(slug), currentUser.id);
@@ -41,9 +43,9 @@ export default async function ClubMetricsPage({ params }: ClubMetricsPageProps) 
         </Link>
       </Button>
       <div>
-        <h1 className="text-3xl font-bold">Internal metrics</h1>
+        <h1 className="text-3xl font-bold">{t("clubs.pages.metrics.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Define up to 6 club-specific player metrics.
+          {t("clubs.pages.metrics.description")}
         </p>
       </div>
       <ClubMetricsList clubId={club.id} metrics={metrics} canManage={canManage && club.isActive} />

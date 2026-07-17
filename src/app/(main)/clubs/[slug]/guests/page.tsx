@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { getClubBySlug, getClubGuests } from "@/server/queries/club.queries";
 import { canManageGuestList } from "@/server/services/club-permissions.service";
+import { createTranslator } from "@/i18n/dictionary";
 
 type ClubGuestsPageProps = {
   params: Promise<{
@@ -19,6 +20,7 @@ export default async function ClubGuestsPage({ params }: ClubGuestsPageProps) {
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
 
   const { slug } = await params;
   const club = await getClubBySlug(decodeURIComponent(slug), currentUser.id);
@@ -41,9 +43,9 @@ export default async function ClubGuestsPage({ params }: ClubGuestsPageProps) {
         </Link>
       </Button>
       <div>
-        <h1 className="text-3xl font-bold">Guest list</h1>
+        <h1 className="text-3xl font-bold">{t("clubs.pages.guests.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Repeated non-account players for future match selection.
+          {t("clubs.pages.guests.description")}
         </p>
       </div>
       <ClubGuestList clubId={club.id} guests={guests} canManage={canManage && club.isActive} />

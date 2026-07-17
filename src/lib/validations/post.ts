@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Translate } from "@/i18n/dictionary";
 
 export const POST_CONTENT_MAX_LENGTH = 1000;
 export const COMMENT_CONTENT_MAX_LENGTH = 500;
@@ -35,9 +36,9 @@ function isFileLike(value: unknown): value is File {
   );
 }
 
-export function getPostMediaValidationError(file: File): string | null {
+export function getPostMediaValidationError(file: File, t: Translate): string | null {
   if (!ALLOWED_MEDIA_TYPES.includes(file.type as (typeof ALLOWED_MEDIA_TYPES)[number])) {
-    return `${file.name} must be a JPEG, PNG, WebP, MP4, WebM, or MOV file.`;
+    return t("responses.validation.mediaType", { name: file.name });
   }
 
   const isImage = ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number]);
@@ -45,19 +46,21 @@ export function getPostMediaValidationError(file: File): string | null {
   const maxSizeLabel = isImage ? "5MB" : "50MB";
 
   if (file.size > maxSize) {
-    return `${file.name} must be ${maxSizeLabel} or smaller.`;
+    return t("responses.validation.mediaSize", { name: file.name, size: maxSizeLabel });
   }
 
   return null;
 }
 
-export const postMediaFileSchema = z.custom<File>(isFileLike, "Media file is invalid.").superRefine((file, ctx) => {
-  const message = getPostMediaValidationError(file);
+export const postMediaFileSchema = z.custom<File>(isFileLike, "validation.mediaInvalid").superRefine((file, ctx) => {
+  const invalidType = !ALLOWED_MEDIA_TYPES.includes(file.type as (typeof ALLOWED_MEDIA_TYPES)[number]);
+  const isImage = ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number]);
+  const tooLarge = file.size > (isImage ? MAX_IMAGE_SIZE_BYTES : MAX_VIDEO_SIZE_BYTES);
 
-  if (message) {
+  if (invalidType || tooLarge) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message
+      message: invalidType ? "validation.mediaType" : "validation.mediaSize"
     });
   }
 });
@@ -66,13 +69,13 @@ export const createPostSchema = z
   .object({
     content: optionalTrimmedString(POST_CONTENT_MAX_LENGTH),
     visibility: visibilitySchema.optional().default("PUBLIC"),
-    media: z.array(postMediaFileSchema).max(MAX_POST_MEDIA_COUNT, `Choose up to ${MAX_POST_MEDIA_COUNT} media files.`).optional()
+    media: z.array(postMediaFileSchema).max(MAX_POST_MEDIA_COUNT, "validation.mediaLimit").optional()
   })
   .superRefine((value, ctx) => {
     if (!value.content && (!value.media || value.media.length === 0)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Add text or media before posting.",
+        message: "validation.postContentRequired",
         path: ["content"]
       });
     }

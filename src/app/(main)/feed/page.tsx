@@ -1,8 +1,12 @@
+import Link from "next/link";
+import { PenSquare } from "lucide-react";
 import { PostCard } from "@/components/posts/post-card";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getCurrentUser } from "@/lib/auth";
 import { getFeedPosts, getPostComments } from "@/server/queries/post.queries";
 import { redirect } from "next/navigation";
+import { createTranslator } from "@/i18n/dictionary";
 
 export default async function FeedPage() {
   const currentUser = await getCurrentUser();
@@ -10,6 +14,7 @@ export default async function FeedPage() {
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
 
   const posts = await getFeedPosts(currentUser.id);
   const commentsByPostId = new Map(
@@ -21,9 +26,9 @@ export default async function FeedPage() {
   return (
     <section className="mx-auto grid max-w-3xl gap-5 px-4 py-10">
       <div>
-        <h1 className="text-3xl font-bold">Home</h1>
+        <h1 className="text-3xl font-bold">{t("posts.pages.feed.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Signed in as {currentUser.name} @{currentUser.username ?? "profile"}
+          {t("posts.pages.feed.signedIn", { name: currentUser.name ?? t("profile.summary.playerFallback"), username: currentUser.username ?? t("profile.summary.profileFallback") })}
         </p>
       </div>
       {posts.length ? (
@@ -31,11 +36,16 @@ export default async function FeedPage() {
           <PostCard key={post.id} post={post} comments={commentsByPostId.get(post.id) ?? []} />
         ))
       ) : (
-        <Card>
-          <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            No posts yet.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={PenSquare}
+          title={t("posts.pages.feed.emptyTitle")}
+          description={t("posts.pages.feed.emptyDescription")}
+          action={
+            <Button asChild>
+              <Link href="/create">{t("posts.pages.feed.create")}</Link>
+            </Button>
+          }
+        />
       )}
     </section>
   );

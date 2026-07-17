@@ -18,6 +18,8 @@ import type {
   MessageSender,
   RealtimeChatMessage
 } from "@/types/message.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { RelativeTime } from "@/components/i18n/relative-time";
 
 type DirectInboxProps = {
   currentUser: MessageSender;
@@ -39,6 +41,7 @@ export function DirectInbox({
   initialConversationId,
   messagesByConversationId
 }: DirectInboxProps) {
+  const { locale, t } = useI18n();
   const [friendsState, setFriendsState] = useState(friends);
   const [messagesByConversationIdState, setMessagesByConversationIdState] = useState(messagesByConversationId);
   const initialFriend = friends.find((friend) => friend.conversationId === initialConversationId) ?? friends[0];
@@ -136,10 +139,10 @@ export function DirectInbox({
     () =>
       friendsState.map((friend) => ({
         ...friend,
-        displayName: friend.name ?? "FanPitch Player",
-        preview: friend.lastMessage?.content ?? "Start a conversation"
+        displayName: friend.name ?? t("profile.summary.playerFallback"),
+        preview: friend.lastMessage?.content ?? t("direct.startConversation")
       })),
-    [friendsState]
+    [friendsState, t]
   );
 
   useEffect(() => {
@@ -291,7 +294,7 @@ export function DirectInbox({
       }
 
       if (!result.data) {
-        setError("Message was saved, but the response was incomplete.");
+        setError(t("direct.incompleteResponse"));
         return;
       }
 
@@ -417,7 +420,7 @@ export function DirectInbox({
           message.id === messageId
             ? {
                 ...message,
-                content: "Message deleted",
+                content: t("direct.messageDeleted"),
                 deletedAt
               }
             : message
@@ -432,7 +435,7 @@ export function DirectInbox({
               ...friend,
               lastMessage: {
                 ...friend.lastMessage,
-                content: "Message deleted",
+                content: t("direct.messageDeleted"),
                 deletedAt
               }
             }
@@ -445,16 +448,16 @@ export function DirectInbox({
     return (
       <div className="rounded-md border bg-card p-8 text-center">
         <Users className="mx-auto h-10 w-10 text-muted-foreground" />
-        <h2 className="mt-3 text-lg font-semibold">No friends yet</h2>
+        <h2 className="mt-3 text-lg font-semibold">{t("direct.noFriendsTitle")}</h2>
         <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-          Accepted friends will appear here so you can start a direct message.
+          {t("direct.noFriendsDescription")}
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <Button asChild>
-            <Link href="/search">Find players</Link>
+            <Link href="/search">{t("direct.findPlayers")}</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/friends?tab=incoming">Friend requests</Link>
+            <Link href="/friends?tab=incoming">{t("direct.friendRequests")}</Link>
           </Button>
         </div>
       </div>
@@ -470,12 +473,12 @@ export function DirectInbox({
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <MessageCircle className="h-4 w-4 text-primary" />
-                Friends
+                {t("direct.friends")}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">All accepted friends are available for direct messages.</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("direct.friendsDescription")}</p>
             </div>
             <Button asChild size="sm" variant="outline" className="shrink-0">
-              <Link href="/friends?tab=incoming">Manage</Link>
+              <Link href="/friends?tab=incoming">{t("direct.manage")}</Link>
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -510,7 +513,7 @@ export function DirectInbox({
                       </span>
                     ) : null}
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">@{friend.username ?? "profile"}</p>
+                  <p className="truncate text-xs text-muted-foreground">@{friend.username ?? t("profile.summary.profileFallback")}</p>
                   <p className="mt-1 truncate text-xs text-muted-foreground">{friend.preview}</p>
                 </div>
               </button>
@@ -534,25 +537,25 @@ export function DirectInbox({
                   className="shrink-0 md:hidden"
                   variant="outline"
                   type="button"
-                  aria-label="Back to messages"
+                  aria-label={t("direct.backToMessages")}
                   onClick={() => setIsMobileChatOpen(false)}
                 >
                   <ArrowLeft className="h-5 w-5" />
-                  Chats
+                  {t("direct.chats")}
                 </Button>
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary font-semibold">
                   {selectedFriend.image ? (
                     <img src={selectedFriend.image} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    (selectedFriend.name ?? "FanPitch Player").charAt(0)
+                    (selectedFriend.name ?? t("profile.summary.playerFallback")).charAt(0)
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate font-semibold">{selectedFriend.name ?? "FanPitch Player"}</h2>
+                  <h2 className="truncate font-semibold">{selectedFriend.name ?? t("profile.summary.playerFallback")}</h2>
                   <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
                     <span className={cn("h-2 w-2 rounded-full", isOtherUserOnline ? "bg-primary" : "bg-muted-foreground")} />
-                    <span>{isOtherUserOnline ? "Online" : "Offline"}</span>
-                    <span className="truncate">@{selectedFriend.username ?? "profile"}</span>
+                    <span>{isOtherUserOnline ? t("direct.online") : t("direct.offline")}</span>
+                    <span className="truncate">@{selectedFriend.username ?? t("profile.summary.profileFallback")}</span>
                   </div>
                 </div>
               </div>
@@ -584,7 +587,7 @@ export function DirectInbox({
                           {message.content}
                         </p>
                         <div className={cn("mt-1 flex items-center gap-2 text-[11px]", message.isOwnMessage ? "text-primary-foreground/75" : "text-muted-foreground")}>
-                          <span>{formatRelativeTime(message.createdAt)}</span>
+                          <RelativeTime value={message.createdAt} locale={locale} />
                           {message.senderId === currentUserId && !message.deletedAt ? (
                             <button
                               className="inline-flex items-center gap-1 opacity-80 hover:opacity-100 disabled:opacity-50"
@@ -593,7 +596,7 @@ export function DirectInbox({
                               onClick={() => handleDeleteMessage(message.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
-                              Delete
+                              {t("direct.delete")}
                             </button>
                           ) : null}
                         </div>
@@ -603,9 +606,9 @@ export function DirectInbox({
                 ) : (
                   <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
                     <MessageCircle className="h-10 w-10 text-muted-foreground" />
-                    <h3 className="mt-3 font-semibold">No messages yet</h3>
+                    <h3 className="mt-3 font-semibold">{t("direct.noMessagesTitle")}</h3>
                     <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                      Send the first message to start this conversation.
+                      {t("direct.noMessagesDescription")}
                     </p>
                   </div>
                 )}
@@ -616,7 +619,7 @@ export function DirectInbox({
                 <Textarea
                   className="min-h-20"
                   maxLength={MESSAGE_CONTENT_MAX_LENGTH}
-                  placeholder={`Message ${selectedFriend.name ?? "your friend"}`}
+                  placeholder={t("direct.messagePlaceholder", { name: selectedFriend.name ?? t("direct.yourFriend") })}
                   value={content}
                   onChange={(event) => setContent(event.target.value)}
                   onKeyDown={handleComposerKeyDown}
@@ -630,7 +633,7 @@ export function DirectInbox({
                   </div>
                   <Button type="submit" disabled={pending || !trimmedLength}>
                     <Send className="h-4 w-4" />
-                    {pending ? "Sending..." : "Send"}
+                    {pending ? t("direct.sending") : t("direct.send")}
                   </Button>
                 </div>
               </form>
@@ -682,36 +685,4 @@ function debugRealtime(message: string, details?: unknown) {
   if (process.env.NODE_ENV === "development") {
     console.debug(`[ably] ${message}`, details);
   }
-}
-
-function formatRelativeTime(value: string) {
-  const timestamp = new Date(value).getTime();
-  const diffSeconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
-
-  if (diffSeconds < 60) {
-    return "just now";
-  }
-
-  const diffMinutes = Math.floor(diffSeconds / 60);
-
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m`;
-  }
-
-  const diffHours = Math.floor(diffMinutes / 60);
-
-  if (diffHours < 24) {
-    return `${diffHours}h`;
-  }
-
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays < 7) {
-    return `${diffDays}d`;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric"
-  }).format(new Date(value));
 }

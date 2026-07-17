@@ -15,49 +15,51 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import type { MessageKey } from "@/i18n/config";
 
 export const primaryNavItems = [
-  { href: "/feed", label: "Home", icon: Home },
-  { href: "/matches", label: "Match", icon: Trophy },
-  { href: "/direct", label: "Direct", icon: MessageCircle },
-  { href: "/search", label: "Search", icon: Search },
-  { href: "/profile", label: "Profile", icon: UserCircle }
+  { href: "/feed", labelKey: "nav.home" as MessageKey, icon: Home },
+  { href: "/matches", labelKey: "nav.match" as MessageKey, icon: Trophy },
+  { href: "/direct", labelKey: "nav.direct" as MessageKey, icon: MessageCircle },
+  { href: "/search", labelKey: "nav.search" as MessageKey, icon: Search },
+  { href: "/profile", labelKey: "nav.profile" as MessageKey, icon: UserCircle }
 ];
 
-const createItem = { href: "/create", label: "Create Post", icon: Plus };
+const createItem = { href: "/create", labelKey: "nav.createPost" as MessageKey, icon: Plus };
 
 const panelContent = {
   "/feed": {
-    title: "Home",
-    description: "Main football flow",
+    titleKey: "nav.home" as MessageKey,
+    descriptionKey: "nav.homeDescription" as MessageKey,
     links: [
-      { href: "/feed", label: "Flow", description: "Posts and updates", icon: Home },
-      { href: "/create", label: "Create Post", description: "Share a new update", icon: Plus }
+      { href: "/feed", labelKey: "nav.home" as MessageKey, descriptionKey: "nav.postsDescription" as MessageKey, icon: Home },
+      { href: "/create", labelKey: "nav.createPost" as MessageKey, descriptionKey: "nav.createDescription" as MessageKey, icon: Plus }
     ]
   },
   "/matches": {
-    title: "Match",
-    description: "Games and squads",
+    titleKey: "nav.match" as MessageKey,
+    descriptionKey: "nav.matchDescription" as MessageKey,
     links: [
-      { href: "/matches", label: "Matches", description: "Local games", icon: CalendarDays },
-      { href: "/clubs", label: "Clubs", description: "Club management", icon: Shield }
+      { href: "/matches", labelKey: "nav.matches" as MessageKey, descriptionKey: "nav.matchesDescription" as MessageKey, icon: CalendarDays },
+      { href: "/clubs", labelKey: "nav.clubs" as MessageKey, descriptionKey: "nav.clubsDescription" as MessageKey, icon: Shield }
     ]
   },
   "/direct": {
-    title: "Direct",
-    description: "Messages",
+    titleKey: "nav.direct" as MessageKey,
+    descriptionKey: "nav.directDescription" as MessageKey,
     links: [
-      { href: "/direct", label: "Inbox", description: "Your conversations", icon: MessageCircle },
-      { href: "/friends", label: "Friends", description: "Requests and friends", icon: Users },
-      { href: "/profile", label: "Contacts", description: "Players you know", icon: UserCircle }
+      { href: "/direct", labelKey: "nav.inbox" as MessageKey, descriptionKey: "nav.inboxDescription" as MessageKey, icon: MessageCircle },
+      { href: "/friends", labelKey: "nav.friends" as MessageKey, descriptionKey: "nav.friendsDescription" as MessageKey, icon: Users },
+      { href: "/profile", labelKey: "nav.contacts" as MessageKey, descriptionKey: "nav.contactsDescription" as MessageKey, icon: UserCircle }
     ]
   },
   "/profile": {
-    title: "Profile",
-    description: "Your football identity",
+    titleKey: "nav.profile" as MessageKey,
+    descriptionKey: "nav.profileDescription" as MessageKey,
     links: [
-      { href: "/profile", label: "Overview", description: "Public profile", icon: UserCircle },
-      { href: "/matches", label: "Matches", description: "Your football games", icon: CalendarDays }
+      { href: "/profile", labelKey: "nav.overview" as MessageKey, descriptionKey: "nav.overviewDescription" as MessageKey, icon: UserCircle },
+      { href: "/matches", labelKey: "nav.matches" as MessageKey, descriptionKey: "nav.matchesDescription" as MessageKey, icon: CalendarDays }
     ]
   }
 };
@@ -114,6 +116,7 @@ type DirectUnreadIndicatorProps = {
 };
 
 export function SiteSidebarRailNav({ hasUnreadDirectMessages = false }: DirectUnreadIndicatorProps) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const activeRoot = getActiveRoot(pathname);
 
@@ -133,9 +136,9 @@ export function SiteSidebarRailNav({ hasUnreadDirectMessages = false }: DirectUn
                 "relative h-11 w-11 px-0 text-muted-foreground hover:text-foreground",
                 isActive && "bg-secondary text-foreground"
               )}
-              title={item.label}
+              title={t(item.labelKey)}
             >
-              <Link href={item.href} aria-label={item.label}>
+              <Link href={item.href} aria-label={t(item.labelKey)}>
                 <item.icon className="h-5 w-5" />
                 {item.href === "/direct" && hasUnreadDirectMessages ? (
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
@@ -149,6 +152,7 @@ export function SiteSidebarRailNav({ hasUnreadDirectMessages = false }: DirectUn
 }
 
 export function CreatePostButton() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const isActive = pathname.startsWith(createItem.href);
 
@@ -160,9 +164,9 @@ export function CreatePostButton() {
         "h-11 w-11 px-0 text-muted-foreground hover:text-foreground",
         isActive && "bg-secondary text-foreground"
       )}
-      title={createItem.label}
+      title={t(createItem.labelKey)}
     >
-      <Link href={createItem.href} aria-label={createItem.label}>
+      <Link href={createItem.href} aria-label={t(createItem.labelKey)}>
         <Plus className="h-5 w-5" />
       </Link>
     </Button>
@@ -170,6 +174,7 @@ export function CreatePostButton() {
 }
 
 export function MatchTopButton() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const isActive = getActiveRoot(pathname) === "/matches";
 
@@ -181,9 +186,9 @@ export function MatchTopButton() {
         "h-11 w-11 px-0 text-muted-foreground hover:text-foreground",
         isActive && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
       )}
-      title="Match"
+      title={t("nav.match")}
     >
-      <Link href="/matches" aria-label="Match">
+      <Link href="/matches" aria-label={t("nav.match")}>
         <Trophy className="h-5 w-5" />
       </Link>
     </Button>
@@ -191,6 +196,7 @@ export function MatchTopButton() {
 }
 
 export function SiteSidebarPanelNav() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const activeRoot = getActiveRoot(pathname);
   const hasSecondaryPanel = useSecondaryPanel();
@@ -203,8 +209,8 @@ export function SiteSidebarPanelNav() {
   return (
     <div className="hidden w-60 flex-col border-r px-4 py-5 md:flex">
       <div>
-        <p className="text-lg font-bold">{content.title}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{content.description}</p>
+        <p className="text-lg font-bold">{t(content.titleKey)}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t(content.descriptionKey)}</p>
       </div>
 
       <nav className="mt-7 grid gap-1">
@@ -222,8 +228,8 @@ export function SiteSidebarPanelNav() {
             >
               <item.icon className="h-5 w-5 shrink-0" />
               <span className="min-w-0">
-                <span className="block font-medium">{item.label}</span>
-                <span className="block truncate text-xs text-muted-foreground">{item.description}</span>
+                <span className="block font-medium">{t(item.labelKey)}</span>
+                <span className="block truncate text-xs text-muted-foreground">{t(item.descriptionKey)}</span>
               </span>
             </Link>
           );
@@ -234,6 +240,7 @@ export function SiteSidebarPanelNav() {
 }
 
 export function MobileBottomNav({ hasUnreadDirectMessages = false }: DirectUnreadIndicatorProps) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const activeRoot = getActiveRoot(pathname);
   const items = [...primaryNavItems, createItem];
@@ -247,7 +254,7 @@ export function MobileBottomNav({ hasUnreadDirectMessages = false }: DirectUnrea
           <Link
             key={item.href}
             href={item.href}
-            aria-label={item.label}
+            aria-label={t(item.labelKey)}
             className={cn(
               "relative flex items-center justify-center text-muted-foreground transition-colors hover:text-foreground",
               isActive && "text-foreground"

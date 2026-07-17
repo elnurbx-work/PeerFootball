@@ -10,6 +10,7 @@ import { getFriendshipStatusForUsers } from "@/server/queries/friendship.queries
 import { getPostComments, getProfilePosts } from "@/server/queries/post.queries";
 import { getProfileSummaryBySlug } from "@/server/queries/profile.queries";
 import { canViewProfile } from "@/server/services/privacy.service";
+import { createTranslator, type Translate } from "@/i18n/dictionary";
 
 type UserProfilePageProps = {
   params: Promise<{
@@ -23,6 +24,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
 
   const { username } = await params;
   const result = await getProfileSummaryBySlug(decodeURIComponent(username));
@@ -61,6 +63,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
           image={profile.image}
           name={profile.name}
           username={profile.username}
+          t={t}
         />
       </section>
     );
@@ -95,7 +98,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
         ) : (
           <Card>
             <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              No posts yet.
+              {t("profile.pages.noPosts")}
             </CardContent>
           </Card>
         )}
@@ -109,13 +112,15 @@ function PrivateProfileNotice({
   image,
   name,
   username
+  , t
 }: {
   action?: ReactNode;
   image: string | null;
   name: string | null;
   username: string | null;
+  t: Translate;
 }) {
-  const displayName = name ?? "FanPitch Player";
+  const displayName = name ?? t("profile.summary.playerFallback");
 
   return (
     <Card>
@@ -129,9 +134,9 @@ function PrivateProfileNotice({
               <Lock className="h-4 w-4 text-muted-foreground" />
               <h1 className="truncate text-xl font-bold">{displayName}</h1>
             </div>
-            <p className="truncate text-sm text-muted-foreground">@{username ?? "profile"}</p>
+            <p className="truncate text-sm text-muted-foreground">@{username ?? t("profile.summary.profileFallback")}</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              This account is private. Become friends to view the full profile.
+              {t("profile.pages.privateDescription")}
             </p>
           </div>
         </div>

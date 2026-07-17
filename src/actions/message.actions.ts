@@ -1,5 +1,7 @@
 "use server";
 
+import { localizedFieldErrors } from "@/i18n/zod";
+
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -19,14 +21,16 @@ import {
 } from "@/server/services/ably.service";
 import type { ApiResponse } from "@/types/api.types";
 import type { ChatMessage, ConversationUpdatePayload, RealtimeChatMessage, SendMessageInput } from "@/types/message.types";
+import { getServerTranslator } from "@/i18n/server";
 
 type ActionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
 export async function sendMessageAction(input: SendMessageInput): Promise<ApiResponse<{ message: ChatMessage; messageId: string; conversationId: string }>> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const result = sendMessageSchema.safeParse(input);
@@ -34,8 +38,8 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
   if (!result.success) {
     return {
       ok: false,
-      message: "Message details are invalid.",
-      issues: result.error.flatten().fieldErrors
+      message: t("responses.message.invalid"),
+      issues: localizedFieldErrors(result.error, t)
     };
   }
 
@@ -45,7 +49,7 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
     if (!(await isConversationMember(conversationId, user.id))) {
       return {
         ok: false,
-        message: "Conversation was not found."
+        message: t("responses.message.conversationNotFound")
       };
     }
   } else if (result.data.recipientId) {
@@ -61,7 +65,7 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
     if (!recipient || !(await canSendDirectMessage(user.id, recipient.id))) {
       return {
         ok: false,
-        message: "You can only message accepted friends."
+        message: t("responses.message.friendsOnly")
       };
     }
 
@@ -71,7 +75,7 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
   if (!conversationId) {
     return {
       ok: false,
-      message: "Conversation was not found."
+      message: t("responses.message.conversationNotFound")
     };
   }
 
@@ -79,10 +83,10 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
 
   try {
     encryptedMessage = encryptMessage(result.data.content);
-  } catch (error) {
+  } catch {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Message encryption failed."
+      message: t("responses.message.encryptionFailed")
     };
   }
 
@@ -158,7 +162,7 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
 
   return {
     ok: true,
-    message: "Message sent.",
+    message: t("responses.message.sent"),
     data: {
       message: {
         ...realtimeMessage,
@@ -171,10 +175,11 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
 }
 
 export async function deleteMessageAction(messageId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const result = deleteMessageSchema.safeParse({ messageId });
@@ -182,8 +187,8 @@ export async function deleteMessageAction(messageId: string): Promise<ApiRespons
   if (!result.success) {
     return {
       ok: false,
-      message: "Message details are invalid.",
-      issues: result.error.flatten().fieldErrors
+      message: t("responses.message.invalid"),
+      issues: localizedFieldErrors(result.error, t)
     };
   }
 
@@ -202,21 +207,21 @@ export async function deleteMessageAction(messageId: string): Promise<ApiRespons
   if (!message || !(await isConversationMember(message.conversationId, user.id))) {
     return {
       ok: false,
-      message: "Message was not found."
+      message: t("responses.message.notFound")
     };
   }
 
   if (message.senderId !== user.id) {
     return {
       ok: false,
-      message: "You can only delete your own messages."
+      message: t("responses.message.deleteOwnOnly")
     };
   }
 
   if (message.deletedAt) {
     return {
       ok: true,
-      message: "Message deleted."
+      message: t("responses.message.deleted")
     };
   }
 
@@ -258,21 +263,22 @@ export async function deleteMessageAction(messageId: string): Promise<ApiRespons
 
   return {
     ok: true,
-    message: "Message deleted."
+    message: t("responses.message.deleted")
   };
 }
 
 export async function markConversationReadAction(conversationId: string): Promise<ApiResponse<{ conversationId: string; readAt: string }>> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   if (!conversationId || !(await isConversationMember(conversationId, user.id))) {
     return {
       ok: false,
-      message: "Conversation was not found."
+      message: t("responses.message.conversationNotFound")
     };
   }
 
@@ -310,7 +316,7 @@ export async function markConversationReadAction(conversationId: string): Promis
 
   return {
     ok: true,
-    message: "Conversation marked as read.",
+    message: t("responses.message.read"),
     data: {
       conversationId,
       readAt: readAt.toISOString()
@@ -353,13 +359,6 @@ async function getOrCreateDirectConversation(currentUserId: string, recipientId:
 
 async function requireUser() {
   return getCurrentUser();
-}
-
-function unauthenticatedResponse(): ApiResponse<never> {
-  return {
-    ok: false,
-    message: "You need to sign in first."
-  };
 }
 
 function revalidateMessageSurfaces() {

@@ -1,6 +1,9 @@
+"use client";
+
 import { MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type TeamCardProps = {
   team: {
@@ -12,6 +15,7 @@ type TeamCardProps = {
 };
 
 export function TeamCard({ team }: TeamCardProps) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardHeader>
@@ -27,7 +31,7 @@ export function TeamCard({ team }: TeamCardProps) {
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">
             <Users className="h-3.5 w-3.5" />
-            {team.membersCount} members
+            {t("common.membersCount", { count: team.membersCount })}
           </Badge>
           <Badge variant="secondary">
             <MapPin className="h-3.5 w-3.5" />

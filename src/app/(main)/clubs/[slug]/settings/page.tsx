@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { getClubBySlug, getClubMembers } from "@/server/queries/club.queries";
 import { isClubOwner } from "@/server/services/club-permissions.service";
+import { createTranslator } from "@/i18n/dictionary";
 
 type ClubSettingsPageProps = {
   params: Promise<{
@@ -21,6 +22,7 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
 
   const { slug } = await params;
   const club = await getClubBySlug(decodeURIComponent(slug), currentUser.id);
@@ -44,8 +46,8 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
         </Link>
       </Button>
       <div>
-        <h1 className="text-3xl font-bold">Club settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Owner-only club controls.</p>
+        <h1 className="text-3xl font-bold">{t("clubs.pages.settings.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("clubs.pages.settings.description")}</p>
       </div>
       <EditClubForm club={club} />
       <ClubSettingsForm club={club} />

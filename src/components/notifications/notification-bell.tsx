@@ -9,6 +9,7 @@ import { getUserInboxChannelName, NOTIFICATION_EVENTS } from "@/lib/ably-channel
 import { cn } from "@/lib/utils";
 import { toNotificationListItem } from "@/lib/notifications/notification-copy";
 import type { AppNotification, NotificationListItem } from "@/types/notification.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type NotificationBellProps = {
   currentUserId: string;
@@ -21,16 +22,17 @@ export function NotificationBell({
   initialNotifications,
   initialUnreadCount
 }: NotificationBellProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [notifications, setNotifications] = useState<NotificationListItem[]>(
-    initialNotifications.map(toNotificationListItem)
+    initialNotifications.map((notification) => toNotificationListItem(notification, t))
   );
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
 
   useEffect(() => {
-    setNotifications(initialNotifications.map(toNotificationListItem));
-  }, [initialNotifications]);
+    setNotifications(initialNotifications.map((notification) => toNotificationListItem(notification, t)));
+  }, [initialNotifications, t]);
 
   useEffect(() => {
     setUnreadCount(initialUnreadCount);
@@ -71,7 +73,7 @@ export function NotificationBell({
     const channel = ably.channels.get(channelName);
 
     const handleNewNotification = (message: InboundMessage) => {
-      const notification = toNotificationListItem(message.data as AppNotification);
+      const notification = toNotificationListItem(message.data as AppNotification, t);
 
       if (notification.type === "MESSAGE") {
         return;
@@ -116,7 +118,7 @@ export function NotificationBell({
       channel.unsubscribe(NOTIFICATION_EVENTS.notificationsReadAll, handleNotificationsReadAll);
       ably.close();
     };
-  }, [currentUserId]);
+  }, [currentUserId, t]);
 
   function markLocalRead(notificationId: string) {
     const readAt = new Date().toISOString();
@@ -162,10 +164,10 @@ export function NotificationBell({
           "relative h-11 w-11 px-0 text-muted-foreground hover:text-foreground",
           open && "bg-secondary text-foreground"
         )}
-        title="Notifications"
+        title={t("notifications.title")}
         type="button"
         variant="ghost"
-        aria-label="Notifications"
+        aria-label={t("notifications.title")}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >

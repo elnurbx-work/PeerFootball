@@ -1,5 +1,7 @@
 "use server";
 
+import { localizedFieldErrors } from "@/i18n/zod";
+
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -39,6 +41,8 @@ import {
 } from "@/server/services/cloudinary.service";
 import type { ApiResponse } from "@/types/api.types";
 import { addUserToClubChat, removeUserFromClubChat } from "@/server/services/club-chat.service";
+import { getServerTranslator } from "@/i18n/server";
+import type { Translate } from "@/i18n/dictionary";
 
 type ActionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 type ClubImageUploadData = {
@@ -53,16 +57,17 @@ const MAX_CLUB_IMAGE_SIZE = 5 * 1024 * 1024;
 const CLUB_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export async function createClubAction(input: unknown): Promise<ApiResponse<{ clubId: string; slug: string }>> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const formData = input instanceof FormData ? input : null;
   const logoFile = formData ? getImageFile(formData, "logoFile") : null;
   const coverFile = formData ? getImageFile(formData, "coverFile") : null;
-  const imageValidation = validateClubImages(logoFile, coverFile);
+  const imageValidation = validateClubImages(logoFile, coverFile, t);
 
   if (imageValidation) {
     return imageValidation;
@@ -71,13 +76,13 @@ export async function createClubAction(input: unknown): Promise<ApiResponse<{ cl
   const result = createClubSchema.safeParse(normalizeClubInput(input));
 
   if (!result.success) {
-    return validationResponse("Club details are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.invalid"), localizedFieldErrors(result.error, t));
   }
 
   if (await userHasOwnedClub(user.id)) {
     return {
       ok: false,
-      message: "You can create only one club for now."
+      message: t("responses.club.createLimit")
     };
   }
 
@@ -87,7 +92,7 @@ export async function createClubAction(input: unknown): Promise<ApiResponse<{ cl
     slug,
     logoFile,
     coverFile
-  });
+  }, t);
 
   if (!uploadResult.ok) {
     return uploadResult;
@@ -139,7 +144,7 @@ export async function createClubAction(input: unknown): Promise<ApiResponse<{ cl
 
   return {
     ok: true,
-    message: "Club created.",
+    message: t("responses.club.created"),
     data: {
       clubId: club.id,
       slug: club.slug
@@ -148,16 +153,17 @@ export async function createClubAction(input: unknown): Promise<ApiResponse<{ cl
 }
 
 export async function updateClubAction(clubId: string, input: unknown): Promise<ApiResponse<{ slug: string }>> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const formData = input instanceof FormData ? input : null;
   const logoFile = formData ? getImageFile(formData, "logoFile") : null;
   const coverFile = formData ? getImageFile(formData, "coverFile") : null;
-  const imageValidation = validateClubImages(logoFile, coverFile);
+  const imageValidation = validateClubImages(logoFile, coverFile, t);
 
   if (imageValidation) {
     return imageValidation;
@@ -166,11 +172,11 @@ export async function updateClubAction(clubId: string, input: unknown): Promise<
   const result = updateClubSchema.safeParse(normalizeClubInput(input));
 
   if (!result.success) {
-    return validationResponse("Club details are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.invalid"), localizedFieldErrors(result.error, t));
   }
 
   if (!(await canManageClubSettings(user.id, clubId))) {
-    return forbiddenResponse();
+    return forbiddenResponse(t);
   }
 
   await ensureClubActive(clubId);
@@ -185,7 +191,7 @@ export async function updateClubAction(clubId: string, input: unknown): Promise<
   });
 
   if (!existingClub) {
-    return notFoundResponse();
+    return notFoundResponse(t);
   }
 
   let slug = existingClub.slug;
@@ -199,7 +205,7 @@ export async function updateClubAction(clubId: string, input: unknown): Promise<
     slug,
     logoFile,
     coverFile
-  });
+  }, t);
 
   if (!uploadResult.ok) {
     return uploadResult;
@@ -236,20 +242,21 @@ export async function updateClubAction(clubId: string, input: unknown): Promise<
 
   return {
     ok: true,
-    message: "Club updated.",
+    message: t("responses.club.updated"),
     data: { slug }
   };
 }
 
 export async function deactivateClubAction(clubId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   if (!(await isClubOwner(user.id, clubId))) {
-    return forbiddenResponse("Only the owner can deactivate a club.");
+    return forbiddenResponse(t, t("responses.club.ownerDeactivateOnly"));
   }
 
   const club = await prisma.club.update({
@@ -268,27 +275,28 @@ export async function deactivateClubAction(clubId: string): Promise<ApiResponse>
 
   return {
     ok: true,
-    message: "Club deactivated."
+    message: t("responses.club.deactivated")
   };
 }
 
 export async function transferClubOwnershipAction(input: unknown): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const result = transferClubOwnershipSchema.safeParse(toInputObject(input));
 
   if (!result.success) {
-    return validationResponse("Ownership transfer details are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.transferInvalid"), localizedFieldErrors(result.error, t));
   }
 
   const { clubId, newOwnerMemberId, oldOwnerNewRole } = result.data;
 
   if (!(await isClubOwner(user.id, clubId))) {
-    return forbiddenResponse("Only the owner can transfer ownership.");
+    return forbiddenResponse(t, t("responses.club.ownerTransferOnly"));
   }
 
   await ensureClubActive(clubId);
@@ -325,14 +333,14 @@ export async function transferClubOwnershipAction(input: unknown): Promise<ApiRe
   if (!currentOwnerMember || !newOwnerMember || !club) {
     return {
       ok: false,
-      message: "Owner transfer could not be completed."
+      message: t("responses.club.transferFailed")
     };
   }
 
   if (newOwnerMember.userId === user.id) {
     return {
       ok: false,
-      message: "Choose another active member as the new owner."
+      message: t("responses.club.chooseNewOwner")
     };
   }
 
@@ -355,25 +363,26 @@ export async function transferClubOwnershipAction(input: unknown): Promise<ApiRe
 
   return {
     ok: true,
-    message: "Ownership transferred."
+    message: t("responses.club.transferred")
   };
 }
 
 export async function updateClubSettingsAction(clubId: string, input: unknown): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const result = updateClubSettingsSchema.safeParse(toInputObject(input));
 
   if (!result.success) {
-    return validationResponse("Club settings are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.settingsInvalid"), localizedFieldErrors(result.error, t));
   }
 
   if (!(await canManageClubSettings(user.id, clubId))) {
-    return forbiddenResponse("Only the owner can update club settings.");
+    return forbiddenResponse(t, t("responses.club.ownerSettingsOnly"));
   }
 
   await ensureClubActive(clubId);
@@ -386,7 +395,7 @@ export async function updateClubSettingsAction(clubId: string, input: unknown): 
   if (!club) {
     return {
       ok: false,
-      message: "Club was not found."
+      message: t("responses.club.notFound")
     };
   }
 
@@ -404,18 +413,19 @@ export async function updateClubSettingsAction(clubId: string, input: unknown): 
 
   return {
     ok: true,
-    message: "Club settings updated."
+    message: t("responses.club.settingsUpdated")
   };
 }
 
 export async function joinOpenClubAction(clubId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
-  const club = await getActiveClubForMembership(clubId);
+  const club = await getActiveClubForMembership(clubId, t);
 
   if (!club.ok) {
     return club;
@@ -424,7 +434,7 @@ export async function joinOpenClubAction(clubId: string): Promise<ApiResponse> {
   if (club.data.visibility !== "OPEN") {
     return {
       ok: false,
-      message: "This club is not open for direct joining."
+      message: t("responses.club.notOpen")
     };
   }
 
@@ -433,7 +443,7 @@ export async function joinOpenClubAction(clubId: string): Promise<ApiResponse> {
   if (existingMembership) {
     return {
       ok: false,
-      message: getExistingMembershipMessage(existingMembership.status)
+      message: getExistingMembershipMessage(existingMembership.status, t)
     };
   }
 
@@ -462,18 +472,19 @@ export async function joinOpenClubAction(clubId: string): Promise<ApiResponse> {
 
   return {
     ok: true,
-    message: "You joined the club."
+    message: t("responses.club.joined")
   };
 }
 
 export async function requestJoinClubAction(clubId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
-  const club = await getActiveClubForMembership(clubId);
+  const club = await getActiveClubForMembership(clubId, t);
 
   if (!club.ok) {
     return club;
@@ -482,7 +493,7 @@ export async function requestJoinClubAction(clubId: string): Promise<ApiResponse
   if (club.data.visibility !== "REQUEST_ONLY") {
     return {
       ok: false,
-      message: "This club does not accept join requests."
+      message: t("responses.club.requestsDisabled")
     };
   }
 
@@ -491,7 +502,7 @@ export async function requestJoinClubAction(clubId: string): Promise<ApiResponse
   if (existingMembership) {
     return {
       ok: false,
-      message: getExistingMembershipMessage(existingMembership.status)
+      message: getExistingMembershipMessage(existingMembership.status, t)
     };
   }
 
@@ -516,25 +527,26 @@ export async function requestJoinClubAction(clubId: string): Promise<ApiResponse
 
   return {
     ok: true,
-    message: "Join request sent."
+    message: t("responses.club.requestSent")
   };
 }
 
 export async function approveJoinRequestAction(memberId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const member = await getMemberForDecision(memberId);
 
   if (!member) {
-    return notFoundResponse("Join request was not found.");
+    return notFoundResponse(t, t("responses.club.requestNotFound"));
   }
 
   if (!(await canApproveJoinRequests(user.id, member.clubId))) {
-    return forbiddenResponse("You cannot approve join requests for this club.");
+    return forbiddenResponse(t, t("responses.club.cannotApprove"));
   }
 
   await ensureClubActive(member.clubId);
@@ -542,7 +554,7 @@ export async function approveJoinRequestAction(memberId: string): Promise<ApiRes
   if (member.status !== "REQUESTED") {
     return {
       ok: false,
-      message: "This member is not waiting for approval."
+      message: t("responses.club.notAwaitingApproval")
     };
   }
 
@@ -562,25 +574,26 @@ export async function approveJoinRequestAction(memberId: string): Promise<ApiRes
 
   return {
     ok: true,
-    message: "Join request approved."
+    message: t("responses.club.requestApproved")
   };
 }
 
 export async function rejectJoinRequestAction(memberId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const member = await getMemberForDecision(memberId);
 
   if (!member) {
-    return notFoundResponse("Join request was not found.");
+    return notFoundResponse(t, t("responses.club.requestNotFound"));
   }
 
   if (!(await canApproveJoinRequests(user.id, member.clubId))) {
-    return forbiddenResponse("You cannot reject join requests for this club.");
+    return forbiddenResponse(t, t("responses.club.cannotReject"));
   }
 
   await ensureClubActive(member.clubId);
@@ -588,7 +601,7 @@ export async function rejectJoinRequestAction(memberId: string): Promise<ApiResp
   if (member.status !== "REQUESTED") {
     return {
       ok: false,
-      message: "This member is not waiting for approval."
+      message: t("responses.club.notAwaitingApproval")
     };
   }
 
@@ -602,31 +615,32 @@ export async function rejectJoinRequestAction(memberId: string): Promise<ApiResp
 
   return {
     ok: true,
-    message: "Join request rejected."
+    message: t("responses.club.requestRejected")
   };
 }
 
 export async function inviteUserToClubAction(input: unknown): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const result = inviteUserToClubSchema.safeParse(toInputObject(input));
 
   if (!result.success) {
-    return validationResponse("Club invite details are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.inviteInvalid"), localizedFieldErrors(result.error, t));
   }
 
   const { clubId, userId, role } = result.data;
 
   if (!(await canInvitePlayers(user.id, clubId))) {
-    return forbiddenResponse("You cannot invite players to this club.");
+    return forbiddenResponse(t, t("responses.club.cannotInvite"));
   }
 
   if (role === "TD" && !(await isClubOwner(user.id, clubId))) {
-    return forbiddenResponse("Only the club owner can invite a Technical Director.");
+    return forbiddenResponse(t, t("responses.club.ownerInviteTdOnly"));
   }
 
   await ensureClubActive(clubId);
@@ -646,14 +660,14 @@ export async function inviteUserToClubAction(input: unknown): Promise<ApiRespons
   if (!club || !invitedUser) {
     return {
       ok: false,
-      message: "Club or user was not found."
+      message: t("responses.club.clubOrUserNotFound")
     };
   }
 
   if (existingMembership) {
     return {
       ok: false,
-      message: getExistingMembershipMessage(existingMembership.status)
+      message: getExistingMembershipMessage(existingMembership.status, t)
     };
   }
 
@@ -679,21 +693,22 @@ export async function inviteUserToClubAction(input: unknown): Promise<ApiRespons
 
   return {
     ok: true,
-    message: "Club invite sent."
+    message: t("responses.club.inviteSent")
   };
 }
 
 export async function acceptClubInviteAction(memberId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const member = await getMemberForDecision(memberId);
 
   if (!member || member.userId !== user.id) {
-    return notFoundResponse("Invite was not found.");
+    return notFoundResponse(t, t("responses.club.inviteNotFound"));
   }
 
   await ensureClubActive(member.clubId);
@@ -701,7 +716,7 @@ export async function acceptClubInviteAction(memberId: string): Promise<ApiRespo
   if (member.status !== "INVITED") {
     return {
       ok: false,
-      message: "This invite is no longer active."
+      message: t("responses.club.inviteInactive")
     };
   }
 
@@ -721,15 +736,16 @@ export async function acceptClubInviteAction(memberId: string): Promise<ApiRespo
 
   return {
     ok: true,
-    message: "Club invite accepted."
+    message: t("responses.club.inviteAccepted")
   };
 }
 
 export async function leaveClubAction(clubId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   await ensureClubActive(clubId);
@@ -748,13 +764,13 @@ export async function leaveClubAction(clubId: string): Promise<ApiResponse> {
   });
 
   if (!member) {
-    return notFoundResponse("Membership was not found.");
+    return notFoundResponse(t, t("responses.club.membershipNotFound"));
   }
 
   if (member.role === "OWNER") {
     return {
       ok: false,
-      message: "Transfer ownership before leaving this club."
+      message: t("responses.club.transferBeforeLeaving")
     };
   }
 
@@ -771,25 +787,26 @@ export async function leaveClubAction(clubId: string): Promise<ApiResponse> {
 
   return {
     ok: true,
-    message: "You left the club."
+    message: t("responses.club.left")
   };
 }
 
 export async function removeClubMemberAction(memberId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const member = await getMemberForDecision(memberId);
 
   if (!member) {
-    return notFoundResponse("Membership was not found.");
+    return notFoundResponse(t, t("responses.club.membershipNotFound"));
   }
 
   if (!(await isClubOwner(user.id, member.clubId))) {
-    return forbiddenResponse("Only the owner can remove members.");
+    return forbiddenResponse(t, t("responses.club.ownerRemoveOnly"));
   }
 
   await ensureClubActive(member.clubId);
@@ -797,7 +814,7 @@ export async function removeClubMemberAction(memberId: string): Promise<ApiRespo
   if (member.role === "OWNER") {
     return {
       ok: false,
-      message: "Transfer ownership before removing the current owner."
+      message: t("responses.club.transferBeforeRemoveOwner")
     };
   }
 
@@ -814,31 +831,32 @@ export async function removeClubMemberAction(memberId: string): Promise<ApiRespo
 
   return {
     ok: true,
-    message: "Club member removed."
+    message: t("responses.club.memberRemoved")
   };
 }
 
 export async function changeClubMemberRoleAction(input: unknown): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const result = changeClubMemberRoleSchema.safeParse(toInputObject(input));
 
   if (!result.success) {
-    return validationResponse("Member role details are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.roleInvalid"), localizedFieldErrors(result.error, t));
   }
 
   const member = await getMemberForDecision(result.data.memberId);
 
   if (!member) {
-    return notFoundResponse("Membership was not found.");
+    return notFoundResponse(t, t("responses.club.membershipNotFound"));
   }
 
   if (!(await isClubOwner(user.id, member.clubId))) {
-    return forbiddenResponse("Only the owner can change member roles.");
+    return forbiddenResponse(t, t("responses.club.ownerRoleOnly"));
   }
 
   await ensureClubActive(member.clubId);
@@ -846,7 +864,7 @@ export async function changeClubMemberRoleAction(input: unknown): Promise<ApiRes
   if (member.role === "OWNER") {
     return {
       ok: false,
-      message: "Use owner transfer to change the club owner."
+      message: t("responses.club.useTransfer")
     };
   }
 
@@ -860,27 +878,28 @@ export async function changeClubMemberRoleAction(input: unknown): Promise<ApiRes
 
   return {
     ok: true,
-    message: "Member role updated."
+    message: t("responses.club.roleUpdated")
   };
 }
 
 export async function createClubGuestAction(input: unknown): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const result = createClubGuestSchema.safeParse(toInputObject(input));
 
   if (!result.success) {
-    return validationResponse("Guest details are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.guestInvalid"), localizedFieldErrors(result.error, t));
   }
 
   const { clubId, ...data } = result.data;
 
   if (!(await canManageGuestList(user.id, clubId))) {
-    return forbiddenResponse("You cannot manage the guest list for this club.");
+    return forbiddenResponse(t, t("responses.club.guestForbidden"));
   }
 
   await ensureClubActive(clubId);
@@ -897,22 +916,23 @@ export async function createClubGuestAction(input: unknown): Promise<ApiResponse
 
   return {
     ok: true,
-    message: "Guest added.",
+    message: t("responses.club.guestAdded"),
     data: toClubGuestDto(guest)
   };
 }
 
 export async function updateClubGuestAction(input: unknown): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const result = updateClubGuestSchema.safeParse(toInputObject(input));
 
   if (!result.success) {
-    return validationResponse("Guest details are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.guestInvalid"), localizedFieldErrors(result.error, t));
   }
 
   const guest = await prisma.clubGuest.findUnique({
@@ -921,11 +941,11 @@ export async function updateClubGuestAction(input: unknown): Promise<ApiResponse
   });
 
   if (!guest) {
-    return notFoundResponse("Guest was not found.");
+    return notFoundResponse(t, t("responses.club.guestNotFound"));
   }
 
   if (!(await canManageGuestList(user.id, guest.clubId))) {
-    return forbiddenResponse("You cannot manage the guest list for this club.");
+    return forbiddenResponse(t, t("responses.club.guestForbidden"));
   }
 
   await ensureClubActive(guest.clubId);
@@ -944,15 +964,16 @@ export async function updateClubGuestAction(input: unknown): Promise<ApiResponse
 
   return {
     ok: true,
-    message: "Guest updated."
+    message: t("responses.club.guestUpdated")
   };
 }
 
 export async function deactivateClubGuestAction(guestId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const guest = await prisma.clubGuest.findUnique({
@@ -961,11 +982,11 @@ export async function deactivateClubGuestAction(guestId: string): Promise<ApiRes
   });
 
   if (!guest) {
-    return notFoundResponse("Guest was not found.");
+    return notFoundResponse(t, t("responses.club.guestNotFound"));
   }
 
   if (!(await canManageGuestList(user.id, guest.clubId))) {
-    return forbiddenResponse("You cannot manage the guest list for this club.");
+    return forbiddenResponse(t, t("responses.club.guestForbidden"));
   }
 
   await ensureClubActive(guest.clubId);
@@ -980,27 +1001,28 @@ export async function deactivateClubGuestAction(guestId: string): Promise<ApiRes
 
   return {
     ok: true,
-    message: "Guest deactivated."
+    message: t("responses.club.guestDeactivated")
   };
 }
 
 export async function createClubMetricDefinitionAction(input: unknown): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const result = createClubMetricSchema.safeParse(toInputObject(input));
 
   if (!result.success) {
-    return validationResponse("Metric details are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.metricInvalid"), localizedFieldErrors(result.error, t));
   }
 
   const { clubId, order, ...data } = result.data;
 
   if (!(await canManageClubMetrics(user.id, clubId))) {
-    return forbiddenResponse("You cannot manage club metrics.");
+    return forbiddenResponse(t, t("responses.club.metricForbidden"));
   }
 
   await ensureClubActive(clubId);
@@ -1015,7 +1037,7 @@ export async function createClubMetricDefinitionAction(input: unknown): Promise<
   if (activeMetricCount >= 6) {
     return {
       ok: false,
-      message: "A club can have up to 6 active metrics."
+      message: t("responses.club.metricLimit")
     };
   }
 
@@ -1032,22 +1054,23 @@ export async function createClubMetricDefinitionAction(input: unknown): Promise<
 
   return {
     ok: true,
-    message: "Metric created.",
+    message: t("responses.club.metricCreated"),
     data: toClubMetricDefinitionDto(metric)
   };
 }
 
 export async function updateClubMetricDefinitionAction(input: unknown): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const result = updateClubMetricSchema.safeParse(toInputObject(input));
 
   if (!result.success) {
-    return validationResponse("Metric details are invalid.", result.error.flatten().fieldErrors);
+    return validationResponse(t("responses.club.metricInvalid"), localizedFieldErrors(result.error, t));
   }
 
   const metric = await prisma.clubMetricDefinition.findUnique({
@@ -1056,11 +1079,11 @@ export async function updateClubMetricDefinitionAction(input: unknown): Promise<
   });
 
   if (!metric) {
-    return notFoundResponse("Metric was not found.");
+    return notFoundResponse(t, t("responses.club.metricNotFound"));
   }
 
   if (!(await canManageClubMetrics(user.id, metric.clubId))) {
-    return forbiddenResponse("You cannot manage club metrics.");
+    return forbiddenResponse(t, t("responses.club.metricForbidden"));
   }
 
   await ensureClubActive(metric.clubId);
@@ -1079,15 +1102,16 @@ export async function updateClubMetricDefinitionAction(input: unknown): Promise<
 
   return {
     ok: true,
-    message: "Metric updated."
+    message: t("responses.club.metricUpdated")
   };
 }
 
 export async function deactivateClubMetricDefinitionAction(metricId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return unauthenticatedResponse(t);
   }
 
   const metric = await prisma.clubMetricDefinition.findUnique({
@@ -1096,11 +1120,11 @@ export async function deactivateClubMetricDefinitionAction(metricId: string): Pr
   });
 
   if (!metric) {
-    return notFoundResponse("Metric was not found.");
+    return notFoundResponse(t, t("responses.club.metricNotFound"));
   }
 
   if (!(await canManageClubMetrics(user.id, metric.clubId))) {
-    return forbiddenResponse("You cannot manage club metrics.");
+    return forbiddenResponse(t, t("responses.club.metricForbidden"));
   }
 
   await ensureClubActive(metric.clubId);
@@ -1115,7 +1139,7 @@ export async function deactivateClubMetricDefinitionAction(metricId: string): Pr
 
   return {
     ok: true,
-    message: "Metric deactivated."
+    message: t("responses.club.metricDeactivated")
   };
 }
 
@@ -1158,36 +1182,36 @@ function getImageFile(formData: FormData, fieldName: string) {
   return value;
 }
 
-function validateClubImages(logoFile: File | null, coverFile: File | null): ApiResponse<never> | null {
+function validateClubImages(logoFile: File | null, coverFile: File | null, t: Translate): ApiResponse<never> | null {
   if (logoFile && !CLUB_IMAGE_TYPES.has(logoFile.type)) {
     return {
       ok: false,
-      message: "Club details are invalid.",
-      issues: { logoFile: ["Choose a JPG, PNG, WebP, or GIF image."] }
+      message: t("responses.club.invalid"),
+      issues: { logoFile: [t("responses.profile.imageType")] }
     };
   }
 
   if (coverFile && !CLUB_IMAGE_TYPES.has(coverFile.type)) {
     return {
       ok: false,
-      message: "Club details are invalid.",
-      issues: { coverFile: ["Choose a JPG, PNG, WebP, or GIF image."] }
+      message: t("responses.club.invalid"),
+      issues: { coverFile: [t("responses.profile.imageType")] }
     };
   }
 
   if (logoFile && logoFile.size > MAX_CLUB_IMAGE_SIZE) {
     return {
       ok: false,
-      message: "Club details are invalid.",
-      issues: { logoFile: ["Logo must be 5 MB or smaller."] }
+      message: t("responses.club.invalid"),
+      issues: { logoFile: [t("responses.club.logoTooLarge")] }
     };
   }
 
   if (coverFile && coverFile.size > MAX_CLUB_IMAGE_SIZE) {
     return {
       ok: false,
-      message: "Club details are invalid.",
-      issues: { coverFile: ["Cover image must be 5 MB or smaller."] }
+      message: t("responses.club.invalid"),
+      issues: { coverFile: [t("responses.club.coverTooLarge")] }
     };
   }
 
@@ -1204,14 +1228,14 @@ async function uploadClubImages({
   logoFile: File | null;
   slug: string;
   userId: string;
-}): Promise<ClubImageUploadResult> {
+}, t: Translate): Promise<ClubImageUploadResult> {
   if ((logoFile || coverFile) && !isCloudinaryConfigured()) {
     return {
       ok: false,
-      message: "Image upload is not configured yet. Add Cloudinary settings and try again.",
+      message: t("responses.profile.uploadNotConfigured"),
       issues: {
-        logoFile: logoFile ? ["Image upload is not configured."] : undefined,
-        coverFile: coverFile ? ["Image upload is not configured."] : undefined
+        logoFile: logoFile ? [t("responses.profile.uploadUnavailable")] : undefined,
+        coverFile: coverFile ? [t("responses.profile.uploadUnavailable")] : undefined
       }
     };
   }
@@ -1222,16 +1246,16 @@ async function uploadClubImages({
   if (logoFile && !logo) {
     return {
       ok: false,
-      message: "We could not upload that club logo. Try another image.",
-      issues: { logoFile: ["Upload failed."] }
+      message: t("responses.club.logoUploadFailed"),
+      issues: { logoFile: [t("responses.profile.uploadFailed")] }
     };
   }
 
   if (coverFile && !cover) {
     return {
       ok: false,
-      message: "We could not upload that cover image. Try another image.",
-      issues: { coverFile: ["Upload failed."] }
+      message: t("responses.club.coverUploadFailed"),
+      issues: { coverFile: [t("responses.profile.uploadFailed")] }
     };
   }
 
@@ -1266,7 +1290,7 @@ type ActiveClubResult =
   | { ok: true; data: { slug: string; visibility: "OPEN" | "REQUEST_ONLY" | "INVITE_ONLY" } }
   | { ok: false; message: string };
 
-async function getActiveClubForMembership(clubId: string): Promise<ActiveClubResult> {
+async function getActiveClubForMembership(clubId: string, t: Translate): Promise<ActiveClubResult> {
   const club = await prisma.club.findUnique({
     where: { id: clubId },
     select: {
@@ -1279,14 +1303,14 @@ async function getActiveClubForMembership(clubId: string): Promise<ActiveClubRes
   if (!club) {
     return {
       ok: false,
-      message: "Club was not found."
+      message: t("responses.club.notFound")
     };
   }
 
   if (!club.isActive) {
     return {
       ok: false,
-      message: "This club is deactivated."
+      message: t("responses.club.deactivatedState")
     };
   }
 
@@ -1312,16 +1336,16 @@ async function getMemberForDecision(memberId: string) {
   });
 }
 
-function getExistingMembershipMessage(status: string) {
+function getExistingMembershipMessage(status: string, t: Translate) {
   if (status === "ACTIVE") {
-    return "This user is already an active club member.";
+    return t("responses.club.memberActive");
   }
 
   if (status === "INVITED") {
-    return "There is already a pending invite for this club.";
+    return t("responses.club.invitePending");
   }
 
-  return "There is already a pending join request for this club.";
+  return t("responses.club.requestPending");
 }
 
 async function revalidateClubIdSurfaces(clubId: string) {
@@ -1357,21 +1381,21 @@ function validationResponse(message: string, issues: Record<string, string[] | u
   };
 }
 
-function unauthenticatedResponse(): ApiResponse<never> {
+function unauthenticatedResponse(t: Translate): ApiResponse<never> {
   return {
     ok: false,
-    message: "You need to sign in first."
+    message: t("responses.signInRequired")
   };
 }
 
-function forbiddenResponse(message = "You do not have permission to do that."): ApiResponse<never> {
+function forbiddenResponse(t: Translate, message = t("responses.forbidden")): ApiResponse<never> {
   return {
     ok: false,
     message
   };
 }
 
-function notFoundResponse(message = "Club was not found."): ApiResponse<never> {
+function notFoundResponse(t: Translate, message = t("responses.club.notFound")): ApiResponse<never> {
   return {
     ok: false,
     message

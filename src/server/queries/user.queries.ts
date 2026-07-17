@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getFriendshipStatusForUsers } from "@/server/queries/friendship.queries";
 import type { SessionUser } from "@/types/auth.types";
 import type { FriendshipStatusResult } from "@/types/friendship.types";
+import { toLocale } from "@/i18n/config";
 
 export type PlayerSearchResult = {
   id: string;
@@ -25,7 +26,8 @@ export async function getSessionUserById(userId: string): Promise<SessionUser | 
       name: true,
       email: true,
       image: true,
-      username: true
+      username: true,
+      locale: true
     }
   });
 
@@ -38,7 +40,8 @@ export async function getSessionUserById(userId: string): Promise<SessionUser | 
     name: user.name ?? "FanPitch Player",
     email: user.email,
     image: user.image,
-    username: user.username
+    username: user.username,
+    locale: toLocale(user.locale)
   };
 }
 

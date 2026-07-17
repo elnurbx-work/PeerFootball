@@ -1,31 +1,19 @@
 import type { AppNotification, NotificationActor, NotificationListItem, NotificationType } from "@/types/notification.types";
+import type { Translate } from "@/i18n/dictionary";
 
-const fallbackActorName = "Someone";
-
-const notificationCopy: Record<NotificationType, (actorName: string) => string> = {
-  POST_LIKE: (actorName) => `${actorName} liked your post`,
-  POST_COMMENT: (actorName) => `${actorName} commented on your post`,
-  COMMENT_REPLY: (actorName) => `${actorName} replied to your comment`,
-  POST_REPOST: (actorName) => `${actorName} reposted your post`,
-  FRIEND_REQUEST: (actorName) => `${actorName} sent you a friend request`,
-  FRIEND_ACCEPTED: (actorName) => `${actorName} accepted your friend request`,
-  MESSAGE: (actorName) => `${actorName} sent you a message`
-};
-
-export function getNotificationText(notification: Pick<AppNotification, "actor" | "body" | "title" | "type">) {
-  if (notification.body) {
-    return notification.body;
-  }
-
-  if (notification.title) {
-    return notification.title;
-  }
-
-  return notificationCopy[notification.type](getActorDisplayName(notification.actor));
+export function getNotificationText(notification: Pick<AppNotification, "actor" | "body" | "title" | "type">, t: Translate) {
+  const actor = getActorDisplayName(notification.actor, t("notifications.someone"));
+  if (notification.type === "POST_LIKE") return t("notifications.copy.postLike", { actor });
+  if (notification.type === "POST_COMMENT") return t("notifications.copy.postComment", { actor });
+  if (notification.type === "COMMENT_REPLY") return t("notifications.copy.commentReply", { actor });
+  if (notification.type === "POST_REPOST") return t("notifications.copy.postRepost", { actor });
+  if (notification.type === "FRIEND_REQUEST") return t("notifications.copy.friendRequest", { actor });
+  if (notification.type === "FRIEND_ACCEPTED") return t("notifications.copy.friendAccepted", { actor });
+  return t("notifications.copy.message", { actor });
 }
 
-export function getActorDisplayName(actor: NotificationActor | null) {
-  return actor?.name || actor?.username || fallbackActorName;
+export function getActorDisplayName(actor: NotificationActor | null, fallback: string) {
+  return actor?.name || actor?.username || fallback;
 }
 
 export function getNotificationHref(notification: Pick<AppNotification, "actor" | "commentId" | "conversationId" | "friendshipId" | "postId" | "type">) {
@@ -46,10 +34,10 @@ export function getNotificationHref(notification: Pick<AppNotification, "actor" 
   }
 }
 
-export function toNotificationListItem(notification: AppNotification): NotificationListItem {
+export function toNotificationListItem(notification: AppNotification, t: Translate): NotificationListItem {
   return {
     ...notification,
     href: getNotificationHref(notification),
-    text: getNotificationText(notification)
+    text: getNotificationText(notification, t)
   };
 }

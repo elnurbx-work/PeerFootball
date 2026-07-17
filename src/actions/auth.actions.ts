@@ -1,5 +1,7 @@
 "use server";
 
+import { localizedFieldErrors } from "@/i18n/zod";
+
 import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/auth";
 import { loginSchema, registerSchema, resendVerificationSchema } from "@/lib/validations";
@@ -12,15 +14,17 @@ import {
   verifyPassword
 } from "@/server/services/auth.service";
 import type { ApiResponse } from "@/types/api.types";
+import { getServerTranslator } from "@/i18n/server";
+import type { Translate } from "@/i18n/dictionary";
 
 export type AuthActionState = ApiResponse<{
   email?: string;
 }>;
 
-function databaseUnavailableResponse(): AuthActionState {
+function databaseUnavailableResponse(t: Translate): AuthActionState {
   return {
     ok: false,
-    message: "Database connection is unavailable. Please try again in a moment."
+    message: t("responses.auth.databaseUnavailable")
   };
 }
 
@@ -32,10 +36,11 @@ export async function signInWithEmailAction(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
+  const t = await getServerTranslator();
   const result = loginSchema.safeParse(Object.fromEntries(formData));
 
   if (!result.success) {
-    return { ok: false, message: "Email or password is invalid.", issues: result.error.flatten().fieldErrors };
+    return { ok: false, message: t("responses.auth.invalidCredentials"), issues: localizedFieldErrors(result.error, t) };
   }
 
   const email = normalizeEmail(result.data.email);
@@ -47,15 +52,15 @@ export async function signInWithEmailAction(
       select: { emailVerified: true, passwordHash: true }
     });
   } catch {
-    return databaseUnavailableResponse();
+    return databaseUnavailableResponse(t);
   }
 
   if (!user || !(await verifyPassword(result.data.password, user.passwordHash))) {
-    return { ok: false, message: "Email or password is incorrect." };
+    return { ok: false, message: t("responses.auth.incorrectCredentials") };
   }
 
   if (!user.emailVerified) {
-    return { ok: false, message: "Please verify your email before signing in.", issues: { email: ["Email is not verified."] } };
+    return { ok: false, message: t("responses.auth.verifyBeforeSignIn"), issues: { email: [t("responses.auth.emailNotVerified")] } };
   }
 
   try {
@@ -64,10 +69,10 @@ export async function signInWithEmailAction(
       password: result.data.password,
       redirectTo: "/profile"
     });
-    return { ok: true, message: "Signed in." };
+    return { ok: true, message: t("responses.auth.signedIn") };
   } catch (error) {
     if (error instanceof AuthError) {
-      return { ok: false, message: "Could not sign in with those details." };
+      return { ok: false, message: t("responses.auth.signInFailed") };
     }
 
     throw error;
@@ -78,10 +83,11 @@ export async function registerWithEmailAction(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
+  const t = await getServerTranslator();
   const result = registerSchema.safeParse(Object.fromEntries(formData));
 
   if (!result.success) {
-    return { ok: false, message: "Registration details are invalid.", issues: result.error.flatten().fieldErrors };
+    return { ok: false, message: t("responses.auth.registrationInvalid"), issues: localizedFieldErrors(result.error, t) };
   }
 
   const email = normalizeEmail(result.data.email);
@@ -93,14 +99,14 @@ export async function registerWithEmailAction(
       select: { id: true, emailVerified: true }
     });
   } catch {
-    return databaseUnavailableResponse();
+    return databaseUnavailableResponse(t);
   }
 
   if (existingUser?.emailVerified) {
     return {
       ok: false,
-      message: "An account with this email already exists.",
-      issues: { email: ["Use a different email or sign in."] }
+      message: t("responses.auth.accountExists"),
+      issues: { email: [t("responses.auth.useDifferentEmail")] }
     };
   }
 
@@ -125,7 +131,7 @@ export async function registerWithEmailAction(
       });
     }
   } catch {
-    return databaseUnavailableResponse();
+    return databaseUnavailableResponse(t);
   }
 
   let verification: { url: string };
@@ -133,7 +139,7 @@ export async function registerWithEmailAction(
   try {
     verification = await createEmailVerificationToken(email);
   } catch {
-    return databaseUnavailableResponse();
+    return databaseUnavailableResponse(t);
   }
 
   try {
@@ -141,13 +147,13 @@ export async function registerWithEmailAction(
   } catch {
     return {
       ok: false,
-      message: "Email verification service is not configured yet. Add mail settings and try again."
+      message: t("responses.auth.emailServiceUnavailable")
     };
   }
 
   return {
     ok: true,
-    message: "Account created. Check your email to verify it before signing in.",
+    message: t("responses.auth.accountCreated"),
     data: { email }
   };
 }
@@ -156,10 +162,11 @@ export async function resendVerificationEmailAction(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
+  const t = await getServerTranslator();
   const result = resendVerificationSchema.safeParse(Object.fromEntries(formData));
 
   if (!result.success) {
-    return { ok: false, message: "Enter a valid email address.", issues: result.error.flatten().fieldErrors };
+    return { ok: false, message: t("responses.auth.validEmailRequired"), issues: localizedFieldErrors(result.error, t) };
   }
 
   const email = normalizeEmail(result.data.email);
@@ -171,15 +178,15 @@ export async function resendVerificationEmailAction(
       select: { emailVerified: true }
     });
   } catch {
-    return databaseUnavailableResponse();
+    return databaseUnavailableResponse(t);
   }
 
   if (!user) {
-    return { ok: true, message: "If an account exists, a verification email has been sent.", data: { email } };
+    return { ok: true, message: t("responses.auth.verificationIfExists"), data: { email } };
   }
 
   if (user.emailVerified) {
-    return { ok: true, message: "This email is already verified. You can sign in now.", data: { email } };
+    return { ok: true, message: t("responses.auth.alreadyVerified"), data: { email } };
   }
 
   let verification: { url: string };
@@ -187,7 +194,7 @@ export async function resendVerificationEmailAction(
   try {
     verification = await createEmailVerificationToken(email);
   } catch {
-    return databaseUnavailableResponse();
+    return databaseUnavailableResponse(t);
   }
 
   try {
@@ -195,13 +202,13 @@ export async function resendVerificationEmailAction(
   } catch {
     return {
       ok: false,
-      message: "Email verification service is not configured yet. Add mail settings and try again."
+      message: t("responses.auth.emailServiceUnavailable")
     };
   }
 
   return {
     ok: true,
-    message: "Verification email sent.",
+    message: t("responses.auth.verificationSent"),
     data: { email }
   };
 }

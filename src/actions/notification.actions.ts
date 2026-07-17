@@ -9,12 +9,14 @@ import {
   markNotificationRead
 } from "@/server/services/notification.service";
 import type { ApiResponse } from "@/types/api.types";
+import { getServerTranslator } from "@/i18n/server";
 
 export async function markNotificationReadAction(notificationId: string): Promise<ApiResponse<{ notificationId: string }>> {
+  const t = await getServerTranslator();
   const user = await getCurrentUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const notification = await getNotificationById(notificationId, user.id);
@@ -22,7 +24,7 @@ export async function markNotificationReadAction(notificationId: string): Promis
   if (!notification) {
     return {
       ok: false,
-      message: "Notification was not found."
+      message: t("responses.notification.notFound")
     };
   }
 
@@ -31,7 +33,7 @@ export async function markNotificationReadAction(notificationId: string): Promis
   if (!result) {
     return {
       ok: false,
-      message: "Notification was not found."
+      message: t("responses.notification.notFound")
     };
   }
 
@@ -39,7 +41,7 @@ export async function markNotificationReadAction(notificationId: string): Promis
 
   return {
     ok: true,
-    message: "Notification marked as read.",
+    message: t("responses.notification.read"),
     data: {
       notificationId: result.id
     }
@@ -47,10 +49,11 @@ export async function markNotificationReadAction(notificationId: string): Promis
 }
 
 export async function markAllNotificationsReadAction(): Promise<ApiResponse<{ count: number }>> {
+  const t = await getServerTranslator();
   const user = await getCurrentUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const count = await markAllNotificationsRead(user.id);
@@ -59,7 +62,7 @@ export async function markAllNotificationsReadAction(): Promise<ApiResponse<{ co
 
   return {
     ok: true,
-    message: "Notifications marked as read.",
+    message: t("responses.notification.allRead"),
     data: {
       count
     }
@@ -67,10 +70,11 @@ export async function markAllNotificationsReadAction(): Promise<ApiResponse<{ co
 }
 
 export async function deleteNotificationAction(notificationId: string): Promise<ApiResponse<{ notificationId: string }>> {
+  const t = await getServerTranslator();
   const user = await getCurrentUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const notification = await getNotificationById(notificationId, user.id);
@@ -78,7 +82,7 @@ export async function deleteNotificationAction(notificationId: string): Promise<
   if (!notification) {
     return {
       ok: false,
-      message: "Notification was not found."
+      message: t("responses.notification.notFound")
     };
   }
 
@@ -92,16 +96,9 @@ export async function deleteNotificationAction(notificationId: string): Promise<
 
   return {
     ok: true,
-    message: "Notification deleted.",
+    message: t("responses.notification.deleted"),
     data: {
       notificationId: notification.id
     }
-  };
-}
-
-function unauthenticatedResponse(): ApiResponse<never> {
-  return {
-    ok: false,
-    message: "You need to sign in first."
   };
 }

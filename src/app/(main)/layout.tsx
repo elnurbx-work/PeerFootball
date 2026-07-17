@@ -6,6 +6,9 @@ import {
   getUnreadNotificationCount
 } from "@/server/queries/notification.queries";
 import { getUnreadDirectConversationCounts } from "@/server/queries/message.queries";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { LocaleCookieSync } from "@/components/i18n/locale-cookie-sync";
+import { getRequestLocale } from "@/i18n/server";
 
 export default async function MainLayout({
   children
@@ -13,6 +16,7 @@ export default async function MainLayout({
   children: ReactNode;
 }>) {
   const currentUser = await getCurrentUser();
+  const locale = currentUser?.locale ?? await getRequestLocale();
   const [notifications, unreadNotificationCount, unreadDirectConversationCounts] = currentUser
     ? await Promise.all([
         getNotifications(currentUser.id),
@@ -22,13 +26,16 @@ export default async function MainLayout({
     : [[], 0, {}];
 
   return (
-    <AppShell
+    <I18nProvider locale={locale}>
+      <LocaleCookieSync locale={locale} />
+      <AppShell
       currentUser={currentUser}
       initialNotifications={notifications}
       initialUnreadDirectConversationCounts={unreadDirectConversationCounts}
       initialUnreadNotificationCount={unreadNotificationCount}
-    >
-      {children}
-    </AppShell>
+      >
+        {children}
+      </AppShell>
+    </I18nProvider>
   );
 }

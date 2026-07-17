@@ -13,6 +13,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ClubMemberDto, ClubRole } from "@/types/club.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import type { Translate } from "@/i18n/dictionary";
 
 type ClubMembersTableProps = {
   members: ClubMemberDto[];
@@ -22,6 +24,7 @@ type ClubMembersTableProps = {
 };
 
 export function ClubMembersTable({ members, canManageRequests, canManageRoles, currentUserId }: ClubMembersTableProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
@@ -41,7 +44,7 @@ export function ClubMembersTable({ members, canManageRequests, canManageRoles, c
   return (
     <div className="overflow-hidden rounded-md border bg-card">
       <div className="grid gap-3 border-b p-4">
-        <h2 className="font-semibold">Members</h2>
+        <h2 className="font-semibold">{t("clubs.members.title")}</h2>
         {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       </div>
       <div className="divide-y">
@@ -56,11 +59,11 @@ export function ClubMembersTable({ members, canManageRequests, canManageRoles, c
                 )}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{member.user.name ?? "PeerFootball player"}</p>
+                <p className="truncate text-sm font-semibold">{member.user.name ?? t("clubs.members.playerFallback")}</p>
                 <p className="truncate text-xs text-muted-foreground">@{member.user.username ?? member.userId}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge>{member.role}</Badge>
-                  <Badge variant="secondary">{member.status}</Badge>
+                  <Badge>{getMemberRoleLabel(member.role, t)}</Badge>
+                  <Badge variant="secondary">{getMemberStatusLabel(member.status, t)}</Badge>
                 </div>
               </div>
             </div>
@@ -74,7 +77,7 @@ export function ClubMembersTable({ members, canManageRequests, canManageRoles, c
                     onClick={() => runAction(() => approveJoinRequestAction(member.id))}
                   >
                     <Check className="h-4 w-4" />
-                    Approve
+                    {t("clubs.members.approve")}
                   </Button>
                   <Button
                     type="button"
@@ -84,7 +87,7 @@ export function ClubMembersTable({ members, canManageRequests, canManageRoles, c
                     onClick={() => runAction(() => rejectJoinRequestAction(member.id))}
                   >
                     <X className="h-4 w-4" />
-                    Reject
+                    {t("clubs.members.reject")}
                   </Button>
                 </>
               ) : null}
@@ -96,7 +99,7 @@ export function ClubMembersTable({ members, canManageRequests, canManageRoles, c
                   onClick={() => runAction(() => acceptClubInviteAction(member.id))}
                 >
                   <Check className="h-4 w-4" />
-                  Accept invite
+                  {t("clubs.members.acceptInvite")}
                 </Button>
               ) : null}
               {member.status === "ACTIVE" && canManageRoles && member.role !== "OWNER" ? (
@@ -114,7 +117,7 @@ export function ClubMembersTable({ members, canManageRequests, canManageRoles, c
                       )
                     }
                   >
-                    <option value="PLAYER">Player</option>
+                    <option value="PLAYER">{t("clubs.common.rolePlayer")}</option>
                     <option value="YTD">YTD</option>
                     <option value="TD">TD</option>
                   </select>
@@ -126,20 +129,20 @@ export function ClubMembersTable({ members, canManageRequests, canManageRoles, c
                     onClick={() => runAction(() => removeClubMemberAction(member.id))}
                   >
                     <UserMinus className="h-4 w-4" />
-                    Remove
+                    {t("clubs.members.remove")}
                   </Button>
                 </>
               ) : null}
               {member.role === "OWNER" ? (
                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <Shield className="h-3.5 w-3.5" />
-                  Owner protected
+                  {t("clubs.members.ownerProtected")}
                 </span>
               ) : null}
             </div>
           </div>
         ))}
-        {!members.length ? <p className="p-6 text-center text-sm text-muted-foreground">No members yet.</p> : null}
+        {!members.length ? <p className="p-6 text-center text-sm text-muted-foreground">{t("clubs.members.empty")}</p> : null}
       </div>
     </div>
   );
@@ -147,3 +150,18 @@ export function ClubMembersTable({ members, canManageRequests, canManageRoles, c
 
 const selectClassName =
   "h-9 rounded-md border bg-background px-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring";
+
+function getMemberRoleLabel(value: string, t: Translate) {
+  if (value === "OWNER") return t("clubs.common.roleOwner");
+  if (value === "PLAYER") return t("clubs.common.rolePlayer");
+  return value;
+}
+
+function getMemberStatusLabel(value: string, t: Translate) {
+  if (value === "ACTIVE") return t("clubs.members.statusActive");
+  if (value === "INVITED") return t("clubs.members.statusInvited");
+  if (value === "REQUESTED") return t("clubs.members.statusRequested");
+  if (value === "REJECTED") return t("clubs.members.statusRejected");
+  if (value === "REMOVED") return t("clubs.members.statusRemoved");
+  return value;
+}

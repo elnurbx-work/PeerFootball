@@ -6,6 +6,7 @@ import { createCommentAction } from "@/actions/post.actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { COMMENT_CONTENT_MAX_LENGTH } from "@/lib/validations/post";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type CommentFormProps = {
   postId: string;
@@ -19,9 +20,10 @@ export function CommentForm({
   postId,
   parentId,
   compact = false,
-  placeholder = "Add a comment...",
+  placeholder,
   onSubmitted
 }: CommentFormProps) {
+  const { t } = useI18n();
   const [content, setContent] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -59,7 +61,7 @@ export function CommentForm({
         className={compact ? "min-h-16" : "min-h-20"}
         maxLength={COMMENT_CONTENT_MAX_LENGTH}
         onChange={(event) => setContent(event.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("posts.comments.placeholder")}
         value={content}
       />
       <div className="flex items-center justify-between gap-3">
@@ -68,7 +70,7 @@ export function CommentForm({
         </span>
         <Button size="sm" type="submit" disabled={pending || !trimmedLength || trimmedLength > COMMENT_CONTENT_MAX_LENGTH}>
           <Send className="h-4 w-4" />
-          {pending ? "Posting..." : "Post"}
+          {pending ? t("posts.composer.posting") : t("posts.composer.post")}
         </Button>
       </div>
       {message ? <p className="text-sm text-destructive">{message}</p> : null}

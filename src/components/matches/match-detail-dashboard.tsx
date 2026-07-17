@@ -8,17 +8,19 @@ import type { MatchSideOptions } from "@/components/matches/match-players-tab";
 import type { VideoSeekRequest } from "@/components/matches/match-videos-tab";
 import { getVideoSecondForMatchMinute, type ExtractedTimestamp } from "@/lib/videos/time";
 import type { MatchDto } from "@/types/match.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 export function MatchDetailDashboard({ match, options, manageableSideIds, summaryActions, sideEditor }: { match: MatchDto; options: MatchSideOptions; manageableSideIds: string[]; summaryActions?: React.ReactNode; sideEditor?: React.ReactNode }) {
+  const { t } = useI18n();
   const [selectedVideoId, setSelectedVideoId] = useState<string | undefined>(match.videos[0]?.id);
   const [seekRequest, setSeekRequest] = useState<VideoSeekRequest>();
   const [seekMessage, setSeekMessage] = useState<string>();
   const selectedVideo = match.videos.find((video) => video.id === selectedVideoId) ?? match.videos[0];
 
   function seekTo(seconds: number | null) {
-    if (!selectedVideo) return setSeekMessage("Dəqiqəyə keçmək üçün əvvəlcə video əlavə edin.");
-    if (selectedVideo.provider === "EXTERNAL" || seconds === null) return setSeekMessage("Bu video üçün dəqiq saniyəyə keçid dəstəklənmir.");
-    setSeekMessage(selectedVideo.provider === "GOOGLE_DRIVE" ? "Google Drive videosunda dəqiq saniyəyə keçid məhdud işləyə bilər." : undefined);
+    if (!selectedVideo) return setSeekMessage(t("matches.dashboard.addVideoBeforeSeek"));
+    if (selectedVideo.provider === "EXTERNAL" || seconds === null) return setSeekMessage(t("matches.dashboard.seekUnsupported"));
+    setSeekMessage(selectedVideo.provider === "GOOGLE_DRIVE" ? t("matches.videos.driveSeekNotice") : undefined);
     setSeekRequest({ videoId: selectedVideo.id, seconds, nonce: Date.now() });
   }
 
@@ -36,5 +38,5 @@ export function MatchDetailDashboard({ match, options, manageableSideIds, summar
     setSelectedVideoId(videoId); setSeekRequest(undefined); setSeekMessage(undefined);
   }
 
-  return <><MatchSummaryCard match={match} manageableSideIds={manageableSideIds} actions={summaryActions} onGoalMinuteClick={seekMatchMinute} />{sideEditor}<MatchPitchBoard sides={match.sides} /><MatchTabs match={match} options={options} selectedVideoId={selectedVideo?.id} onSelectVideo={selectVideo} seekRequest={seekRequest} onTimestampClick={handleTimestampClick} seekMessage={seekMessage} /></>;
+  return <div className="grid min-w-0 gap-4 sm:gap-7"><MatchSummaryCard match={match} manageableSideIds={manageableSideIds} actions={summaryActions} onGoalMinuteClick={seekMatchMinute} />{sideEditor}<MatchPitchBoard sides={match.sides} goals={match.goals} manageableSideIds={manageableSideIds} /><MatchTabs match={match} options={options} selectedVideoId={selectedVideo?.id} onSelectVideo={selectVideo} seekRequest={seekRequest} onTimestampClick={handleTimestampClick} seekMessage={seekMessage} /></div>;
 }

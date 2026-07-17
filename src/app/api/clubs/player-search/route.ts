@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { searchPlayersForUser } from "@/server/queries/user.queries";
+import { getServerTranslator } from "@/i18n/server";
 
 export async function GET(request: Request) {
+  const t = await getServerTranslator();
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    return NextResponse.json({ ok: false, message: "You need to sign in first." }, { status: 401 });
+    return NextResponse.json({ ok: false, message: t("responses.signInRequired") }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);

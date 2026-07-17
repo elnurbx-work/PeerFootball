@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClubMetricForm } from "@/components/clubs/club-metric-form";
 import type { ClubMetricDefinitionDto } from "@/types/club.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type ClubMetricsListProps = {
   clubId: string;
@@ -17,6 +18,7 @@ type ClubMetricsListProps = {
 };
 
 export function ClubMetricsList({ clubId, metrics, canManage }: ClubMetricsListProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [editingMetricId, setEditingMetricId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -40,17 +42,17 @@ export function ClubMetricsList({ clubId, metrics, canManage }: ClubMetricsListP
       {canManage ? (
         <Card>
           <CardHeader>
-            <CardTitle>Create metric</CardTitle>
+            <CardTitle>{t("clubs.metricsList.createTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <p className="text-sm text-muted-foreground">{activeMetricCount}/6 active metrics</p>
+            <p className="text-sm text-muted-foreground">{t("clubs.metricsList.activeCount", { count: activeMetricCount })}</p>
             {activeMetricCount < 6 ? <ClubMetricForm clubId={clubId} /> : null}
           </CardContent>
         </Card>
       ) : null}
       <Card>
         <CardHeader>
-          <CardTitle>Metric definitions</CardTitle>
+          <CardTitle>{t("clubs.metricsList.title")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3">
           {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
@@ -61,11 +63,11 @@ export function ClubMetricsList({ clubId, metrics, canManage }: ClubMetricsListP
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{metric.order}. {metric.name}</p>
                     <Badge variant={metric.isActive ? "default" : "secondary"}>
-                      {metric.isActive ? "Active" : "Inactive"}
+                      {metric.isActive ? t("clubs.guestList.active") : t("clubs.guestList.inactive")}
                     </Badge>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {metric.description ?? "No description."}
+                    {metric.description ?? t("clubs.metricsList.noDescription")}
                   </p>
                 </div>
                 {canManage && metric.isActive ? (
@@ -77,7 +79,7 @@ export function ClubMetricsList({ clubId, metrics, canManage }: ClubMetricsListP
                       onClick={() => setEditingMetricId(editingMetricId === metric.id ? null : metric.id)}
                     >
                       <Pencil className="h-4 w-4" />
-                      Edit
+                      {t("clubs.guestList.edit")}
                     </Button>
                     <Button
                       type="button"
@@ -87,7 +89,7 @@ export function ClubMetricsList({ clubId, metrics, canManage }: ClubMetricsListP
                       onClick={() => deactivateMetric(metric.id)}
                     >
                       <Power className="h-4 w-4" />
-                      Deactivate
+                      {t("clubs.guestList.deactivate")}
                     </Button>
                   </div>
                 ) : null}
@@ -99,7 +101,7 @@ export function ClubMetricsList({ clubId, metrics, canManage }: ClubMetricsListP
               ) : null}
             </div>
           ))}
-          {!metrics.length ? <p className="text-center text-sm text-muted-foreground">No metric definitions yet.</p> : null}
+          {!metrics.length ? <p className="text-center text-sm text-muted-foreground">{t("clubs.metricsList.empty")}</p> : null}
         </CardContent>
       </Card>
     </div>

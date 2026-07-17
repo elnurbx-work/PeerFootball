@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PostMediaGrid } from "@/components/posts/post-media-grid";
 import { REPOST_NOTE_MAX_LENGTH } from "@/lib/validations/post";
 import type { OriginalPostPreview } from "@/types/post.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type RepostDialogProps = {
   open: boolean;
@@ -17,6 +18,7 @@ type RepostDialogProps = {
 };
 
 export function RepostDialog({ open, originalPost, onOpenChange }: RepostDialogProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [note, setNote] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export function RepostDialog({ open, originalPost, onOpenChange }: RepostDialogP
     return null;
   }
 
-  const authorName = originalPost.author.name ?? "FanPitch Player";
+  const authorName = originalPost.author.name ?? t("profile.summary.playerFallback");
   const trimmedLength = note.trim().length;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -63,7 +65,7 @@ export function RepostDialog({ open, originalPost, onOpenChange }: RepostDialogP
         onSubmit={handleSubmit}
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Repost</h2>
+          <h2 className="text-lg font-semibold">{t("posts.repost.title")}</h2>
           <Button size="sm" variant="ghost" type="button" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4" />
           </Button>
@@ -72,7 +74,7 @@ export function RepostDialog({ open, originalPost, onOpenChange }: RepostDialogP
         <Textarea
           maxLength={REPOST_NOTE_MAX_LENGTH}
           onChange={(event) => setNote(event.target.value)}
-          placeholder="Add a note..."
+          placeholder={t("posts.repost.notePlaceholder")}
           value={note}
         />
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -90,7 +92,7 @@ export function RepostDialog({ open, originalPost, onOpenChange }: RepostDialogP
             </div>
             <div className="min-w-0">
               <p className="truncate font-medium">{authorName}</p>
-              <p className="truncate text-xs text-muted-foreground">@{originalPost.author.username ?? "profile"}</p>
+              <p className="truncate text-xs text-muted-foreground">@{originalPost.author.username ?? t("profile.summary.profileFallback")}</p>
             </div>
           </div>
           {originalPost.content ? (
@@ -103,7 +105,7 @@ export function RepostDialog({ open, originalPost, onOpenChange }: RepostDialogP
 
         <Button type="submit" disabled={pending || trimmedLength > REPOST_NOTE_MAX_LENGTH}>
           <Repeat2 className="h-4 w-4" />
-          {pending ? "Reposting..." : "Repost"}
+          {pending ? t("posts.repost.posting") : t("posts.repost.submit")}
         </Button>
       </form>
     </div>

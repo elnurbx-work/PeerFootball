@@ -12,6 +12,7 @@ import {
   getPendingJoinRequests
 } from "@/server/queries/club.queries";
 import { canApproveJoinRequests, canInvitePlayers, isClubOwner } from "@/server/services/club-permissions.service";
+import { createTranslator } from "@/i18n/dictionary";
 
 type ClubMembersPageProps = {
   params: Promise<{
@@ -25,6 +26,7 @@ export default async function ClubMembersPage({ params }: ClubMembersPageProps) 
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
 
   const { slug } = await params;
   const club = await getClubBySlug(decodeURIComponent(slug), currentUser.id);
@@ -53,9 +55,9 @@ export default async function ClubMembersPage({ params }: ClubMembersPageProps) 
         </Link>
       </Button>
       <div>
-        <h1 className="text-3xl font-bold">Club members</h1>
+        <h1 className="text-3xl font-bold">{t("clubs.pages.members.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {activeMembers.length} active members. {pendingRequests.length} join requests need attention.
+          {t("clubs.pages.members.description", { active: activeMembers.length, pending: pendingRequests.length })}
         </p>
       </div>
       {canInvite && club.isActive ? <ClubInviteForm clubId={club.id} canAssignTd={owner} /> : null}

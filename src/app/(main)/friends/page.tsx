@@ -8,12 +8,7 @@ import {
 import { FriendsList } from "@/components/friends/FriendsList";
 import { getCurrentUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-
-const tabs = [
-  { href: "/friends?tab=friends", key: "friends", label: "Friends" },
-  { href: "/friends?tab=incoming", key: "incoming", label: "Incoming Requests" },
-  { href: "/friends?tab=sent", key: "sent", label: "Sent Requests" }
-];
+import { createTranslator } from "@/i18n/dictionary";
 
 type FriendsPageProps = {
   searchParams: Promise<{
@@ -27,6 +22,12 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
+  const tabs = [
+    { href: "/friends?tab=friends", key: "friends", label: t("friends.pages.tabs.friends") },
+    { href: "/friends?tab=incoming", key: "incoming", label: t("friends.pages.tabs.incoming") },
+    { href: "/friends?tab=sent", key: "sent", label: t("friends.pages.tabs.sent") }
+  ];
 
   const params = await searchParams;
   const activeTab = tabs.some((tab) => tab.key === params.tab) ? params.tab : "friends";
@@ -39,9 +40,9 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
   return (
     <section className="mx-auto grid max-w-4xl gap-5 px-4 py-10">
       <div>
-        <h1 className="text-3xl font-bold">Friends</h1>
+        <h1 className="text-3xl font-bold">{t("friends.pages.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage friendships before direct messaging arrives.
+          {t("friends.pages.description")}
         </p>
       </div>
 
@@ -63,13 +64,13 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
       </nav>
 
       {activeTab === "friends" ? (
-        <FriendsList items={friends} mode="friend" emptyMessage="No friends yet." />
+        <FriendsList items={friends} mode="friend" emptyMessage={t("friends.pages.emptyFriends")} />
       ) : null}
       {activeTab === "incoming" ? (
-        <FriendsList items={incoming} mode="incoming" emptyMessage="No incoming friend requests." />
+        <FriendsList items={incoming} mode="incoming" emptyMessage={t("profile.pages.noIncoming")} />
       ) : null}
       {activeTab === "sent" ? (
-        <FriendsList items={outgoing} mode="outgoing" emptyMessage="No sent friend requests." />
+        <FriendsList items={outgoing} mode="outgoing" emptyMessage={t("profile.pages.noSent")} />
       ) : null}
     </section>
   );

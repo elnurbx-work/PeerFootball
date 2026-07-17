@@ -2,27 +2,23 @@ import Link from "next/link";
 import { CalendarPlus, Download, Radio, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getServerTranslator } from "@/i18n/server";
 
-const highlights = [
-  "Build a player profile that feels like your football CV.",
-  "Post match plans, quick takes, photos, and future highlights.",
-  "Create clubs and organize local football matches."
-];
-
-export default function HomePage() {
+export default async function HomePage() {
+  const t = await getServerTranslator();
+  const highlights = [t("home.highlightProfile"), t("home.highlightPosts"), t("home.highlightClubs")];
   return (
     <section className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 md:grid-cols-[1.1fr_0.9fr]">
       <div className="space-y-8">
         <div className="space-y-5">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-            Football starts with your people
+            {t("home.eyebrow")}
           </p>
           <h1 className="max-w-3xl text-4xl font-bold leading-tight text-foreground md:text-6xl">
-            FanPitch brings players, fans, clubs, and local matches into one place.
+            {t("home.title")}
           </h1>
           <p className="max-w-2xl text-lg text-muted-foreground">
-            Create your profile, share football posts, find players nearby, build clubs,
-            and organize the next match without losing the thread.
+            {t("home.description")}
           </p>
         </div>
 
@@ -30,25 +26,25 @@ export default function HomePage() {
           <Button asChild size="lg">
             <Link href="/auth/login">
               <UserPlus className="h-4 w-4" />
-              Join FanPitch
+              {t("home.join")}
             </Link>
           </Button>
           <Button asChild size="lg" variant="secondary">
             <Link href="/feed">
               <Radio className="h-4 w-4" />
-              View Home
+              {t("home.viewHome")}
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
             <Link href="/matches">
               <CalendarPlus className="h-4 w-4" />
-              Create Match
+              {t("home.createMatch")}
             </Link>
           </Button>
           <Button asChild size="lg" variant="ghost">
             <Link href="/install">
               <Download className="h-4 w-4" />
-              Install
+              {t("home.install")}
             </Link>
           </Button>
         </div>
@@ -57,9 +53,9 @@ export default function HomePage() {
       <Card className="overflow-hidden border-2 border-primary/15 bg-card/90">
         <CardContent className="space-y-6 p-6">
           <div className="rounded-md bg-primary p-5 text-primary-foreground">
-            <p className="text-sm font-medium">Tonight at 20:30</p>
-            <h2 className="mt-2 text-2xl font-bold">7-a-side at City Arena</h2>
-            <p className="mt-2 text-sm opacity-90">Need 2 defenders and 1 keeper</p>
+            <p className="text-sm font-medium">{t("home.demoTime")}</p>
+            <h2 className="mt-2 text-2xl font-bold">{t("home.demoTitle")}</h2>
+            <p className="mt-2 text-sm opacity-90">{t("home.demoNeed")}</p>
           </div>
           <div className="grid gap-3">
             {highlights.map((item) => (

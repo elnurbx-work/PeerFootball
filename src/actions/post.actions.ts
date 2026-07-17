@@ -1,5 +1,7 @@
 "use server";
 
+import { localizedFieldErrors } from "@/i18n/zod";
+
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createCommentSchema, createPostSchema, createRepostSchema } from "@/lib/validations/post";
@@ -20,14 +22,17 @@ import {
 } from "@/server/services/cloudinary.service";
 import type { ApiResponse } from "@/types/api.types";
 import type { CreateCommentInput, RepostInput } from "@/types/post.types";
+import { getServerTranslator } from "@/i18n/server";
+import type { Translate } from "@/i18n/dictionary";
 
 type ActionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
 export async function createPostAction(formData: FormData): Promise<ApiResponse<{ postId: string }>> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const media = getMediaFiles(formData);
@@ -40,17 +45,17 @@ export async function createPostAction(formData: FormData): Promise<ApiResponse<
   if (!result.success) {
     return {
       ok: false,
-      message: "Post details are invalid.",
-      issues: result.error.flatten().fieldErrors
+      message: t("responses.post.invalid"),
+      issues: localizedFieldErrors(result.error, t)
     };
   }
 
   if (result.data.media?.length && !isCloudinaryConfigured()) {
     return {
       ok: false,
-      message: "Media upload is not configured yet. Add Cloudinary settings and try again.",
+      message: t("responses.post.mediaNotConfigured"),
       issues: {
-        media: ["Cloudinary is not configured."]
+        media: [t("responses.post.cloudinaryNotConfigured")]
       }
     };
   }
@@ -61,14 +66,14 @@ export async function createPostAction(formData: FormData): Promise<ApiResponse<
     for (const file of result.data.media ?? []) {
       uploadedMedia.push(await uploadPostMedia(file, `${POST_MEDIA_FOLDER}/${user.id}`));
     }
-  } catch (error) {
+  } catch {
     await cleanupUploadedMedia(uploadedMedia);
 
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Media upload failed. Please try again.",
+      message: t("responses.post.mediaUploadFailed"),
       issues: {
-        media: ["Upload failed."]
+        media: [t("responses.profile.uploadFailed")]
       }
     };
   }
@@ -104,7 +109,7 @@ export async function createPostAction(formData: FormData): Promise<ApiResponse<
 
     return {
       ok: true,
-      message: "Post published.",
+      message: t("responses.post.published"),
       data: {
         postId: post.id
       }
@@ -114,36 +119,39 @@ export async function createPostAction(formData: FormData): Promise<ApiResponse<
 
     return {
       ok: false,
-      message: "Post could not be saved. Please try again."
+      message: t("responses.post.saveFailed")
     };
   }
 }
 
 export async function deletePostAction(postId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
-  return deletePostForUser(postId, user, false);
+  return deletePostForUser(postId, user, false, t);
 }
 
 export async function deleteRepostAction(postId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
-  return deletePostForUser(postId, user, true);
+  return deletePostForUser(postId, user, true, t);
 }
 
 export async function toggleLikePostAction(postId: string): Promise<ApiResponse<{ liked: boolean; likesCount: number }>> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const post = await prisma.post.findUnique({
@@ -162,7 +170,7 @@ export async function toggleLikePostAction(postId: string): Promise<ApiResponse<
   if (!post || !(await canViewPost(user.id, postId))) {
     return {
       ok: false,
-      message: "Post was not found."
+      message: t("responses.post.notFound")
     };
   }
 
@@ -208,7 +216,7 @@ export async function toggleLikePostAction(postId: string): Promise<ApiResponse<
 
   return {
     ok: true,
-    message: liked ? "Post liked." : "Post unliked.",
+    message: liked ? t("responses.post.liked") : t("responses.post.unliked"),
     data: {
       liked,
       likesCount
@@ -217,10 +225,11 @@ export async function toggleLikePostAction(postId: string): Promise<ApiResponse<
 }
 
 export async function createCommentAction(input: CreateCommentInput): Promise<ApiResponse<{ commentId: string }>> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const result = createCommentSchema.safeParse(input);
@@ -228,8 +237,8 @@ export async function createCommentAction(input: CreateCommentInput): Promise<Ap
   if (!result.success) {
     return {
       ok: false,
-      message: "Comment is invalid.",
-      issues: result.error.flatten().fieldErrors
+      message: t("responses.post.commentInvalid"),
+      issues: localizedFieldErrors(result.error, t)
     };
   }
 
@@ -250,7 +259,7 @@ export async function createCommentAction(input: CreateCommentInput): Promise<Ap
   if (!post || !(await canViewPost(user.id, post.id))) {
     return {
       ok: false,
-      message: "Post was not found."
+      message: t("responses.post.notFound")
     };
   }
 
@@ -268,14 +277,14 @@ export async function createCommentAction(input: CreateCommentInput): Promise<Ap
     if (!parent || parent.postId !== post.id) {
       return {
         ok: false,
-        message: "The comment you are replying to was not found."
+        message: t("responses.post.parentCommentNotFound")
       };
     }
 
     if (parent.parentId) {
       return {
         ok: false,
-        message: "Replies can only be added to main comments."
+        message: t("responses.post.mainCommentsOnly")
       };
     }
   }
@@ -316,7 +325,7 @@ export async function createCommentAction(input: CreateCommentInput): Promise<Ap
 
   return {
     ok: true,
-    message: "Comment added.",
+    message: t("responses.post.commentAdded"),
     data: {
       commentId: comment.id
     }
@@ -324,10 +333,11 @@ export async function createCommentAction(input: CreateCommentInput): Promise<Ap
 }
 
 export async function deleteCommentAction(commentId: string): Promise<ApiResponse> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const comment = await prisma.comment.findUnique({
@@ -354,14 +364,14 @@ export async function deleteCommentAction(commentId: string): Promise<ApiRespons
   if (!comment) {
     return {
       ok: false,
-      message: "Comment was not found."
+      message: t("responses.post.commentNotFound")
     };
   }
 
   if (comment.authorId !== user.id && comment.post.authorId !== user.id) {
     return {
       ok: false,
-      message: "You cannot delete this comment."
+      message: t("responses.post.cannotDeleteComment")
     };
   }
 
@@ -376,15 +386,16 @@ export async function deleteCommentAction(commentId: string): Promise<ApiRespons
 
   return {
     ok: true,
-    message: "Comment deleted."
+    message: t("responses.post.commentDeleted")
   };
 }
 
 export async function repostPostAction(input: RepostInput): Promise<ApiResponse<{ postId: string }>> {
+  const t = await getServerTranslator();
   const user = await requireUser();
 
   if (!user) {
-    return unauthenticatedResponse();
+    return { ok: false, message: t("responses.signInRequired") };
   }
 
   const result = createRepostSchema.safeParse(input);
@@ -392,8 +403,8 @@ export async function repostPostAction(input: RepostInput): Promise<ApiResponse<
   if (!result.success) {
     return {
       ok: false,
-      message: "Repost details are invalid.",
-      issues: result.error.flatten().fieldErrors
+      message: t("responses.post.repostInvalid"),
+      issues: localizedFieldErrors(result.error, t)
     };
   }
 
@@ -417,7 +428,7 @@ export async function repostPostAction(input: RepostInput): Promise<ApiResponse<
   if (!selectedPost || !(await canViewPost(user.id, selectedPost.id))) {
     return {
       ok: false,
-      message: "Post was not found."
+      message: t("responses.post.notFound")
     };
   }
 
@@ -440,7 +451,7 @@ export async function repostPostAction(input: RepostInput): Promise<ApiResponse<
   if (!rootOriginalPost || !(await canViewPost(user.id, rootOriginalPost.id))) {
     return {
       ok: false,
-      message: "Original post was not found."
+      message: t("responses.post.originalNotFound")
     };
   }
 
@@ -470,14 +481,14 @@ export async function repostPostAction(input: RepostInput): Promise<ApiResponse<
 
   return {
     ok: true,
-    message: "Post reposted.",
+    message: t("responses.post.reposted"),
     data: {
       postId: repost.id
     }
   };
 }
 
-async function deletePostForUser(postId: string, user: ActionUser, requireRepost: boolean): Promise<ApiResponse> {
+async function deletePostForUser(postId: string, user: ActionUser, requireRepost: boolean, t: Translate): Promise<ApiResponse> {
   const post = await prisma.post.findUnique({
     where: {
       id: postId
@@ -504,21 +515,21 @@ async function deletePostForUser(postId: string, user: ActionUser, requireRepost
   if (!post) {
     return {
       ok: false,
-      message: "Post was not found."
+      message: t("responses.post.notFound")
     };
   }
 
   if (post.authorId !== user.id) {
     return {
       ok: false,
-      message: "You cannot delete this post."
+      message: t("responses.post.cannotDelete")
     };
   }
 
   if (requireRepost && !post.originalPostId) {
     return {
       ok: false,
-      message: "This post is not a repost."
+      message: t("responses.post.notRepost")
     };
   }
 
@@ -527,11 +538,9 @@ async function deletePostForUser(postId: string, user: ActionUser, requireRepost
   );
 
   if (!cloudinaryDeleteResult.ok) {
-    const firstFailure = cloudinaryDeleteResult.failed[0];
-
     return {
       ok: false,
-      message: firstFailure?.message ?? "Post media could not be deleted from Cloudinary. Please try again."
+      message: t("responses.post.mediaDeleteFailed")
     };
   }
 
@@ -553,7 +562,7 @@ async function deletePostForUser(postId: string, user: ActionUser, requireRepost
 
   return {
     ok: true,
-    message: requireRepost ? "Repost deleted." : "Post deleted."
+    message: requireRepost ? t("responses.post.repostDeleted") : t("responses.post.deleted")
   };
 }
 
@@ -569,13 +578,6 @@ function stringValue(value: FormDataEntryValue | null) {
 
 async function requireUser() {
   return getCurrentUser();
-}
-
-function unauthenticatedResponse(): ApiResponse<never> {
-  return {
-    ok: false,
-    message: "You need to sign in first."
-  };
 }
 
 async function cleanupUploadedMedia(media: UploadedPostMedia[]) {

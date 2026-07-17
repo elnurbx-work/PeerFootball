@@ -87,5 +87,6 @@ export {
   respondToMatchProposalSchema,
   submitMatchResultSchema,
   updateInternalMatchSidesSchema,
+  updateMatchPlayerPositionSchema,
   updateMatchVideoSchema
 } from "./validations/match";

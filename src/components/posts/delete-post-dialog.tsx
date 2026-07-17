@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type DeletePostDialogProps = {
   error?: string | null;
@@ -12,6 +13,7 @@ type DeletePostDialogProps = {
 };
 
 export function DeletePostDialog({ error, open, pending = false, onConfirm, onOpenChange }: DeletePostDialogProps) {
+  const { t } = useI18n();
   if (!open) {
     return null;
   }
@@ -25,9 +27,9 @@ export function DeletePostDialog({ error, open, pending = false, onConfirm, onOp
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Delete post?</h2>
+              <h2 className="text-lg font-semibold">{t("posts.deleteDialog.title")}</h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                This post and its comments will be removed. Uploaded media will also be deleted from Cloudinary.
+                {t("posts.deleteDialog.description")}
               </p>
             </div>
           </div>
@@ -40,11 +42,11 @@ export function DeletePostDialog({ error, open, pending = false, onConfirm, onOp
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" type="button" disabled={pending} onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("posts.deleteDialog.cancel")}
           </Button>
           <Button type="button" disabled={pending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={onConfirm}>
             <Trash2 className="h-4 w-4" />
-            {pending ? "Deleting..." : "Delete"}
+            {pending ? t("posts.deleteDialog.deleting") : t("posts.deleteDialog.delete")}
           </Button>
         </div>
       </div>

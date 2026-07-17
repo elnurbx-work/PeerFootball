@@ -7,6 +7,8 @@ import { MessageCircle, Trash2 } from "lucide-react";
 import { deleteCommentAction } from "@/actions/post.actions";
 import { CommentForm } from "@/components/posts/comment-form";
 import type { PostComment } from "@/types/post.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { RelativeTime } from "@/components/i18n/relative-time";
 
 type CommentItemProps = {
   comment: PostComment;
@@ -14,11 +16,12 @@ type CommentItemProps = {
 };
 
 export function CommentItem({ comment, canReply = true }: CommentItemProps) {
+  const { locale, t } = useI18n();
   const router = useRouter();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const authorName = comment.author.name ?? "FanPitch Player";
+  const authorName = comment.author.name ?? t("profile.summary.playerFallback");
   const profileHref = `/profile/${comment.author.username ?? comment.author.id}`;
 
   function handleDelete() {
@@ -53,7 +56,7 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
             <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">{comment.content}</p>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatRelativeTime(comment.createdAt)}</span>
+            <RelativeTime value={comment.createdAt} locale={locale} />
             {canReply ? (
               <button
                 className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
@@ -61,7 +64,7 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
                 onClick={() => setShowReplyForm((value) => !value)}
               >
                 <MessageCircle className="h-3.5 w-3.5" />
-                Reply
+                {t("posts.comments.reply")}
               </button>
             ) : null}
             {comment.canDelete ? (
@@ -72,7 +75,7 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
                 onClick={handleDelete}
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                Delete
+                {t("posts.comments.delete")}
               </button>
             ) : null}
           </div>
@@ -86,7 +89,7 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
             compact
             parentId={comment.id}
             postId={comment.postId}
-            placeholder={`Reply to ${authorName}`}
+            placeholder={t("posts.comments.replyTo", { name: authorName })}
             onSubmitted={() => {
               setShowReplyForm(false);
               router.refresh();
@@ -104,36 +107,4 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
       ) : null}
     </div>
   );
-}
-
-function formatRelativeTime(value: string) {
-  const timestamp = new Date(value).getTime();
-  const diffSeconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
-
-  if (diffSeconds < 60) {
-    return "just now";
-  }
-
-  const diffMinutes = Math.floor(diffSeconds / 60);
-
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m`;
-  }
-
-  const diffHours = Math.floor(diffMinutes / 60);
-
-  if (diffHours < 24) {
-    return `${diffHours}h`;
-  }
-
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays < 7) {
-    return `${diffDays}d`;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric"
-  }).format(new Date(value));
 }

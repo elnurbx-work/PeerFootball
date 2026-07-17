@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { ClubDetails, ClubMemberDto } from "@/types/club.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type OwnerTransferFormProps = {
   club: ClubDetails;
@@ -15,6 +16,7 @@ type OwnerTransferFormProps = {
 };
 
 export function OwnerTransferForm({ club, members }: OwnerTransferFormProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
@@ -43,37 +45,37 @@ export function OwnerTransferForm({ club, members }: OwnerTransferFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Transfer ownership</CardTitle>
+        <CardTitle>{t("clubs.ownerTransfer.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form className="grid gap-4" onSubmit={handleSubmit}>
           <label className="grid gap-2 text-sm font-medium">
-            New owner
+            {t("clubs.ownerTransfer.newOwner")}
             <select name="newOwnerMemberId" className={selectClassName} required>
-              <option value="">Choose member</option>
+              <option value="">{t("clubs.ownerTransfer.chooseMember")}</option>
               {eligibleMembers.map((member) => (
                 <option key={member.id} value={member.id}>
-                  {member.user.name ?? member.user.username ?? member.userId} ({member.role})
+                  {member.user.name ?? member.user.username ?? member.userId} ({member.role === "PLAYER" ? t("clubs.common.rolePlayer") : member.role})
                 </option>
               ))}
             </select>
           </label>
           <label className="grid gap-2 text-sm font-medium">
-            Old owner role after transfer
+            {t("clubs.ownerTransfer.oldOwnerRole")}
             <select name="oldOwnerNewRole" className={selectClassName} defaultValue="TD">
               <option value="TD">TD</option>
               <option value="YTD">YTD</option>
-              <option value="PLAYER">Player</option>
+              <option value="PLAYER">{t("clubs.common.rolePlayer")}</option>
             </select>
           </label>
           <label className="grid gap-2 text-sm font-medium">
-            Confirmation
-            <Input name="confirm" placeholder="Type TRANSFER" />
+            {t("clubs.ownerTransfer.confirmation")}
+            <Input name="confirm" placeholder={t("clubs.ownerTransfer.confirmPlaceholder")} />
           </label>
           {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
           <Button type="submit" disabled={pending || !eligibleMembers.length} className="w-fit">
             <Crown className="h-4 w-4" />
-            Transfer owner
+            {t("clubs.ownerTransfer.submit")}
           </Button>
         </form>
       </CardContent>

@@ -7,14 +7,17 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { isConversationMember } from "@/server/queries/message.queries";
 import { getAblyRestClient } from "@/server/services/ably.service";
+import { getServerTranslator } from "@/i18n/server";
+import type { Translate } from "@/i18n/dictionary";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
 export async function GET(request: Request) {
+  const t = await getServerTranslator();
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    return NextResponse.json({ ok: false, message: "You need to sign in first." }, { status: 401 });
+    return NextResponse.json({ ok: false, message: t("responses.signInRequired") }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -23,7 +26,7 @@ export async function GET(request: Request) {
   const channelName = channel ?? (conversationId ? `private:room:${conversationId}` : null);
 
   if (!channelName) {
-    return NextResponse.json({ ok: false, message: "Missing Ably channel." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: t("responses.api.channelMissing") }, { status: 400 });
   }
 
   const roomConversationId = parseRoomChannelName(channelName);
@@ -31,24 +34,24 @@ export async function GET(request: Request) {
 
   if (roomConversationId) {
     if (!(await isConversationMember(roomConversationId, currentUser.id))) {
-      return NextResponse.json({ ok: false, message: "Conversation was not found." }, { status: 403 });
+      return NextResponse.json({ ok: false, message: t("responses.message.conversationNotFound") }, { status: 403 });
     }
 
-    return createTokenRequest(currentUser.id, channelName, ["subscribe", "presence"]);
+    return createTokenRequest(currentUser.id, channelName, ["subscribe", "presence"], t);
   }
 
   if (inboxUserId) {
     if (channelName !== getUserInboxChannelName(currentUser.id)) {
-      return NextResponse.json({ ok: false, message: "You cannot subscribe to this inbox." }, { status: 403 });
+      return NextResponse.json({ ok: false, message: t("responses.api.inboxForbidden") }, { status: 403 });
     }
 
-    return createTokenRequest(currentUser.id, channelName, ["subscribe"]);
+    return createTokenRequest(currentUser.id, channelName, ["subscribe"], t);
   }
 
-  return NextResponse.json({ ok: false, message: "Invalid Ably channel." }, { status: 400 });
+  return NextResponse.json({ ok: false, message: t("responses.api.channelInvalid") }, { status: 400 });
 }
 
-async function createTokenRequest(clientId: string, channelName: string, operations: string[]) {
+async function createTokenRequest(clientId: string, channelName: string, operations: string[], t: Translate) {
   try {
     const tokenRequest = await getAblyRestClient().auth.createTokenRequest({
       capability: JSON.stringify({
@@ -64,6 +67,6 @@ async function createTokenRequest(clientId: string, channelName: string, operati
       console.error("[ably] token request failed", error);
     }
 
-    return NextResponse.json({ ok: false, message: "Realtime auth is unavailable." }, { status: 503 });
+    return NextResponse.json({ ok: false, message: t("responses.api.realtimeUnavailable") }, { status: 503 });
   }
 }

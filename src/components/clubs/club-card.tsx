@@ -9,12 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ClubSummary } from "@/types/club.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import type { Translate } from "@/i18n/dictionary";
 
 type ClubCardProps = {
   club: ClubSummary;
 };
 
 export function ClubCard({ club }: ClubCardProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
@@ -47,42 +50,42 @@ export function ClubCard({ club }: ClubCardProps) {
       </CardHeader>
       <CardContent className="grid gap-4">
         <p className="line-clamp-3 min-h-12 text-sm leading-6 text-muted-foreground">
-          {club.description ?? "No club description yet."}
+          {club.description ?? t("clubs.card.noDescription")}
         </p>
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">
             <Users className="h-3.5 w-3.5" />
-            {club.memberCount} members
+            {t("clubs.card.memberCount", { count: club.memberCount })}
           </Badge>
-          <Badge variant="secondary">{club.visibility.replaceAll("_", " ")}</Badge>
+          <Badge variant="secondary">{getVisibilityLabel(club.visibility, t)}</Badge>
           {location ? (
             <Badge variant="secondary">
               <MapPin className="h-3.5 w-3.5" />
               {location}
             </Badge>
           ) : null}
-          {club.currentUserRole ? <Badge>{club.currentUserRole}</Badge> : null}
+          {club.currentUserRole ? <Badge>{getRoleLabel(club.currentUserRole, t)}</Badge> : null}
           {club.currentUserMemberStatus === "REQUESTED" ? (
             <Badge variant="secondary">
               <Clock className="h-3.5 w-3.5" />
-              Requested
+              {t("clubs.card.requested")}
             </Badge>
           ) : null}
         </div>
         {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
-            <Link href={`/clubs/${club.slug}`}>Open club</Link>
+            <Link href={`/clubs/${club.slug}`}>{t("clubs.card.open")}</Link>
           </Button>
           {!club.currentUserMemberStatus && club.visibility === "OPEN" ? (
             <Button type="button" disabled={pending} onClick={() => runAction(() => joinOpenClubAction(club.id))}>
               <Check className="h-4 w-4" />
-              Join
+              {t("clubs.card.join")}
             </Button>
           ) : null}
           {!club.currentUserMemberStatus && club.visibility === "REQUEST_ONLY" ? (
             <Button type="button" disabled={pending} onClick={() => runAction(() => requestJoinClubAction(club.id))}>
-              Request to join
+              {t("clubs.card.requestJoin")}
             </Button>
           ) : null}
           {club.currentUserMemberStatus === "INVITED" ? (
@@ -90,14 +93,26 @@ export function ClubCard({ club }: ClubCardProps) {
               type="button"
               disabled={pending}
               onClick={() => {
-                setMessage("Open the club members page to accept this invite.");
+                setMessage(t("clubs.card.acceptInviteHint"));
               }}
             >
-              Invite pending
+              {t("clubs.card.invitePending")}
             </Button>
           ) : null}
         </div>
       </CardContent>
     </Card>
   );
+}
+
+function getVisibilityLabel(value: string, t: Translate) {
+  if (value === "OPEN") return t("clubs.common.visibilityOpen");
+  if (value === "REQUEST_ONLY") return t("clubs.common.visibilityRequestOnly");
+  return t("clubs.common.visibilityInviteOnly");
+}
+
+function getRoleLabel(value: string, t: Translate) {
+  if (value === "OWNER") return t("clubs.common.roleOwner");
+  if (value === "PLAYER") return t("clubs.common.rolePlayer");
+  return value;
 }

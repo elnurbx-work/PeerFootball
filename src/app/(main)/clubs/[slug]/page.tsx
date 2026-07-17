@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { getClubBySlug } from "@/server/queries/club.queries";
+import { createTranslator } from "@/i18n/dictionary";
 
 type ClubPageProps = {
   params: Promise<{
@@ -14,21 +15,21 @@ type ClubPageProps = {
   }>;
 };
 
-const futureModules = [
-  { title: "Internal training matches", description: "Future internal squad games.", icon: Users },
-  { title: "Club vs Club matches", description: "Future external match requests.", icon: Shield },
-  { title: "Tactics", description: "Future formations and tactical notes.", icon: ClipboardList },
-  { title: "Statistics", description: "Future player and club stats.", icon: BarChart3 },
-  { title: "Analysis", description: "Future match and training analysis.", icon: ClipboardList },
-  { title: "Club chat", description: "Future club conversation space.", icon: MessageCircle }
-];
-
 export default async function ClubPage({ params }: ClubPageProps) {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
+  const futureModules = [
+    { title: t("clubs.pages.detail.futureInternalTitle"), description: t("clubs.pages.detail.futureInternalDescription"), icon: Users },
+    { title: t("clubs.pages.detail.futureClubVsClubTitle"), description: t("clubs.pages.detail.futureClubVsClubDescription"), icon: Shield },
+    { title: t("clubs.pages.detail.tacticsTitle"), description: t("clubs.pages.detail.tacticsDescription"), icon: ClipboardList },
+    { title: t("clubs.pages.detail.statisticsTitle"), description: t("clubs.pages.detail.statisticsDescription"), icon: BarChart3 },
+    { title: t("clubs.pages.detail.analysisTitle"), description: t("clubs.pages.detail.analysisDescription"), icon: ClipboardList },
+    { title: t("clubs.pages.detail.chatTitle"), description: t("clubs.pages.detail.chatDescription"), icon: MessageCircle }
+  ];
 
   const { slug } = await params;
   const club = await getClubBySlug(decodeURIComponent(slug), currentUser.id);
@@ -61,30 +62,30 @@ export default async function ClubPage({ params }: ClubPageProps) {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="truncate text-3xl font-bold">{club.name}</h1>
-                {!club.isActive ? <Badge variant="secondary">Deactivated</Badge> : null}
+                {!club.isActive ? <Badge variant="secondary">{t("clubs.pages.detail.deactivated")}</Badge> : null}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">@{club.slug}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge>{club.currentUserRole ?? "Visitor"}</Badge>
-                <Badge variant="secondary">{club.visibility.replaceAll("_", " ")}</Badge>
-                <Badge variant="secondary">{club.memberCount} members</Badge>
+                <Badge>{club.currentUserRole === "OWNER" ? t("clubs.common.roleOwner") : club.currentUserRole === "PLAYER" ? t("clubs.common.rolePlayer") : club.currentUserRole ?? t("clubs.pages.detail.visitor")}</Badge>
+                <Badge variant="secondary">{club.visibility === "OPEN" ? t("clubs.common.visibilityOpen") : club.visibility === "REQUEST_ONLY" ? t("clubs.common.visibilityRequestOnly") : t("clubs.common.visibilityInviteOnly")}</Badge>
+                <Badge variant="secondary">{t("clubs.card.memberCount", { count: club.memberCount })}</Badge>
                 {location ? <Badge variant="secondary">{location}</Badge> : null}
               </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 md:justify-end">
             <Button asChild variant="outline">
-              <Link href={`/clubs/${club.slug}/members`}>Members</Link>
+              <Link href={`/clubs/${club.slug}/members`}>{t("clubs.pages.detail.members")}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href={`/clubs/${club.slug}/guests`}>Guests</Link>
+              <Link href={`/clubs/${club.slug}/guests`}>{t("clubs.pages.detail.guests")}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href={`/clubs/${club.slug}/metrics`}>Metrics</Link>
+              <Link href={`/clubs/${club.slug}/metrics`}>{t("clubs.pages.detail.metrics")}</Link>
             </Button>
             {club.currentUserRole === "OWNER" ? (
               <Button asChild>
-                <Link href={`/clubs/${club.slug}/settings`}>Settings</Link>
+                <Link href={`/clubs/${club.slug}/settings`}>{t("clubs.pages.detail.settings")}</Link>
               </Button>
             ) : null}
           </div>
@@ -94,11 +95,11 @@ export default async function ClubPage({ params }: ClubPageProps) {
       <div className="grid gap-4 md:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader>
-            <CardTitle>Overview</CardTitle>
+            <CardTitle>{t("clubs.pages.detail.overview")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm leading-6 text-muted-foreground">
-              {club.description ?? "This club has not added a description yet."}
+              {club.description ?? t("clubs.pages.detail.noDescription")}
             </p>
           </CardContent>
         </Card>
@@ -110,13 +111,13 @@ export default async function ClubPage({ params }: ClubPageProps) {
           <CardContent className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
               <Swords className="h-6 w-6 text-primary" />
-              <h2 className="mt-3 text-lg font-semibold">Club oyunları</h2>
+              <h2 className="mt-3 text-lg font-semibold">{t("clubs.pages.detail.matchesTitle")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Postlardan ayrı olaraq yeni match yarat, club üzvlərini oyuna əlavə et və bitmiş oyunları izlə.
+                {t("clubs.pages.detail.matchesDescription")}
               </p>
             </div>
             <Button asChild>
-              <Link href={`/clubs/${club.slug}/matches`}>Oyunlara keç</Link>
+              <Link href={`/clubs/${club.slug}/matches`}>{t("clubs.pages.detail.openMatches")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -129,7 +130,7 @@ export default async function ClubPage({ params }: ClubPageProps) {
               <module.icon className="h-5 w-5 text-primary" />
               <h2 className="mt-3 font-semibold">{module.title}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>
-              <Badge variant="secondary" className="mt-4">Future phase</Badge>
+              <Badge variant="secondary" className="mt-4">{t("clubs.pages.detail.futurePhase")}</Badge>
             </CardContent>
           </Card>
         ))}

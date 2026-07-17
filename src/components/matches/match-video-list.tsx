@@ -6,8 +6,11 @@ import { deleteMatchVideoAction } from "@/actions/match.actions";
 import { Button } from "@/components/ui/button";
 import { MatchVideoForm } from "@/components/matches/match-video-form";
 import type { MatchVideoDto } from "@/types/match.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import type { Translate } from "@/i18n/dictionary";
 
 export function MatchVideoList({ matchId, videos, canManage }: { matchId: string; videos: MatchVideoDto[]; canManage: boolean }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -31,7 +34,7 @@ export function MatchVideoList({ matchId, videos, canManage }: { matchId: string
           onToggle={(event) => setIsAdding(event.currentTarget.open)}
         >
           <summary className="cursor-pointer select-none px-4 py-3 font-medium">
-            Video əlavə et
+            {t("matches.videos.add")}
           </summary>
           <div className="border-t p-4">
             <MatchVideoForm matchId={matchId} onDone={() => setIsAdding(false)} />
@@ -47,10 +50,10 @@ export function MatchVideoList({ matchId, videos, canManage }: { matchId: string
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <a href={video.originalUrl} target="_blank" rel="noreferrer" className="font-medium text-primary underline">
-                  {video.title ?? "Oyun videosu"}
+                  {video.title ?? t("matches.videos.defaultTitle")}
                 </a>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {video.provider.replaceAll("_", " ")} · {video.videoType.replaceAll("_", " ")}
+                  {getProviderLabel(video.provider, t)} · {getVideoTypeLabel(video.videoType, t)}
                 </p>
                 {video.description ? <p className="mt-1 text-sm text-muted-foreground">{video.description}</p> : null}
                 <p className="mt-1 text-xs text-muted-foreground">{video.uploadedBy.name ?? video.uploadedBy.username}</p>
@@ -58,10 +61,10 @@ export function MatchVideoList({ matchId, videos, canManage }: { matchId: string
               {canManage ? (
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => setEditingId(editingId === video.id ? null : video.id)}>
-                    Redaktə et
+                    {t("matches.videos.edit")}
                   </Button>
                   <Button size="sm" variant="outline" disabled={pending} onClick={() => remove(video.id)}>
-                    Sil
+                    {t("matches.videos.delete")}
                   </Button>
                 </div>
               ) : null}
@@ -73,8 +76,21 @@ export function MatchVideoList({ matchId, videos, canManage }: { matchId: string
             ) : null}
           </div>
         ))}
-        {!videos.length ? <p className="text-sm text-muted-foreground">Oyun videosu əlavə edilməyib.</p> : null}
+        {!videos.length ? <p className="text-sm text-muted-foreground">{t("matches.videos.empty")}</p> : null}
       </div>
     </div>
   );
+}
+
+function getProviderLabel(value: string, t: Translate) {
+  if (value === "GOOGLE_DRIVE") return "Google Drive";
+  if (value === "YOUTUBE") return "YouTube";
+  return t("matches.videos.externalProvider");
+}
+
+function getVideoTypeLabel(value: string, t: Translate) {
+  if (value === "FULL_MATCH") return t("matches.videoForm.fullMatch");
+  if (value === "FIRST_HALF") return t("matches.videoForm.firstHalf");
+  if (value === "SECOND_HALF") return t("matches.videoForm.secondHalf");
+  return t("matches.videoForm.other");
 }

@@ -15,6 +15,7 @@ import {
 import { getPostComments, getProfilePosts } from "@/server/queries/post.queries";
 import type { FriendshipWithUser } from "@/types/friendship.types";
 import { redirect } from "next/navigation";
+import { createTranslator, type Translate } from "@/i18n/dictionary";
 
 export default async function ProfilePage() {
   const currentUser = await getCurrentUser();
@@ -22,6 +23,7 @@ export default async function ProfilePage() {
   if (!currentUser) {
     redirect("/auth/login");
   }
+  const t = createTranslator(currentUser.locale);
 
   const profile = await getProfileSummaryByUserId(currentUser.id);
 
@@ -50,6 +52,7 @@ export default async function ProfilePage() {
         friendsCount={friends.length}
         incomingRequests={incomingRequests}
         outgoingRequests={outgoingRequests}
+        t={t}
       />
       <div className="mx-auto grid w-full max-w-3xl gap-5">
         {posts.length ? (
@@ -59,7 +62,7 @@ export default async function ProfilePage() {
         ) : (
           <Card>
             <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              No posts yet.
+              {t("profile.pages.noPosts")}
             </CardContent>
           </Card>
         )}
@@ -72,10 +75,12 @@ function FriendRequestsPanel({
   friendsCount,
   incomingRequests,
   outgoingRequests
+  , t
 }: {
   friendsCount: number;
   incomingRequests: FriendshipWithUser[];
   outgoingRequests: FriendshipWithUser[];
+  t: Translate;
 }) {
   return (
     <section className="grid gap-5 rounded-md border bg-card p-4 sm:p-6">
@@ -83,18 +88,18 @@ function FriendRequestsPanel({
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Users className="h-4 w-4 text-primary" />
-            Friends and requests
+            {t("profile.pages.friendsTitle")}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage friend requests from your profile on mobile.
+            {t("profile.pages.friendsDescription")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline">
-            <Link href="/friends?tab=friends">{friendsCount} friends</Link>
+            <Link href="/friends?tab=friends">{t("profile.pages.friendCount", { count: friendsCount })}</Link>
           </Button>
           <Button asChild size="sm">
-            <Link href="/friends?tab=incoming">Open friends</Link>
+            <Link href="/friends?tab=incoming">{t("profile.pages.openFriends")}</Link>
           </Button>
         </div>
       </div>
@@ -103,24 +108,24 @@ function FriendRequestsPanel({
         <section className="grid gap-3">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Inbox className="h-4 w-4 text-primary" />
-            Incoming requests
+            {t("profile.pages.incoming")}
           </div>
           <FriendsList
             items={incomingRequests}
             mode="incoming"
-            emptyMessage="No incoming friend requests."
+            emptyMessage={t("profile.pages.noIncoming")}
           />
         </section>
 
         <section className="grid gap-3">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Send className="h-4 w-4 text-primary" />
-            Sent requests
+            {t("profile.pages.sent")}
           </div>
           <FriendsList
             items={outgoingRequests}
             mode="outgoing"
-            emptyMessage="No sent friend requests."
+            emptyMessage={t("profile.pages.noSent")}
           />
         </section>
       </div>

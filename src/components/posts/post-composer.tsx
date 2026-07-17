@@ -15,6 +15,7 @@ import {
   getPostMediaValidationError
 } from "@/lib/validations/post";
 import type { PostVisibility } from "@/types/post.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type MediaPreview = {
   file: File;
@@ -22,6 +23,7 @@ type MediaPreview = {
 };
 
 export function PostComposer() {
+  const { t } = useI18n();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [content, setContent] = useState("");
@@ -56,12 +58,12 @@ export function PostComposer() {
     }
 
     if (mediaFiles.length + incomingFiles.length > MAX_POST_MEDIA_COUNT) {
-      setError(`Choose up to ${MAX_POST_MEDIA_COUNT} media files.`);
+      setError(t("posts.composer.mediaLimit", { count: MAX_POST_MEDIA_COUNT }));
       event.target.value = "";
       return;
     }
 
-    const firstError = incomingFiles.map(getPostMediaValidationError).find(Boolean);
+    const firstError = incomingFiles.map((file) => getPostMediaValidationError(file, t)).find(Boolean);
 
     if (firstError) {
       setError(firstError);
@@ -83,7 +85,7 @@ export function PostComposer() {
     setToastMessage(null);
 
     if (!trimmedLength && mediaFiles.length === 0) {
-      setError("Add text or media before posting.");
+      setError(t("posts.composer.emptyError"));
       return;
     }
 
@@ -116,7 +118,7 @@ export function PostComposer() {
             <Textarea
               maxLength={POST_CONTENT_MAX_LENGTH}
               onChange={(event) => setContent(event.target.value)}
-              placeholder="Share a football update..."
+              placeholder={t("posts.composer.placeholder")}
               rows={4}
               value={content}
             />
@@ -166,7 +168,7 @@ export function PostComposer() {
                   disabled={pending || mediaFiles.length >= MAX_POST_MEDIA_COUNT}
                 >
                   <ImagePlus className="h-4 w-4" />
-                  Media
+                  {t("posts.composer.media")}
                 </Button>
                 <label className="flex h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm">
                   {visibility === "PUBLIC" ? <Globe2 className="h-4 w-4" /> : visibility === "FRIENDS_ONLY" ? <Users className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
@@ -176,9 +178,9 @@ export function PostComposer() {
                     onChange={(event) => setVisibility(event.target.value as PostVisibility)}
                     disabled={pending}
                   >
-                    <option value="PUBLIC">Public</option>
-                    <option value="FRIENDS_ONLY">Friends</option>
-                    <option value="PRIVATE">Private</option>
+                    <option value="PUBLIC">{t("posts.composer.public")}</option>
+                    <option value="FRIENDS_ONLY">{t("posts.composer.friends")}</option>
+                    <option value="PRIVATE">{t("posts.composer.private")}</option>
                   </select>
                 </label>
               </div>
@@ -189,7 +191,7 @@ export function PostComposer() {
                 </span>
                 <Button type="submit" disabled={pending || (!trimmedLength && mediaFiles.length === 0)}>
                   <Send className="h-4 w-4" />
-                  {pending ? "Posting..." : "Post"}
+                  {pending ? t("posts.composer.posting") : t("posts.composer.post")}
                 </Button>
               </div>
             </div>

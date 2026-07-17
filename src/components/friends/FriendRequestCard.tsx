@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { FriendshipWithUser } from "@/types/friendship.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type FriendRequestCardProps = {
   friendship: FriendshipWithUser;
@@ -19,10 +20,11 @@ type FriendRequestCardProps = {
 };
 
 export function FriendRequestCard({ friendship, mode }: FriendRequestCardProps) {
+  const { t } = useI18n();
   const [visible, setVisible] = useState(true);
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
-  const displayName = friendship.user.name ?? "FanPitch Player";
+  const displayName = friendship.user.name ?? t("profile.summary.playerFallback");
   const profileHref = friendship.user.username ? `/profile/${friendship.user.username}` : "/profile";
 
   const runAction = (action: () => Promise<{ ok: boolean; message: string }>) => {
@@ -55,7 +57,7 @@ export function FriendRequestCard({ friendship, mode }: FriendRequestCardProps) 
           <span className="min-w-0">
             <span className="block truncate text-sm font-medium">{displayName}</span>
             <span className="block truncate text-xs text-muted-foreground">
-              @{friendship.user.username ?? "profile"}
+              @{friendship.user.username ?? t("profile.summary.profileFallback")}
             </span>
           </span>
         </Link>
@@ -70,7 +72,7 @@ export function FriendRequestCard({ friendship, mode }: FriendRequestCardProps) 
                 onClick={() => runAction(() => acceptFriendRequest(friendship.id))}
               >
                 <Check className="h-4 w-4" />
-                Accept
+                {t("friends.button.accept")}
               </Button>
               <Button
                 type="button"
@@ -80,7 +82,7 @@ export function FriendRequestCard({ friendship, mode }: FriendRequestCardProps) 
                 onClick={() => runAction(() => declineFriendRequest(friendship.id))}
               >
                 <X className="h-4 w-4" />
-                Decline
+                {t("friends.button.decline")}
               </Button>
             </>
           ) : null}
@@ -94,7 +96,7 @@ export function FriendRequestCard({ friendship, mode }: FriendRequestCardProps) 
               onClick={() => runAction(() => cancelFriendRequest(friendship.id))}
             >
               <X className="h-4 w-4" />
-              Cancel
+              {t("friends.card.cancel")}
             </Button>
           ) : null}
 
@@ -107,7 +109,7 @@ export function FriendRequestCard({ friendship, mode }: FriendRequestCardProps) 
               onClick={() => runAction(() => removeFriend(friendship.id))}
             >
               <UserMinus className="h-4 w-4" />
-              Remove
+              {t("friends.card.remove")}
             </Button>
           ) : null}
         </div>

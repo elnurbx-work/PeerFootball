@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClubGuestForm } from "@/components/clubs/club-guest-form";
 import type { ClubGuestDto } from "@/types/club.types";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type ClubGuestListProps = {
   clubId: string;
@@ -17,6 +18,7 @@ type ClubGuestListProps = {
 };
 
 export function ClubGuestList({ clubId, guests, canManage }: ClubGuestListProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -39,7 +41,7 @@ export function ClubGuestList({ clubId, guests, canManage }: ClubGuestListProps)
       {canManage ? (
         <Card>
           <CardHeader>
-            <CardTitle>Add guest</CardTitle>
+            <CardTitle>{t("clubs.guestList.addTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ClubGuestForm clubId={clubId} />
@@ -48,7 +50,7 @@ export function ClubGuestList({ clubId, guests, canManage }: ClubGuestListProps)
       ) : null}
       <Card>
         <CardHeader>
-          <CardTitle>Guest list</CardTitle>
+          <CardTitle>{t("clubs.guestList.title")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3">
           {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
@@ -58,12 +60,12 @@ export function ClubGuestList({ clubId, guests, canManage }: ClubGuestListProps)
                 <div>
                   <p className="font-semibold">{guest.fullName}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {guest.position || "No position set"}
+                    {guest.position || t("clubs.guestList.noPosition")}
                   </p>
                   {guest.note ? <p className="mt-2 text-sm leading-6 text-muted-foreground">{guest.note}</p> : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant={guest.isActive ? "default" : "secondary"}>{guest.isActive ? "Active" : "Inactive"}</Badge>
+                  <Badge variant={guest.isActive ? "default" : "secondary"}>{guest.isActive ? t("clubs.guestList.active") : t("clubs.guestList.inactive")}</Badge>
                   {canManage && guest.isActive ? (
                     <>
                       <Button
@@ -73,7 +75,7 @@ export function ClubGuestList({ clubId, guests, canManage }: ClubGuestListProps)
                         onClick={() => setEditingGuestId(editingGuestId === guest.id ? null : guest.id)}
                       >
                         <Pencil className="h-4 w-4" />
-                        Edit
+                        {t("clubs.guestList.edit")}
                       </Button>
                       <Button
                         type="button"
@@ -83,7 +85,7 @@ export function ClubGuestList({ clubId, guests, canManage }: ClubGuestListProps)
                         onClick={() => deactivateGuest(guest.id)}
                       >
                         <Power className="h-4 w-4" />
-                        Deactivate
+                        {t("clubs.guestList.deactivate")}
                       </Button>
                     </>
                   ) : null}
@@ -96,7 +98,7 @@ export function ClubGuestList({ clubId, guests, canManage }: ClubGuestListProps)
               ) : null}
             </div>
           ))}
-          {!guests.length ? <p className="text-center text-sm text-muted-foreground">No guests yet.</p> : null}
+          {!guests.length ? <p className="text-center text-sm text-muted-foreground">{t("clubs.guestList.empty")}</p> : null}
         </CardContent>
       </Card>
     </div>

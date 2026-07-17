@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Download, MonitorSmartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -20,29 +21,30 @@ function isStandaloneDisplay() {
   );
 }
 
-function getPlatformHint() {
+function getPlatformHint(t: ReturnType<typeof useI18n>["t"]) {
   const userAgent = window.navigator.userAgent.toLowerCase();
 
   if (/iphone|ipad|ipod/.test(userAgent)) {
-    return "Safari share menu";
+    return t("pwa.install.safariMenu");
   }
 
   if (/android/.test(userAgent)) {
-    return "browser app menu";
+    return t("pwa.install.browserAppMenu");
   }
 
-  return "browser address bar";
+  return t("pwa.install.addressBar");
 }
 
 export function InstallAppCard() {
+  const { t } = useI18n();
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [status, setStatus] = useState<"ready" | "idle" | "installed" | "dismissed">("idle");
-  const [platformHint, setPlatformHint] = useState("browser menu");
+  const [platformHint, setPlatformHint] = useState(() => t("pwa.install.browserMenu"));
 
   useEffect(() => {
     setIsInstalled(isStandaloneDisplay());
-    setPlatformHint(getPlatformHint());
+    setPlatformHint(getPlatformHint(t));
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -63,23 +65,23 @@ export function InstallAppCard() {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleInstalled);
     };
-  }, []);
+  }, [t]);
 
   const statusText = useMemo(() => {
     if (isInstalled || status === "installed") {
-      return "FanPitch is installed on this device.";
+      return t("pwa.install.installed");
     }
 
     if (status === "ready") {
-      return "FanPitch can be installed from this browser.";
+      return t("pwa.install.ready");
     }
 
     if (status === "dismissed") {
-      return "Install was dismissed. You can try again from the browser menu.";
+      return t("pwa.install.dismissed");
     }
 
-    return `Use the ${platformHint} to install FanPitch.`;
-  }, [isInstalled, platformHint, status]);
+    return t("pwa.install.useHint", { hint: platformHint });
+  }, [isInstalled, platformHint, status, t]);
 
   const installApp = async () => {
     if (!installPrompt) {
@@ -105,7 +107,7 @@ export function InstallAppCard() {
         </div>
         <div className="min-w-0 flex-1 space-y-4">
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold leading-tight">Install FanPitch</h2>
+            <h2 className="text-xl font-semibold leading-tight">{t("pwa.install.title")}</h2>
             <p className="text-sm text-muted-foreground">{statusText}</p>
           </div>
           <Button
@@ -116,7 +118,7 @@ export function InstallAppCard() {
             className="w-full sm:w-auto"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
-            Install app
+            {t("pwa.install.button")}
           </Button>
         </div>
       </div>
