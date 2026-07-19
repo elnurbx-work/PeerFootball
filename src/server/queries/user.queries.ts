@@ -27,11 +27,12 @@ export async function getSessionUserById(userId: string): Promise<SessionUser | 
       email: true,
       image: true,
       username: true,
-      locale: true
+      locale: true,
+      isBanned: true
     }
   });
 
-  if (!user?.email) {
+  if (!user?.email || user.isBanned) {
     return null;
   }
 

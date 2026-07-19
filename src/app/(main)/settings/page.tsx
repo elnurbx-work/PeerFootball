@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { Bell, Lock, Paintbrush, UserCircle } from "lucide-react";
+import Link from "next/link";
+import { Bell, Lock, MessageSquareText, Paintbrush, UserCircle } from "lucide-react";
 import { FavoriteTeamsPicker } from "@/components/profile/favorite-teams-picker";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { getEditableProfileByUserId } from "@/server/queries/profile.queries";
 import { LanguageSettings } from "@/components/settings/language-settings";
 import { createTranslator } from "@/i18n/dictionary";
 import { AccountSettings } from "@/components/settings/account-settings";
+import { Button } from "@/components/ui/button";
 
 export default async function SettingsPage() {
   const currentUser = await getCurrentUser();
@@ -63,6 +65,15 @@ export default async function SettingsPage() {
       </aside>
 
       <div className="grid gap-5">
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+            <div>
+              <p className="font-semibold">Feedback göndər</p>
+              <p className="text-sm text-muted-foreground">Problem və təkliflərinizi birbaşa admin komandasına çatdırın.</p>
+            </div>
+            <Button asChild variant="outline"><Link href="/feedback"><MessageSquareText className="h-4 w-4" />Feedback</Link></Button>
+          </CardContent>
+        </Card>
         <LanguageSettings />
         <ProfileEditForm profile={editableProfile} />
         <FavoriteTeamsPicker favoriteTeams={editableProfile.favoriteTeams} />

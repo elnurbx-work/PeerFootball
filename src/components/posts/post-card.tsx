@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { MessageCircle, Repeat2, ThumbsUp, Trash2 } from "lucide-react";
+import { Flag, MessageCircle, Repeat2, ThumbsUp, Trash2 } from "lucide-react";
 import { deletePostAction, toggleLikePostAction } from "@/actions/post.actions";
+import { reportPostAction } from "@/actions/moderation.actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CommentList } from "@/components/posts/comment-list";
@@ -14,6 +15,7 @@ import { RepostDialog } from "@/components/posts/repost-dialog";
 import type { FeedPost, OriginalPostPreview, PostComment } from "@/types/post.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { RelativeTime } from "@/components/i18n/relative-time";
+import { Textarea } from "@/components/ui/textarea";
 
 type PostCardProps = {
   post: FeedPost;
@@ -28,6 +30,8 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRepostDialog, setShowRepostDialog] = useState(false);
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportNote, setReportNote] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -85,6 +89,18 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
 
       setShowDeleteDialog(false);
       router.refresh();
+    });
+  }
+
+  function handleReport() {
+    setMessage(null);
+    startTransition(async () => {
+      const result = await reportPostAction(post.id, reportNote);
+      setMessage(result.message);
+      if (result.ok) {
+        setReportNote("");
+        setShowReportForm(false);
+      }
     });
   }
 
@@ -160,7 +176,23 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
             <Repeat2 className="h-4 w-4" />
             {post.repostsCount}
           </Button>
+          {!post.isOwner ? (
+            <Button variant="ghost" size="sm" type="button" onClick={() => setShowReportForm((value) => !value)}>
+              <Flag className="h-4 w-4" />
+              Report
+            </Button>
+          ) : null}
         </div>
+
+        {showReportForm ? (
+          <div className="grid gap-2 rounded-md border bg-muted/40 p-3">
+            <Textarea value={reportNote} onChange={(event) => setReportNote(event.target.value)} maxLength={300} rows={2} placeholder="Bu postu niyə report edirsiniz?" />
+            <div className="flex justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={() => setShowReportForm(false)}>Ləğv et</Button>
+              <Button type="button" size="sm" disabled={pending} onClick={handleReport}>Göndər</Button>
+            </div>
+          </div>
+        ) : null}
 
         {message ? <p className="text-sm text-destructive">{message}</p> : null}
         {showComments ? <CommentList postId={post.id} comments={comments} /> : null}

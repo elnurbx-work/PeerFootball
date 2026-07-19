@@ -32,6 +32,7 @@ const originalPostSelect = {
   authorId: true,
   content: true,
   visibility: true,
+  isHidden: true,
   createdAt: true,
   author: {
     select: postAuthorSelect
@@ -110,7 +111,7 @@ export async function getPostVisibilityById(postId: string) {
 export async function getFeedPosts(currentUserId?: string): Promise<FeedPost[]> {
   const friendIds = await getAcceptedFriendIds(currentUserId);
   const posts = await prisma.post.findMany({
-    where: visibilityWhere(currentUserId, friendIds),
+    where: { isHidden: false, AND: [visibilityWhere(currentUserId, friendIds)] },
     include: postInclude(currentUserId),
     orderBy: {
       createdAt: "desc"
@@ -126,6 +127,7 @@ export async function getProfilePosts(profileUserId: string, currentUserId?: str
   const posts = await prisma.post.findMany({
     where: {
       authorId: profileUserId,
+      isHidden: false,
       ...profileVisibilityWhere(profileUserId, currentUserId, friendIds)
     },
     include: postInclude(currentUserId),
@@ -144,7 +146,7 @@ export async function getPostById(postId: string, currentUserId?: string): Promi
     include: postInclude(currentUserId)
   });
 
-  if (!post || !canViewerSeePost(post, currentUserId, friendIds)) {
+  if (!post || post.isHidden || !canViewerSeePost(post, currentUserId, friendIds)) {
     return null;
   }
 
@@ -299,7 +301,7 @@ function toOriginalPostPreview(
   currentUserId: string | undefined,
   friendIds: Set<string>
 ): OriginalPostPreview | null {
-  if (!post || !canViewerSeePost(post, currentUserId, friendIds)) {
+  if (!post || post.isHidden || !canViewerSeePost(post, currentUserId, friendIds)) {
     return null;
   }
 

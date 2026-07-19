@@ -163,6 +163,19 @@ enum NotificationType {
   MESSAGE
 }
 
+enum FeedbackStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
 model User {
   id                      String                 @id @default(cuid())
   name                    String?
@@ -181,6 +194,9 @@ model User {
   profileVisibility       ProfileVisibility      @default(PUBLIC)
   createdAt               DateTime               @default(now())
   updatedAt               DateTime               @updatedAt
+  isBanned                Boolean                @default(false)
+  bannedAt                DateTime?
+  banReason               String?
   posts                   Post[]
   comments                Comment[]
   likes                   PostLike[]
@@ -214,6 +230,9 @@ model User {
   playerStats             PlayerStats?
   accounts                Account[]
   sessions                Session[]
+  feedbacks               Feedback[]
+  submittedPostReports    PostReport[]           @relation("PostReportReporter")
+  receivedPostReports     PostReport[]           @relation("PostReportAuthor")
 }
 
 model UserFavoriteTeam {
@@ -274,6 +293,21 @@ model VerificationToken {
   @@id([identifier, token])
 }
 
+model Feedback {
+  id         String         @id @default(cuid())
+  userId     String
+  message    String
+  status     FeedbackStatus @default(OPEN)
+  adminNote  String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  resolvedAt DateTime?
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
 model UserEncryptedProfile {
   id         String   @id @default(cuid())
   userId     String   @unique
@@ -299,6 +333,9 @@ model Post {
   keyVersion     Int            @default(1)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  isHidden       Boolean        @default(false)
+  hiddenAt       DateTime?
+  moderationNote String?
   author         User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   originalPost   Post?          @relation("PostReposts", fields: [originalPostId], references: [id], onDelete: SetNull)
   reposts        Post[]         @relation("PostReposts")
@@ -306,11 +343,33 @@ model Post {
   comments       Comment[]
   likes          PostLike[]
   notifications  Notification[]
+  reports        PostReport[]
 
   @@index([createdAt])
   @@index([authorId, createdAt])
   @@index([originalPostId])
   @@index([visibility])
+  @@index([isHidden, createdAt])
+}
+
+model PostReport {
+  id           String       @id @default(cuid())
+  postId       String
+  reporterId   String
+  postAuthorId String
+  note         String
+  status       ReportStatus @default(OPEN)
+  adminNote    String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  resolvedAt   DateTime?
+  post         Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter     User         @relation("PostReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  postAuthor   User         @relation("PostReportAuthor", fields: [postAuthorId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, reporterId])
+  @@index([status, createdAt])
+  @@index([postAuthorId, createdAt])
 }
 
 model PostMedia {

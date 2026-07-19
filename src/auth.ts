@@ -49,12 +49,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               image: true,
               username: true,
               emailVerified: true,
-              passwordHash: true
+              passwordHash: true,
+              isBanned: true
             }
           })
           .catch(() => null);
 
-        if (!user?.emailVerified || !(await verifyPassword(result.data.password, user.passwordHash))) {
+        if (user?.isBanned || !user?.emailVerified || !(await verifyPassword(result.data.password, user.passwordHash))) {
           return null;
         }
 
@@ -77,6 +78,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account, profile }) {
       if (account?.provider === "google" && profile?.email_verified === false) {
         return false;
+      }
+
+      if (user.email) {
+        const existing = await prisma.user.findUnique({
+          where: { email: normalizeEmail(user.email) },
+          select: { isBanned: true }
+        }).catch(() => null);
+        if (existing?.isBanned) return false;
       }
 
       try {
