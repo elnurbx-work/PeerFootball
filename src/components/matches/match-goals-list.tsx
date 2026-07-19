@@ -30,7 +30,7 @@ export function MatchGoalsList({
   const selectedSide = sides.find((side) => side.id === selectedSideId);
   const selectablePlayers =
     selectedSide?.players.filter((player) =>
-      ["SELECTED", "ACCEPTED"].includes(player.status)
+      ["SELECTED", "INVITED", "ACCEPTED"].includes(player.status)
     ) ?? [];
 
   function submit(event: FormEvent<HTMLFormElement>) {

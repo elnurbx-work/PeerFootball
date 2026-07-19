@@ -21,6 +21,7 @@
     "@prisma/adapter-neon": "^6.19.3",
     "@prisma/client": "^6.0.0",
     "@radix-ui/react-slot": "^1.1.1",
+    "@sentry/nextjs": "^10.66.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "ably": "^2.23.0",

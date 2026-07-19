@@ -376,7 +376,7 @@ export async function addMatchGoalAction(input: unknown): Promise<ApiResponse> {
       id: parsed.data.matchPlayerId,
       matchId: side.matchId,
       matchSideId: side.id,
-      status: { in: ["SELECTED", "ACCEPTED"] }
+      status: { in: ["SELECTED", "INVITED", "ACCEPTED"] }
     },
     include: {
       user: { select: { name: true, username: true } },

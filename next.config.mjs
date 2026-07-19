@@ -1,5 +1,11 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    // Sentry DSNs are public; expose the same value to the browser bundle.
+    NEXT_PUBLIC_SENTRY_DSN: process.env.SENTRY_DSN
+  },
   async headers() {
     return [
       {
@@ -28,4 +34,10 @@ const nextConfig = {
   }
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+    excludeTracing: true
+  }
+});
