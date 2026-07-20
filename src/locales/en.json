@@ -1,4 +1,5 @@
 {
+  "ads": { "sponsored": "Sponsored", "ariaLabel": "Sponsored advertisement" },
   "common": {
     "save": "Save",
     "saving": "Saving...",

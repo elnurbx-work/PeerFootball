@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "tsx src/lib/ads/feed-placement.test.ts",
     "i18n:check": "node scripts/check-i18n.mjs",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",

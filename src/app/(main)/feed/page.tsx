@@ -7,6 +7,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { getFeedPosts, getPostComments } from "@/server/queries/post.queries";
 import { redirect } from "next/navigation";
 import { createTranslator } from "@/i18n/dictionary";
+import { Fragment } from "react";
+import { InFeedAdCard } from "@/components/ads/in-feed-ad-card";
+import { adsenseConfig } from "@/config/adsense";
+import { getFeedAdPostIndexes } from "@/lib/ads/feed-placement";
 
 export default async function FeedPage() {
   const currentUser = await getCurrentUser();
@@ -22,6 +26,14 @@ export default async function FeedPage() {
       posts.map(async (post) => [post.id, await getPostComments(post.id, currentUser.id)] as const)
     )
   );
+  const adPostIndexes = new Set(
+    getFeedAdPostIndexes({
+      enabled: adsenseConfig.enabled,
+      postCount: posts.length,
+      interval: adsenseConfig.feedInterval,
+      maximumAds: adsenseConfig.maximumFeedAds
+    })
+  );
 
   return (
     <section className="mx-auto grid max-w-3xl gap-5 px-4 py-10">
@@ -32,8 +44,13 @@ export default async function FeedPage() {
         </p>
       </div>
       {posts.length ? (
-        posts.map((post) => (
-          <PostCard key={post.id} post={post} comments={commentsByPostId.get(post.id) ?? []} />
+        posts.map((post, postIndex) => (
+          <Fragment key={post.id}>
+            <PostCard post={post} comments={commentsByPostId.get(post.id) ?? []} />
+            {adPostIndexes.has(postIndex) ? (
+              <InFeedAdCard key={`adsense-feed-after-${post.id}`} />
+            ) : null}
+          </Fragment>
         ))
       ) : (
         <EmptyState

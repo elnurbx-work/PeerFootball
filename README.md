@@ -96,6 +96,29 @@ https://your-vercel-domain.vercel.app/api/auth/callback/google
 
 5. Put the client ID in `AUTH_GOOGLE_ID` and client secret in `AUTH_GOOGLE_SECRET`.
 
+## Google AdSense
+
+AdSense is disabled by default and fails closed when the client ID, feed slot, or in-feed layout key is missing or invalid. Configure these public build-time variables locally in `.env.local` and, for deployment, in Vercel under Project Settings -> Environment Variables for each intended environment:
+
+```bash
+NEXT_PUBLIC_ADSENSE_ENABLED=false
+NEXT_PUBLIC_ADSENSE_CLIENT_ID="ca-pub-1234567890123456"
+NEXT_PUBLIC_ADSENSE_FEED_SLOT="1234567890"
+NEXT_PUBLIC_ADSENSE_FEED_LAYOUT_KEY=""
+NEXT_PUBLIC_ADSENSE_FEED_INTERVAL=2
+NEXT_PUBLIC_ADSENSE_MAX_FEED_ADS=5
+```
+
+In AdSense, create an In-feed ad unit, copy the account client ID (`ca-pub-...`) into `NEXT_PUBLIC_ADSENSE_CLIENT_ID`, the numeric ad-slot into `NEXT_PUBLIC_ADSENSE_FEED_SLOT`, and its non-empty layout key into `NEXT_PUBLIC_ADSENSE_FEED_LAYOUT_KEY`. Set `NEXT_PUBLIC_ADSENSE_ENABLED=true` only after all required values are configured, then redeploy because `NEXT_PUBLIC_*` values are embedded at build time. Configure the variables for Vercel Production (not only Preview) and create a new deployment after every change.
+
+The main `/feed` inserts one manual ad after every two real posts by default, using the complete rendered post array rather than resetting at page boundaries. Change `NEXT_PUBLIC_ADSENSE_FEED_INTERVAL` to adjust that interval and `NEXT_PUBLIC_ADSENSE_MAX_FEED_ADS` to cap ads in a long feed (default: five). Empty feeds and all other routes—including authentication, direct messages, settings, admin, post creation, account-management, payment, loading, and error screens—do not render ad units. The AdSense script is mounted once from the root layout but only loads on `/feed` when configuration is valid.
+
+The committed `public/ads.txt` contains the publisher declaration using the required `pub-...` form (not `ca-pub-...`). After deployment, verify that `https://YOUR_DOMAIN/ads.txt` returns that declaration as plain text.
+
+Google and advertising partners may use cookies or similar technologies for advertising measurement and may show personalized or non-personalized ads depending on consent and region. The project owner must reflect this in the published privacy and cookie information. For users in the EEA, United Kingdom, or Switzerland, configure a Google-certified consent management platform through AdSense Privacy & Messaging or another certified CMP before enabling ads; this repository does not claim GDPR compliance and does not include a CMP. If consent support is added, gate the AdSense script on advertising consent.
+
+The site and ad unit must be approved by AdSense before real ads can display. Test serving on the approved production domain: localhost and Vercel Preview may remain unfilled. Also verify that the production domain registered in AdSense matches the deployed canonical domain. Configure Auto Ads so it does not inject excessive additional units into the manually monetized feed. Do not click your own ads or use real ad clicks for testing.
+
 ## Local Development
 
 Install dependencies:

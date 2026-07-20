@@ -1,4 +1,5 @@
 {
+  "ads": { "sponsored": "Sponsorlu", "ariaLabel": "Sponsorlu reklam" },
   "common": { "save": "Yadda saxla", "saving": "Saxlanılır...", "metadataDescription": "Oyunçular və azarkeşlər üçün futbol sosial şəbəkəsi.", "feedShortcutDescription": "FanPitch lentinizi açın.", "matchesShortcutDescription": "Yerli futbol oyunlarını tapın və təşkil edin.", "membersCount": "{count} üzv" },
   "nav": {
     "home": "Ana səhifə", "match": "Oyunlar", "direct": "Mesajlar", "search": "Axtarış", "profile": "Profil", "createPost": "Paylaşım yarat", "matches": "Oyunlar", "clubs": "Klublar", "inbox": "Gələnlər", "friends": "Dostlar", "contacts": "Əlaqələr", "overview": "Ümumi baxış", "logout": "Çıxış", "login": "Giriş",

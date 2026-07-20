@@ -8,6 +8,8 @@ import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-regis
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { getRequestLocale } from "@/i18n/server";
 import { getServerTranslator } from "@/i18n/server";
+import { AdSenseScript } from "@/components/ads/adsense-script";
+import { adsenseConfig } from "@/config/adsense";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getServerTranslator();
@@ -24,6 +26,9 @@ export async function generateMetadata(): Promise<Metadata> {
   formatDetection: {
     telephone: false
   },
+  ...(adsenseConfig.enabled && adsenseConfig.clientId
+    ? { other: { "google-adsense-account": adsenseConfig.clientId } }
+    : {}),
   icons: {
     icon: [
       { url: "/icons/icon-192", sizes: "192x192", type: "image/png" },
@@ -51,6 +56,7 @@ export default async function RootLayout({
           <ServiceWorkerRegistration />
           {children}
         </I18nProvider>
+        <AdSenseScript />
         <Analytics />
         <SpeedInsights />
       </body>
