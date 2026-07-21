@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  getFriendsForUser,
-  getIncomingFriendRequestsForUser,
-  getOutgoingFriendRequestsForUser
+  getFriendshipListsForUser
 } from "@/server/queries/friendship.queries";
 import { FriendsList } from "@/components/friends/FriendsList";
 import { getCurrentUser } from "@/lib/auth";
@@ -31,11 +29,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
 
   const params = await searchParams;
   const activeTab = tabs.some((tab) => tab.key === params.tab) ? params.tab : "friends";
-  const [friends, incoming, outgoing] = await Promise.all([
-    getFriendsForUser(currentUser.id),
-    getIncomingFriendRequestsForUser(currentUser.id),
-    getOutgoingFriendRequestsForUser(currentUser.id)
-  ]);
+  const { friends, incoming, outgoing } = await getFriendshipListsForUser(currentUser.id);
 
   return (
     <section className="mx-auto grid max-w-4xl gap-5 px-4 py-10">

@@ -10,13 +10,44 @@ import { getRequestLocale } from "@/i18n/server";
 import { getServerTranslator } from "@/i18n/server";
 import { AdSenseScript } from "@/components/ads/adsense-script";
 import { adsenseConfig } from "@/config/adsense";
+import { siteConfig } from "@/config/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getServerTranslator();
   return {
-  applicationName: "FanPitch",
-  title: "FanPitch",
+  metadataBase: new URL(siteConfig.url),
+  applicationName: siteConfig.name,
+  title: {
+    default: siteConfig.name,
+    template: `%s | ${siteConfig.name}`
+  },
   description: t("common.metadataDescription"),
+  authors: [{ name: siteConfig.name }],
+  creator: siteConfig.name,
+  publisher: siteConfig.name,
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1
+    }
+  },
+  openGraph: {
+    type: "website",
+    siteName: siteConfig.name,
+    title: siteConfig.name,
+    description: t("common.metadataDescription"),
+    url: siteConfig.url
+  },
+  twitter: {
+    card: "summary",
+    title: siteConfig.name,
+    description: t("common.metadataDescription")
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

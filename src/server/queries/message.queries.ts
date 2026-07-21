@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decryptMessage } from "@/server/services/message-encryption.service";
 import type { ChatMessage, ConversationSummary, EncryptedMessagePayload, RealtimeChatMessage } from "@/types/message.types";
@@ -68,6 +68,7 @@ export async function getConversationMessages(conversationId: string, currentUse
     where: {
       conversationId
     },
+    relationLoadStrategy: "join",
     include: messageInclude,
     orderBy: {
       createdAt: "asc"
@@ -93,106 +94,82 @@ export async function getLatestConversationMessage(conversationId: string): Prom
 }
 
 export async function getConversationSummaries(currentUserId: string): Promise<ConversationSummary[]> {
-  const conversations = await prisma.conversation.findMany({
-    where: {
-      members: {
-        some: {
-          userId: currentUserId
-        }
-      }
-    },
-    include: {
-      members: {
-        include: {
-          user: {
-            select: messageSenderSelect
+  const [conversations, unreadCounts] = await Promise.all([
+    prisma.conversation.findMany({
+      where: {
+        members: {
+          some: {
+            userId: currentUserId
           }
         }
       },
-      messages: {
-        include: messageInclude,
-        orderBy: {
-          createdAt: "desc"
+      relationLoadStrategy: "join",
+      include: {
+        members: {
+          include: {
+            user: {
+              select: messageSenderSelect
+            }
+          }
         },
-        take: 1
-      }
-    },
-    orderBy: {
-      updatedAt: "desc"
-    }
-  });
-
-  return Promise.all(
-    conversations.map(async (conversation) => {
-      const currentMember = conversation.members.find((member) => member.userId === currentUserId);
-      const unreadCount = await prisma.message.count({
-        where: {
-          conversationId: conversation.id,
-          deletedAt: null,
-          senderId: {
-            not: currentUserId
+        messages: {
+          include: messageInclude,
+          orderBy: {
+            createdAt: "desc"
           },
-          ...(currentMember?.lastReadAt
-            ? {
-                createdAt: {
-                  gt: currentMember.lastReadAt
-                }
-              }
-            : {})
-        }
-      });
+          take: 1
+        },
+      },
+      orderBy: {
+        updatedAt: "desc"
+      }
+    }),
+    getUnreadConversationCounts(currentUserId)
+  ]);
 
-      return {
-        id: conversation.id,
-        type: conversation.type,
-        createdAt: conversation.createdAt.toISOString(),
-        updatedAt: conversation.updatedAt.toISOString(),
-        members: conversation.members.map((member) => member.user),
-        lastMessage: conversation.messages[0] ? toChatMessage(conversation.messages[0], currentUserId) : null,
-        unreadCount
-      };
-    })
-  );
+  return conversations.map((conversation) => ({
+    id: conversation.id,
+    type: conversation.type,
+    createdAt: conversation.createdAt.toISOString(),
+    updatedAt: conversation.updatedAt.toISOString(),
+    members: conversation.members.map((member) => member.user),
+    lastMessage: conversation.messages[0] ? toChatMessage(conversation.messages[0], currentUserId) : null,
+    unreadCount: unreadCounts.get(conversation.id) ?? 0
+  }));
 }
 
 export async function getUnreadDirectConversationCounts(currentUserId: string): Promise<Record<string, number>> {
-  const memberships = await prisma.conversationMember.findMany({
-    where: {
-      userId: currentUserId,
-      conversation: {
-        type: "DIRECT"
-      }
-    },
-    select: {
-      conversationId: true,
-      lastReadAt: true
-    }
-  });
+  return Object.fromEntries(await getUnreadConversationCountEntries(currentUserId, true));
+}
 
-  const unreadEntries = await Promise.all(
-    memberships.map(async (membership) => {
-      const unreadCount = await prisma.message.count({
-        where: {
-          conversationId: membership.conversationId,
-          deletedAt: null,
-          senderId: {
-            not: currentUserId
-          },
-          ...(membership.lastReadAt
-            ? {
-                createdAt: {
-                  gt: membership.lastReadAt
-                }
-              }
-            : {})
-        }
-      });
+async function getUnreadConversationCounts(currentUserId: string) {
+  return new Map(await getUnreadConversationCountEntries(currentUserId, false));
+}
 
-      return [membership.conversationId, unreadCount] as const;
-    })
-  );
+async function getUnreadConversationCountEntries(currentUserId: string, directOnly: boolean) {
+  const conversationTypeFilter = directOnly
+    ? Prisma.sql`AND conversation."type" = 'DIRECT'`
+    : Prisma.empty;
+  const rows = await prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number | bigint }>>(Prisma.sql`
+    SELECT
+      membership."conversationId" AS "conversationId",
+      COUNT(message."id")::integer AS "unreadCount"
+    FROM "ConversationMember" AS membership
+    INNER JOIN "Conversation" AS conversation
+      ON conversation."id" = membership."conversationId"
+    LEFT JOIN "Message" AS message
+      ON message."conversationId" = membership."conversationId"
+      AND message."deletedAt" IS NULL
+      AND message."senderId" <> ${currentUserId}
+      AND (membership."lastReadAt" IS NULL OR message."createdAt" > membership."lastReadAt")
+    WHERE membership."userId" = ${currentUserId}
+      ${conversationTypeFilter}
+    GROUP BY membership."conversationId"
+  `);
 
-  return Object.fromEntries(unreadEntries.filter(([, unreadCount]) => unreadCount > 0));
+  return rows
+    .map((row) => [row.conversationId, Number(row.unreadCount)] as const)
+    .filter(([, unreadCount]) => unreadCount > 0);
 }
 
 export async function findDirectConversationForUsers(userAId: string, userBId: string) {

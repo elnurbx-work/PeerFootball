@@ -91,6 +91,7 @@ function toProfileSummary(profile: NonNullable<ProfileSummaryRecord>) {
 async function findProfileSummaryByUserId(userId: string) {
   return prisma.user.findUnique({
     where: { id: userId },
+    relationLoadStrategy: "join",
     select: profileSummarySelect
   });
 }
@@ -98,6 +99,7 @@ async function findProfileSummaryByUserId(userId: string) {
 async function findProfileSummaryByUsername(username: string) {
   return prisma.user.findUnique({
     where: { username },
+    relationLoadStrategy: "join",
     select: profileSummarySelect
   });
 }
@@ -147,6 +149,7 @@ export async function getProfileSummaryBySlug(slug: string) {
 export async function getEditableProfileByUserId(userId: string) {
   const profile = await prisma.user.findUnique({
     where: { id: userId },
+    relationLoadStrategy: "join",
     select: {
       id: true,
       name: true,

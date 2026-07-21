@@ -1,5 +1,6 @@
 import "server-only";
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   canApproveJoinRequests,
@@ -33,6 +34,7 @@ export async function getMyClubs(userId: string): Promise<ClubSummary[]> {
       userId,
       status: "ACTIVE"
     },
+    relationLoadStrategy: "join",
     include: {
       club: {
         include: clubSummaryInclude
@@ -51,9 +53,27 @@ export async function getMyClubs(userId: string): Promise<ClubSummary[]> {
   );
 }
 
+export type MyClubNavigationItem = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export async function getMyClubNavigation(userId: string): Promise<MyClubNavigationItem[]> {
+  return prisma.$queryRaw<MyClubNavigationItem[]>(Prisma.sql`
+    SELECT club."id", club."name", club."slug"
+    FROM "ClubMember" AS membership
+    INNER JOIN "Club" AS club ON club."id" = membership."clubId"
+    WHERE membership."userId" = ${userId}
+      AND membership."status" = 'ACTIVE'
+    ORDER BY membership."updatedAt" DESC
+  `);
+}
+
 export async function getMyPendingClubs(userId: string): Promise<ClubSummary[]> {
   const memberships = await prisma.clubMember.findMany({
     where: { userId, status: { in: ["INVITED", "REQUESTED"] } },
+    relationLoadStrategy: "join",
     include: { club: { include: clubSummaryInclude } },
     orderBy: { updatedAt: "desc" }
   });
@@ -65,7 +85,19 @@ export async function getMyPendingClubs(userId: string): Promise<ClubSummary[]> 
 export async function getClubBySlug(slug: string, currentUserId?: string): Promise<ClubDetails | null> {
   const club = await prisma.club.findUnique({
     where: { slug },
-    include: clubDetailsInclude
+    relationLoadStrategy: "join",
+    include: {
+      ...clubDetailsInclude,
+      members: {
+        where: { status: { in: ["ACTIVE", "INVITED", "REQUESTED"] } },
+        select: {
+          id: true,
+          userId: true,
+          role: true,
+          status: true
+        }
+      }
+    }
   });
 
   if (!club) {
@@ -73,22 +105,18 @@ export async function getClubBySlug(slug: string, currentUserId?: string): Promi
   }
 
   const currentUserMembership = currentUserId
-    ? await prisma.clubMember.findFirst({
-        where: {
-          clubId: club.id,
-          userId: currentUserId,
-          status: {
-            in: ["ACTIVE", "INVITED", "REQUESTED"]
-          }
-        },
-        select: {
-          role: true,
-          status: true
-        }
-      })
+    ? club.members.find((membership) => membership.userId === currentUserId) ?? null
     : null;
 
-  return toClubDetailsDto(club, currentUserMembership);
+  return toClubDetailsDto(
+    {
+      ...club,
+      members: club.members
+        .filter((membership) => membership.status === "ACTIVE")
+        .map((membership) => ({ id: membership.id }))
+    },
+    currentUserMembership
+  );
 }
 
 export async function getClubMembers(clubId: string): Promise<ClubMemberDto[]> {
@@ -97,6 +125,7 @@ export async function getClubMembers(clubId: string): Promise<ClubMemberDto[]> {
       clubId,
       status: "ACTIVE"
     },
+    relationLoadStrategy: "join",
     include: clubMemberInclude,
     orderBy: [{ status: "asc" }, { role: "asc" }, { createdAt: "asc" }]
   });
@@ -146,6 +175,57 @@ export async function getClubGuests(clubId: string): Promise<ClubGuestDto[]> {
   return guests.map(toClubGuestDto);
 }
 
+export async function getMatchClubOptions(clubIds: string[], userId: string) {
+  const uniqueClubIds = [...new Set(clubIds)];
+  if (!uniqueClubIds.length) return {};
+
+  const [members, guests, memberships] = await Promise.all([
+    prisma.clubMember.findMany({
+      where: { clubId: { in: uniqueClubIds }, status: "ACTIVE" },
+      relationLoadStrategy: "join",
+      include: clubMemberInclude,
+      orderBy: [{ clubId: "asc" }, { role: "asc" }, { createdAt: "asc" }]
+    }),
+    prisma.clubGuest.findMany({
+      where: { clubId: { in: uniqueClubIds } },
+      orderBy: [{ clubId: "asc" }, { isActive: "desc" }, { fullName: "asc" }]
+    }),
+    prisma.clubMember.findMany({
+      where: { clubId: { in: uniqueClubIds }, userId, status: "ACTIVE" },
+      relationLoadStrategy: "join",
+      select: {
+        clubId: true,
+        role: true,
+        club: {
+          select: {
+            settings: { select: { matchCreatePermissionPolicy: true } }
+          }
+        }
+      }
+    })
+  ]);
+
+  const manageableClubIds = new Set(
+    memberships
+      .filter((membership) => {
+        const policy = membership.club.settings?.matchCreatePermissionPolicy ?? "OWNER_TD";
+        const allowedRoles = policy === "OWNER_ONLY"
+          ? ["OWNER"]
+          : policy === "OWNER_TD_YTD"
+            ? ["OWNER", "TD", "YTD"]
+            : ["OWNER", "TD"];
+        return allowedRoles.includes(membership.role);
+      })
+      .map((membership) => membership.clubId)
+  );
+
+  return Object.fromEntries(uniqueClubIds.map((clubId) => [clubId, {
+    members: members.filter((member) => member.clubId === clubId).map(toClubMemberDto),
+    guests: guests.filter((guest) => guest.clubId === clubId).map(toClubGuestDto),
+    canManage: manageableClubIds.has(clubId)
+  }]));
+}
+
 export async function getClubMetricDefinitions(clubId: string): Promise<ClubMetricDefinitionDto[]> {
   const metrics = await prisma.clubMetricDefinition.findMany({
     where: {
@@ -184,6 +264,65 @@ export async function getClubInvitationForUser(clubId: string, userId: string): 
   });
 
   return invite ? toClubMemberDto(invite) : null;
+}
+
+export async function getClubMembersPageData(clubId: string, userId: string) {
+  const [currentMembership, membershipRecords] = await Promise.all([
+    prisma.clubMember.findFirst({
+      where: { clubId, userId, status: { in: ["ACTIVE", "INVITED", "REQUESTED"] } },
+      relationLoadStrategy: "join",
+      select: {
+        role: true,
+        status: true,
+        club: {
+          select: {
+            settings: {
+              select: {
+                joinApprovalPolicy: true,
+                invitePermissionPolicy: true
+              }
+            }
+          }
+        }
+      }
+    }),
+    prisma.clubMember.findMany({
+      where: {
+        clubId,
+        OR: [
+          { status: "ACTIVE" },
+          { status: "REQUESTED" },
+          { status: "INVITED", userId }
+        ]
+      },
+      relationLoadStrategy: "join",
+      include: clubMemberInclude,
+      orderBy: [{ status: "asc" }, { role: "asc" }, { createdAt: "asc" }]
+    })
+  ]);
+
+  const role = currentMembership?.status === "ACTIVE" ? currentMembership.role : null;
+  const settings = currentMembership?.club.settings;
+  const policyAllows = (policy: "OWNER_ONLY" | "OWNER_TD" | "OWNER_TD_YTD") => {
+    if (!role) return false;
+    if (policy === "OWNER_ONLY") return role === "OWNER";
+    if (policy === "OWNER_TD_YTD") return role === "OWNER" || role === "TD" || role === "YTD";
+    return role === "OWNER" || role === "TD";
+  };
+  const canManageRequests = policyAllows(settings?.joinApprovalPolicy ?? "OWNER_TD");
+  const canInvite = policyAllows(settings?.invitePermissionPolicy ?? "OWNER_TD");
+  const members = membershipRecords.map(toClubMemberDto);
+
+  return {
+    activeMembers: members.filter((member) => member.status === "ACTIVE"),
+    pendingRequests: canManageRequests
+      ? members.filter((member) => member.status === "REQUESTED")
+      : [],
+    ownInvite: members.findLast((member) => member.status === "INVITED" && member.userId === userId) ?? null,
+    canManageRequests,
+    canInvite,
+    owner: role === "OWNER"
+  };
 }
 
 export async function searchClubs(query?: string, currentUserId?: string): Promise<ClubSummary[]> {

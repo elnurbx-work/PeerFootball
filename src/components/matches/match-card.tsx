@@ -5,13 +5,13 @@ import { CalendarDays, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { MatchDto } from "@/types/match.types";
+import type { MatchListItemDto } from "@/types/match.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { getMatchCategoryLabel, getMatchStatusLabel, getMatchTypeLabel } from "@/components/matches/match-labels";
 
-export function MatchCard({ match }: { match: MatchDto }) {
+export function MatchCard({ match }: { match: MatchListItemDto }) {
   const { locale, t } = useI18n();
-  const playerCount = match.sides.reduce((total, side) => total + side.players.length, 0);
+  const playerCount = match.sides.reduce((total, side) => total + side.playerCount, 0);
   return (
     <Card>
       <CardHeader>

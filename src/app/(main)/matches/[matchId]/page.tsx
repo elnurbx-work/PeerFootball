@@ -7,9 +7,8 @@ import { MatchSideEditor } from "@/components/matches/match-side-editor";
 import { MatchDetailDashboard } from "@/components/matches/match-detail-dashboard";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
-import { getClubGuests, getClubMembers } from "@/server/queries/club.queries";
+import { getMatchClubOptions } from "@/server/queries/club.queries";
 import { getMatchById } from "@/server/queries/match.queries";
-import { canCreateClubMatches } from "@/server/services/club-permissions.service";
 import { createTranslator } from "@/i18n/dictionary";
 
 export default async function MatchDetailsPage({ params }: { params: Promise<{ matchId: string }> }) {
@@ -21,12 +20,7 @@ export default async function MatchDetailsPage({ params }: { params: Promise<{ m
   if (!match) notFound();
 
   const clubIds = [...new Set(match.sides.map((side) => side.clubId ?? match.creatorClubId))];
-  const optionEntries = await Promise.all(clubIds.map(async (clubId) => [clubId, {
-    members: await getClubMembers(clubId),
-    guests: await getClubGuests(clubId),
-    canManage: await canCreateClubMatches(user.id, clubId)
-  }] as const));
-  const options = Object.fromEntries(optionEntries);
+  const options = await getMatchClubOptions(clubIds, user.id);
   const goalsEditable = ["DRAFT", "SCHEDULED", "LIVE"].includes(match.status);
   const manageableSideIds = match.sides
     .filter((side) => goalsEditable && options[side.clubId ?? match.creatorClubId]?.canManage)

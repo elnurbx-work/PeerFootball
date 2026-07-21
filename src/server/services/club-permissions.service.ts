@@ -65,7 +65,14 @@ export async function canCreateClubMatches(userId: string, clubId: string) {
     })
   ]);
 
-  return Boolean(role && policyRoles[settings?.matchCreatePermissionPolicy ?? "OWNER_TD"].includes(role));
+  return canRoleCreateClubMatches(role, settings?.matchCreatePermissionPolicy ?? "OWNER_TD");
+}
+
+export function canRoleCreateClubMatches(
+  role: ClubRole | null | undefined,
+  policy: ClubPermissionPolicy
+) {
+  return Boolean(role && policyRoles[policy].includes(role));
 }
 
 export async function canManageGuestList(userId: string, clubId: string) {

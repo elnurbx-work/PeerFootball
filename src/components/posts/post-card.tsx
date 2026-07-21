@@ -20,9 +20,10 @@ import { Textarea } from "@/components/ui/textarea";
 type PostCardProps = {
   post: FeedPost;
   comments?: PostComment[];
+  isAuthenticated?: boolean;
 };
 
-export function PostCard({ post, comments = [] }: PostCardProps) {
+export function PostCard({ post, comments = [], isAuthenticated = true }: PostCardProps) {
   const { locale, t } = useI18n();
   const router = useRouter();
   const [liked, setLiked] = useState(post.likedByMe);
@@ -52,7 +53,20 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
     };
   }, [post]);
 
+  function requireAuthentication() {
+    if (isAuthenticated) {
+      return false;
+    }
+
+    router.push("/auth/login");
+    return true;
+  }
+
   function handleLike() {
+    if (requireAuthentication()) {
+      return;
+    }
+
     setMessage(null);
     const previousLiked = liked;
     const previousCount = likesCount;
@@ -93,6 +107,10 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
   }
 
   function handleReport() {
+    if (requireAuthentication()) {
+      return;
+    }
+
     setMessage(null);
     startTransition(async () => {
       const result = await reportPostAction(post.id, reportNote);
@@ -162,7 +180,16 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
             <ThumbsUp className={liked ? "h-4 w-4 fill-current" : "h-4 w-4"} />
             {likesCount}
           </Button>
-          <Button variant="ghost" size="sm" type="button" onClick={() => setShowComments((value) => !value)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={() => {
+              if (!requireAuthentication()) {
+                setShowComments((value) => !value);
+              }
+            }}
+          >
             <MessageCircle className="h-4 w-4" />
             {post.commentsCount}
           </Button>
@@ -171,13 +198,26 @@ export function PostCard({ post, comments = [] }: PostCardProps) {
             size="sm"
             type="button"
             disabled={pending || !repostTarget}
-            onClick={() => setShowRepostDialog(true)}
+            onClick={() => {
+              if (!requireAuthentication()) {
+                setShowRepostDialog(true);
+              }
+            }}
           >
             <Repeat2 className="h-4 w-4" />
             {post.repostsCount}
           </Button>
           {!post.isOwner ? (
-            <Button variant="ghost" size="sm" type="button" onClick={() => setShowReportForm((value) => !value)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => {
+                if (!requireAuthentication()) {
+                  setShowReportForm((value) => !value);
+                }
+              }}
+            >
               <Flag className="h-4 w-4" />
               Report
             </Button>

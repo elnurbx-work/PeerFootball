@@ -89,6 +89,7 @@ export async function getFriendsForUser(userId: string): Promise<FriendshipWithU
       status: "ACCEPTED",
       OR: [{ requesterId: userId }, { addresseeId: userId }]
     },
+    relationLoadStrategy: "join",
     orderBy: { acceptedAt: "desc" },
     include: {
       requester: { select: friendUserSelect },
@@ -105,6 +106,7 @@ export async function getIncomingFriendRequestsForUser(userId: string): Promise<
       addresseeId: userId,
       status: "PENDING"
     },
+    relationLoadStrategy: "join",
     orderBy: { createdAt: "desc" },
     include: {
       requester: { select: friendUserSelect },
@@ -121,6 +123,7 @@ export async function getOutgoingFriendRequestsForUser(userId: string): Promise<
       requesterId: userId,
       status: "PENDING"
     },
+    relationLoadStrategy: "join",
     orderBy: { createdAt: "desc" },
     include: {
       requester: { select: friendUserSelect },
@@ -129,4 +132,35 @@ export async function getOutgoingFriendRequestsForUser(userId: string): Promise<
   });
 
   return requests.map((friendship) => toFriendshipWithUser(friendship, userId));
+}
+
+export async function getFriendshipListsForUser(userId: string) {
+  const records = await prisma.friendship.findMany({
+    where: {
+      status: { in: ["ACCEPTED", "PENDING"] },
+      OR: [{ requesterId: userId }, { addresseeId: userId }]
+    },
+    relationLoadStrategy: "join",
+    include: {
+      requester: { select: friendUserSelect },
+      addressee: { select: friendUserSelect }
+    }
+  });
+  const friendships = records.map((record) => toFriendshipWithUser(record, userId));
+  const byCreatedAtDescending = (left: FriendshipWithUser, right: FriendshipWithUser) =>
+    right.createdAt.getTime() - left.createdAt.getTime();
+
+  return {
+    friends: friendships
+      .filter((friendship) => friendship.status === "ACCEPTED")
+      .sort((left, right) =>
+        (right.acceptedAt?.getTime() ?? 0) - (left.acceptedAt?.getTime() ?? 0)
+      ),
+    incoming: friendships
+      .filter((friendship) => friendship.status === "PENDING" && friendship.addresseeId === userId)
+      .sort(byCreatedAtDescending),
+    outgoing: friendships
+      .filter((friendship) => friendship.status === "PENDING" && friendship.requesterId === userId)
+      .sort(byCreatedAtDescending)
+  };
 }

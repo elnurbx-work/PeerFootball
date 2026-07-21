@@ -7,7 +7,6 @@ import { OwnerTransferForm } from "@/components/clubs/owner-transfer-form";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { getClubBySlug, getClubMembers } from "@/server/queries/club.queries";
-import { isClubOwner } from "@/server/services/club-permissions.service";
 import { createTranslator } from "@/i18n/dictionary";
 
 type ClubSettingsPageProps = {
@@ -31,7 +30,7 @@ export default async function ClubSettingsPage({ params }: ClubSettingsPageProps
     notFound();
   }
 
-  if (!(await isClubOwner(currentUser.id, club.id))) {
+  if (club.currentUserMemberStatus !== "ACTIVE" || club.currentUserRole !== "OWNER") {
     redirect(`/clubs/${club.slug}`);
   }
 

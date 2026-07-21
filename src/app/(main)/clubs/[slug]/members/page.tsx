@@ -7,11 +7,8 @@ import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import {
   getClubBySlug,
-  getClubInvitationForUser,
-  getClubMembers,
-  getPendingJoinRequests
+  getClubMembersPageData
 } from "@/server/queries/club.queries";
-import { canApproveJoinRequests, canInvitePlayers, isClubOwner } from "@/server/services/club-permissions.service";
 import { createTranslator } from "@/i18n/dictionary";
 
 type ClubMembersPageProps = {
@@ -35,14 +32,14 @@ export default async function ClubMembersPage({ params }: ClubMembersPageProps) 
     notFound();
   }
 
-  const [activeMembers, canManageRequests, canInvite, owner, pendingRequests, ownInvite] = await Promise.all([
-    getClubMembers(club.id),
-    canApproveJoinRequests(currentUser.id, club.id),
-    canInvitePlayers(currentUser.id, club.id),
-    isClubOwner(currentUser.id, club.id),
-    getPendingJoinRequests(club.id, currentUser.id),
-    getClubInvitationForUser(club.id, currentUser.id)
-  ]);
+  const {
+    activeMembers,
+    canManageRequests,
+    canInvite,
+    owner,
+    pendingRequests,
+    ownInvite
+  } = await getClubMembersPageData(club.id, currentUser.id);
   const members = [...activeMembers, ...pendingRequests, ...(ownInvite ? [ownInvite] : [])]
     .filter((member, index, all) => all.findIndex((item) => item.id === member.id) === index);
 

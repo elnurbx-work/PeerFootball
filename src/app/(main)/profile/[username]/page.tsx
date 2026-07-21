@@ -7,7 +7,7 @@ import { ProfileSummary } from "@/components/profile/profile-summary";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { getFriendshipStatusForUsers } from "@/server/queries/friendship.queries";
-import { getPostComments, getProfilePosts } from "@/server/queries/post.queries";
+import { getProfilePostsWithComments } from "@/server/queries/post.queries";
 import { getProfileSummaryBySlug } from "@/server/queries/profile.queries";
 import { canViewProfile } from "@/server/services/privacy.service";
 import { createTranslator, type Translate } from "@/i18n/dictionary";
@@ -69,12 +69,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     );
   }
 
-  const posts = await getProfilePosts(profile.id, currentUser.id);
-  const commentsByPostId = new Map(
-    await Promise.all(
-      posts.map(async (post) => [post.id, await getPostComments(post.id, currentUser.id)] as const)
-    )
-  );
+  const { posts, commentsByPostId } = await getProfilePostsWithComments(profile.id, currentUser.id);
 
   return (
     <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">

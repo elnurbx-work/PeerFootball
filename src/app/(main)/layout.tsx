@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth";
@@ -9,6 +10,10 @@ import { getUnreadDirectConversationCounts } from "@/server/queries/message.quer
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LocaleCookieSync } from "@/components/i18n/locale-cookie-sync";
 import { getRequestLocale } from "@/i18n/server";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, noarchive: true }
+};
 
 export default async function MainLayout({
   children

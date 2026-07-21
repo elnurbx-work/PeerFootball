@@ -8,11 +8,9 @@ import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 import { getProfileSummaryByUserId } from "@/server/queries/profile.queries";
 import {
-  getFriendsForUser,
-  getIncomingFriendRequestsForUser,
-  getOutgoingFriendRequestsForUser
+  getFriendshipListsForUser
 } from "@/server/queries/friendship.queries";
-import { getPostComments, getProfilePosts } from "@/server/queries/post.queries";
+import { getProfilePostsWithComments } from "@/server/queries/post.queries";
 import type { FriendshipWithUser } from "@/types/friendship.types";
 import { redirect } from "next/navigation";
 import { createTranslator, type Translate } from "@/i18n/dictionary";
@@ -25,23 +23,17 @@ export default async function ProfilePage() {
   }
   const t = createTranslator(currentUser.locale);
 
-  const profile = await getProfileSummaryByUserId(currentUser.id);
+  const [profile, profilePostData, friendshipLists] = await Promise.all([
+    getProfileSummaryByUserId(currentUser.id),
+    getProfilePostsWithComments(currentUser.id, currentUser.id),
+    getFriendshipListsForUser(currentUser.id)
+  ]);
 
   if (!profile) {
     redirect("/auth/login");
   }
-
-  const [posts, friends, incomingRequests, outgoingRequests] = await Promise.all([
-    getProfilePosts(profile.id, currentUser.id),
-    getFriendsForUser(currentUser.id),
-    getIncomingFriendRequestsForUser(currentUser.id),
-    getOutgoingFriendRequestsForUser(currentUser.id)
-  ]);
-  const commentsByPostId = new Map(
-    await Promise.all(
-      posts.map(async (post) => [post.id, await getPostComments(post.id, currentUser.id)] as const)
-    )
-  );
+  const { posts, commentsByPostId } = profilePostData;
+  const { friends, incoming: incomingRequests, outgoing: outgoingRequests } = friendshipLists;
 
   return (
     <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">

@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { deleteMessageSchema, sendMessageSchema } from "@/lib/validations/message";
 import {
   findDirectConversationForUsers,
+  getConversationMessages,
   getLatestConversationMessage,
   isConversationMember
 } from "@/server/queries/message.queries";
@@ -24,6 +25,25 @@ import type { ChatMessage, ConversationUpdatePayload, RealtimeChatMessage, SendM
 import { getServerTranslator } from "@/i18n/server";
 
 type ActionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
+
+export async function getConversationMessagesAction(conversationId: string): Promise<ApiResponse<{ messages: ChatMessage[] }>> {
+  const t = await getServerTranslator();
+  const user = await requireUser();
+
+  if (!user) {
+    return { ok: false, message: t("responses.signInRequired") };
+  }
+
+  if (!conversationId) {
+    return { ok: false, message: t("responses.message.conversationNotFound") };
+  }
+
+  return {
+    ok: true,
+    message: "",
+    data: { messages: await getConversationMessages(conversationId, user.id) }
+  };
+}
 
 export async function sendMessageAction(input: SendMessageInput): Promise<ApiResponse<{ message: ChatMessage; messageId: string; conversationId: string }>> {
   const t = await getServerTranslator();

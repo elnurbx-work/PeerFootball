@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { MatchCard } from "@/components/matches/match-card";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
-import { getMyClubs } from "@/server/queries/club.queries";
-import { getClubMatches } from "@/server/queries/match.queries";
+import { getMyClubNavigation } from "@/server/queries/club.queries";
+import { getMatchesForUserClubs } from "@/server/queries/match.queries";
 import { createTranslator } from "@/i18n/dictionary";
 
 export default async function MatchesPage() {
@@ -12,13 +12,16 @@ export default async function MatchesPage() {
   if (!user) redirect("/auth/login");
   const t = createTranslator(user.locale);
 
-  const clubs = await getMyClubs(user.id);
-  const groups = await Promise.all(
-    clubs.map(async (club) => ({
-      club,
-      matches: await getClubMatches(club.id, user.id)
-    }))
-  );
+  const [clubs, matches] = await Promise.all([
+    getMyClubNavigation(user.id),
+    getMatchesForUserClubs(user.id)
+  ]);
+  const groups = clubs.map((club) => ({
+    club,
+    matches: matches.filter((match) =>
+      match.creatorClubId === club.id || match.homeClubId === club.id || match.awayClubId === club.id
+    )
+  }));
 
   return (
     <section className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:py-8">

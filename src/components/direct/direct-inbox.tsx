@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Realtime, type InboundMessage, type PresenceMessage } from "ably";
 import { ArrowLeft, MessageCircle, Send, Trash2, Users } from "lucide-react";
-import { deleteMessageAction, markConversationReadAction, sendMessageAction } from "@/actions/message.actions";
+import { deleteMessageAction, getConversationMessagesAction, markConversationReadAction, sendMessageAction } from "@/actions/message.actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Toast } from "@/components/ui/toast";
@@ -56,6 +56,7 @@ export function DirectInbox({
   const selectedFriend = friendsState.find((friend) => friend.id === selectedFriendId) ?? friendsState[0] ?? null;
   const selectedConversationId = selectedFriend?.conversationId ?? null;
   const selectedConversationIdRef = useRef<string | null>(selectedConversationId);
+  const loadingConversationIdsRef = useRef(new Set<string>());
   const mobileChatRef = useRef<HTMLElement>(null);
   const messagesViewportRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -74,6 +75,39 @@ export function DirectInbox({
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversationId;
   }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (
+      !selectedConversationId ||
+      Object.prototype.hasOwnProperty.call(messagesByConversationIdState, selectedConversationId) ||
+      loadingConversationIdsRef.current.has(selectedConversationId)
+    ) {
+      return;
+    }
+
+    let active = true;
+    loadingConversationIdsRef.current.add(selectedConversationId);
+    getConversationMessagesAction(selectedConversationId)
+      .then((result) => {
+        if (!active) return;
+        if (!result.ok || !result.data) {
+          setError(result.message);
+          return;
+        }
+        setMessagesByConversationIdState((current) => ({
+          ...current,
+          [selectedConversationId]: result.data?.messages ?? []
+        }));
+      })
+      .catch(() => {
+        if (active) setError(t("responses.message.conversationNotFound"));
+      })
+      .finally(() => loadingConversationIdsRef.current.delete(selectedConversationId));
+
+    return () => {
+      active = false;
+    };
+  }, [messagesByConversationIdState, selectedConversationId, t]);
 
   useEffect(() => {
     const chat = mobileChatRef.current;

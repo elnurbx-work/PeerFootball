@@ -101,3 +101,13 @@ export type MatchDto = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type MatchListItemDto = Pick<
+  MatchDto,
+  "id" | "type" | "category" | "status" | "creatorClubId" | "homeClubId" | "awayClubId" | "title" | "venue" | "startTime"
+> & {
+  sides: Array<{
+    name: string;
+    playerCount: number;
+  }>;
+};

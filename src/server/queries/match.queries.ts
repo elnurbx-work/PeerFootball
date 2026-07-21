@@ -1,9 +1,9 @@
 import "server-only";
 
-import type { Prisma } from "@prisma/client";
+import { Prisma, type MatchCategory, type MatchStatus, type MatchType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { canCreateClubMatches } from "@/server/services/club-permissions.service";
-import type { MatchCommentDto, MatchDto, MatchPermissions, MatchPlayerDto, MatchVideoDto } from "@/types/match.types";
+import type { MatchCommentDto, MatchDto, MatchListItemDto, MatchPermissions, MatchPlayerDto, MatchVideoDto } from "@/types/match.types";
 
 const clubSelect = { id: true, name: true, slug: true, logoUrl: true } as const;
 const userSelect = { id: true, name: true, username: true, image: true } as const;
@@ -33,41 +33,84 @@ const matchInclude = {
 
 type MatchRecord = Prisma.MatchGetPayload<{ include: typeof matchInclude }>;
 
-export async function getClubMatches(clubId: string, currentUserId?: string): Promise<MatchDto[]> {
-  const matches = await prisma.match.findMany({
-    where: { OR: [{ creatorClubId: clubId }, { homeClubId: clubId }, { awayClubId: clubId }] },
-    include: matchInclude,
-    orderBy: { startTime: "asc" }
-  });
-  return Promise.all(matches.map((match) => toMatchDto(match, currentUserId)));
+type MatchListRecord = {
+  id: string;
+  type: MatchType;
+  category: MatchCategory;
+  status: MatchStatus;
+  creatorClubId: string;
+  homeClubId: string | null;
+  awayClubId: string | null;
+  title: string | null;
+  venue: string | null;
+  startTime: Date;
+  sides: unknown;
+};
+
+export async function getClubMatches(clubId: string, _currentUserId?: string): Promise<MatchListItemDto[]> {
+  return getMatchList(Prisma.sql`
+    match_record."creatorClubId" = ${clubId}
+    OR match_record."homeClubId" = ${clubId}
+    OR match_record."awayClubId" = ${clubId}
+  `);
 }
 
-export async function getUpcomingClubMatches(clubId: string, currentUserId?: string): Promise<MatchDto[]> {
-  const matches = await prisma.match.findMany({
-    where: {
-      OR: [{ creatorClubId: clubId }, { homeClubId: clubId }, { awayClubId: clubId }],
-      status: { in: ["DRAFT", "SCHEDULED", "LIVE"] }
-    }, include: matchInclude, orderBy: { startTime: "asc" }
-  });
-  return Promise.all(matches.map((match) => toMatchDto(match, currentUserId)));
+export async function getUpcomingClubMatches(clubId: string, _currentUserId?: string): Promise<MatchListItemDto[]> {
+  return getMatchList(Prisma.sql`
+    (
+      match_record."creatorClubId" = ${clubId}
+      OR match_record."homeClubId" = ${clubId}
+      OR match_record."awayClubId" = ${clubId}
+    )
+    AND match_record."status" IN ('DRAFT', 'SCHEDULED', 'LIVE')
+  `);
 }
 
-export async function getPendingMatchProposals(clubId: string, currentUserId: string): Promise<MatchDto[]> {
+export async function getPendingMatchProposals(clubId: string, currentUserId: string): Promise<MatchListItemDto[]> {
   if (!(await canCreateClubMatches(currentUserId, clubId))) return [];
-  const matches = await prisma.match.findMany({
-    where: { awayClubId: clubId, status: "PENDING_OPPONENT_APPROVAL" }, include: matchInclude, orderBy: { createdAt: "desc" }
-  });
-  return Promise.all(matches.map((match) => toMatchDto(match, currentUserId)));
+  return getMatchList(Prisma.sql`
+    match_record."awayClubId" = ${clubId}
+    AND match_record."status" = 'PENDING_OPPONENT_APPROVAL'
+  `, Prisma.sql`match_record."createdAt" DESC`);
+}
+
+export async function getMatchesForClubs(clubIds: string[]): Promise<MatchListItemDto[]> {
+  if (!clubIds.length) return [];
+  return getMatchList(Prisma.sql`
+    match_record."creatorClubId" IN (${Prisma.join(clubIds)})
+    OR match_record."homeClubId" IN (${Prisma.join(clubIds)})
+    OR match_record."awayClubId" IN (${Prisma.join(clubIds)})
+  `);
+}
+
+export async function getMatchesForUserClubs(userId: string): Promise<MatchListItemDto[]> {
+  return getMatchList(Prisma.sql`
+    EXISTS (
+      SELECT 1
+      FROM "ClubMember" AS membership
+      WHERE membership."userId" = ${userId}
+        AND membership."status" = 'ACTIVE'
+        AND (
+          membership."clubId" = match_record."creatorClubId"
+          OR membership."clubId" = match_record."homeClubId"
+          OR membership."clubId" = match_record."awayClubId"
+        )
+    )
+  `);
 }
 
 export async function getMatchById(matchId: string, currentUserId?: string): Promise<MatchDto | null> {
-  const match = await prisma.match.findUnique({ where: { id: matchId }, include: matchInclude });
-  return match ? toMatchDto(match, currentUserId) : null;
+  const [match, manageableClubIds] = await Promise.all([
+    prisma.match.findUnique({ where: { id: matchId }, relationLoadStrategy: "join", include: matchInclude }),
+    getManageableClubIds(currentUserId)
+  ]);
+  return match ? toMatchDto(match, manageableClubIds) : null;
 }
 
 export async function getMatchPlayers(matchId: string): Promise<MatchPlayerDto[]> {
   const players = await prisma.matchPlayer.findMany({
     where: { matchId, status: { not: "REMOVED" } },
+    relationLoadStrategy: "join",
     include: { user: { select: userSelect }, clubGuest: { select: { id: true, fullName: true, position: true } } },
     orderBy: { createdAt: "asc" }
   });
@@ -75,12 +118,12 @@ export async function getMatchPlayers(matchId: string): Promise<MatchPlayerDto[]
 }
 
 export async function getMatchVideos(matchId: string): Promise<MatchVideoDto[]> {
-  const videos = await prisma.matchVideo.findMany({ where: { matchId }, include: { uploadedBy: { select: userSelect } }, orderBy: { createdAt: "desc" } });
+  const videos = await prisma.matchVideo.findMany({ where: { matchId }, relationLoadStrategy: "join", include: { uploadedBy: { select: userSelect } }, orderBy: { createdAt: "desc" } });
   return videos.map(toMatchVideoDto);
 }
 
-async function toMatchDto(match: MatchRecord, currentUserId?: string): Promise<MatchDto> {
-  const permissions = await getPermissions(match, currentUserId);
+function toMatchDto(match: MatchRecord, manageableClubIds: Set<string>): MatchDto {
+  const permissions = getPermissions(match, manageableClubIds);
   return {
     id: match.id, type: match.type, category: match.category, status: match.status,
     creatorClubId: match.creatorClubId, homeClubId: match.homeClubId, awayClubId: match.awayClubId,
@@ -96,6 +139,68 @@ async function toMatchDto(match: MatchRecord, currentUserId?: string): Promise<M
     comments: match.comments.map(toMatchCommentDto),
     permissions, createdAt: match.createdAt.toISOString(), updatedAt: match.updatedAt.toISOString()
   };
+}
+
+function toMatchListItemDto(match: MatchListRecord): MatchListItemDto {
+  const sides = Array.isArray(match.sides) ? match.sides : [];
+  return {
+    id: match.id,
+    type: match.type,
+    category: match.category,
+    status: match.status,
+    creatorClubId: match.creatorClubId,
+    homeClubId: match.homeClubId,
+    awayClubId: match.awayClubId,
+    title: match.title,
+    venue: match.venue,
+    startTime: match.startTime.toISOString(),
+    sides: sides.flatMap((side) => {
+      if (!side || typeof side !== "object") return [];
+      const value = side as { name?: unknown; playerCount?: unknown };
+      if (typeof value.name !== "string") return [];
+      return [{ name: value.name, playerCount: Number(value.playerCount) || 0 }];
+    })
+  };
+}
+
+async function getMatchList(where: Prisma.Sql, orderBy: Prisma.Sql = Prisma.sql`match_record."startTime" ASC`) {
+  const matches = await prisma.$queryRaw<MatchListRecord[]>(Prisma.sql`
+    WITH side_counts AS (
+      SELECT
+        side."id",
+        side."matchId",
+        side."name",
+        side."createdAt",
+        COUNT(player."id") FILTER (WHERE player."status" <> 'REMOVED')::integer AS "playerCount"
+      FROM "MatchSide" AS side
+      LEFT JOIN "MatchPlayer" AS player ON player."matchSideId" = side."id"
+      GROUP BY side."id"
+    )
+    SELECT
+      match_record."id",
+      match_record."type",
+      match_record."category",
+      match_record."status",
+      match_record."creatorClubId",
+      match_record."homeClubId",
+      match_record."awayClubId",
+      match_record."title",
+      match_record."venue",
+      match_record."startTime",
+      COALESCE(
+        jsonb_agg(
+          jsonb_build_object('name', side_counts."name", 'playerCount', side_counts."playerCount")
+          ORDER BY side_counts."createdAt"
+        ) FILTER (WHERE side_counts."id" IS NOT NULL),
+        '[]'::jsonb
+      ) AS "sides"
+    FROM "Match" AS match_record
+    LEFT JOIN side_counts ON side_counts."matchId" = match_record."id"
+    WHERE ${where}
+    GROUP BY match_record."id"
+    ORDER BY ${orderBy}
+  `);
+  return matches.map(toMatchListItemDto);
 }
 
 function toMatchCommentDto(comment: {
@@ -125,13 +230,10 @@ function toMatchVideoDto(video: {
   return { ...video, createdAt: video.createdAt.toISOString(), updatedAt: video.updatedAt.toISOString() };
 }
 
-async function getPermissions(match: MatchRecord, userId?: string): Promise<MatchPermissions> {
-  if (!userId) return emptyPermissions();
-  const [creator, home, away] = await Promise.all([
-    canCreateClubMatches(userId, match.creatorClubId),
-    match.homeClubId ? canCreateClubMatches(userId, match.homeClubId) : false,
-    match.awayClubId ? canCreateClubMatches(userId, match.awayClubId) : false
-  ]);
+function getPermissions(match: MatchRecord, manageableClubIds: Set<string>): MatchPermissions {
+  const creator = manageableClubIds.has(match.creatorClubId);
+  const home = match.homeClubId ? manageableClubIds.has(match.homeClubId) : false;
+  const away = match.awayClubId ? manageableClubIds.has(match.awayClubId) : false;
   const editable = !["FINISHED", "CANCELLED"].includes(match.status);
   const canManagePlayers = (match.type === "INTERNAL" ? creator : home || away) && editable;
   return {
@@ -143,6 +245,36 @@ async function getPermissions(match: MatchRecord, userId?: string): Promise<Matc
     canAddMatchVideo: (match.type === "INTERNAL" ? creator : home) && match.status !== "FINISHED",
     canManagePlayers
   };
+}
+
+async function getManageableClubIds(userId?: string) {
+  if (!userId) return new Set<string>();
+  const memberships = await prisma.clubMember.findMany({
+    where: { userId, status: "ACTIVE" },
+    select: {
+      clubId: true,
+      role: true,
+      club: {
+        select: {
+          settings: { select: { matchCreatePermissionPolicy: true } }
+        }
+      }
+    }
+  });
+  const allowedRoles = {
+    OWNER_ONLY: ["OWNER"],
+    OWNER_TD: ["OWNER", "TD"],
+    OWNER_TD_YTD: ["OWNER", "TD", "YTD"]
+  } as const;
+
+  return new Set(
+    memberships
+      .filter((membership) => {
+        const policy = membership.club.settings?.matchCreatePermissionPolicy ?? "OWNER_TD";
+        return (allowedRoles[policy] as readonly string[]).includes(membership.role);
+      })
+      .map((membership) => membership.clubId)
+  );
 }
 
 function emptyPermissions(): MatchPermissions {

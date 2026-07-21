@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { MarketingHome } from "@/components/marketing/marketing-home";
 import { marketingCopy } from "@/content/marketing";
-import { getRequestLocale } from "@/i18n/server";
+import { isLocale } from "@/i18n/config";
 import { localizedAlternates } from "@/lib/seo";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getRequestLocale();
+type LocalePageProps = { params: Promise<{ locale: string }> };
+
+export async function generateMetadata({ params }: LocalePageProps): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isLocale(locale)) return {};
   const copy = marketingCopy[locale];
   return {
     title: { absolute: copy.homeTitle },
@@ -16,6 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function HomePage() {
-  return <MarketingHome locale={await getRequestLocale()} />;
+export default async function LocaleHomePage({ params }: LocalePageProps) {
+  const { locale } = await params;
+  if (!isLocale(locale)) notFound();
+  return <MarketingHome locale={locale} />;
 }

@@ -35,15 +35,11 @@ export default async function DirectPage({ searchParams }: DirectPageProps) {
       unreadCount: conversation?.unreadCount ?? 0
     };
   });
-  const conversationIds = [...new Set(directFriends.map((friend) => friend.conversationId).filter(Boolean))] as string[];
-  const messagesByConversationId = Object.fromEntries(
-    await Promise.all(
-      conversationIds.map(async (conversationId) => [
-        conversationId,
-        await getConversationMessages(conversationId, currentUser.id)
-      ] as const)
-    )
-  );
+  const initialFriend = directFriends.find((friend) => friend.conversationId === params.conversationId) ?? directFriends[0];
+  const initialConversationId = initialFriend?.conversationId ?? null;
+  const messagesByConversationId = initialConversationId
+    ? { [initialConversationId]: await getConversationMessages(initialConversationId, currentUser.id) }
+    : {};
   const currentMessageUser = {
     id: currentUser.id,
     name: currentUser.name,
@@ -56,7 +52,7 @@ export default async function DirectPage({ searchParams }: DirectPageProps) {
       <DirectInbox
         currentUser={currentMessageUser}
         friends={directFriends}
-        initialConversationId={params.conversationId ?? null}
+        initialConversationId={initialConversationId}
         messagesByConversationId={messagesByConversationId}
       />
     </section>

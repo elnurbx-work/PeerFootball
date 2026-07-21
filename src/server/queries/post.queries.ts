@@ -83,6 +83,26 @@ type FeedPostRecord = Prisma.PostGetPayload<{
 
 type OriginalPostRecord = NonNullable<FeedPostRecord["originalPost"]>;
 
+function postWithCommentsInclude(currentUserId?: string) {
+  return {
+    ...postInclude(currentUserId),
+    comments: {
+      where: { parentId: null },
+      include: {
+        author: { select: postAuthorSelect },
+        replies: {
+          orderBy: { createdAt: "asc" as const },
+          include: {
+            author: { select: postAuthorSelect },
+            replies: false
+          }
+        }
+      },
+      orderBy: { createdAt: "asc" as const }
+    }
+  } satisfies Prisma.PostInclude;
+}
+
 type CommentRecord = Prisma.CommentGetPayload<{
   include: {
     author: {
@@ -109,27 +129,33 @@ export async function getPostVisibilityById(postId: string) {
 }
 
 export async function getFeedPosts(currentUserId?: string): Promise<FeedPost[]> {
-  const friendIds = await getAcceptedFriendIds(currentUserId);
-  const posts = await prisma.post.findMany({
-    where: { isHidden: false, AND: [visibilityWhere(currentUserId, friendIds)] },
-    include: postInclude(currentUserId),
-    orderBy: {
-      createdAt: "desc"
-    },
-    take: 20
-  });
+  const [friendIds, posts] = await Promise.all([
+    getAcceptedFriendIds(currentUserId),
+    prisma.post.findMany({
+      where: { isHidden: false, AND: [visibilityWhere(currentUserId)] },
+      relationLoadStrategy: "join",
+      include: postInclude(currentUserId),
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 20
+    })
+  ]);
 
   return posts.map((post) => toFeedPost(post, currentUserId, friendIds));
 }
 
 export async function getProfilePosts(profileUserId: string, currentUserId?: string): Promise<FeedPost[]> {
-  const friendIds = await getAcceptedFriendIds(currentUserId);
+  const friendIds = profileUserId === currentUserId
+    ? new Set<string>()
+    : await getAcceptedFriendIds(currentUserId);
   const posts = await prisma.post.findMany({
     where: {
       authorId: profileUserId,
       isHidden: false,
       ...profileVisibilityWhere(profileUserId, currentUserId, friendIds)
     },
+    relationLoadStrategy: "join",
     include: postInclude(currentUserId),
     orderBy: {
       createdAt: "desc"
@@ -139,10 +165,37 @@ export async function getProfilePosts(profileUserId: string, currentUserId?: str
   return posts.map((post) => toFeedPost(post, currentUserId, friendIds));
 }
 
+export async function getProfilePostsWithComments(profileUserId: string, currentUserId?: string) {
+  const friendIds = profileUserId === currentUserId
+    ? new Set<string>()
+    : await getAcceptedFriendIds(currentUserId);
+  const records = await prisma.post.findMany({
+    where: {
+      authorId: profileUserId,
+      isHidden: false,
+      ...profileVisibilityWhere(profileUserId, currentUserId, friendIds)
+    },
+    relationLoadStrategy: "join",
+    include: postWithCommentsInclude(currentUserId),
+    orderBy: { createdAt: "desc" }
+  });
+
+  return {
+    posts: records.map((post) => toFeedPost(post, currentUserId, friendIds)),
+    commentsByPostId: new Map(
+      records.map((post) => [
+        post.id,
+        post.comments.map((comment) => toPostComment(comment, currentUserId, post.authorId))
+      ])
+    )
+  };
+}
+
 export async function getPostById(postId: string, currentUserId?: string): Promise<(FeedPost & { comments: PostComment[] }) | null> {
   const friendIds = await getAcceptedFriendIds(currentUserId);
   const post = await prisma.post.findUnique({
     where: { id: postId },
+    relationLoadStrategy: "join",
     include: postInclude(currentUserId)
   });
 
@@ -175,6 +228,7 @@ export async function getPostComments(postId: string, currentUserId?: string): P
       postId,
       parentId: null
     },
+    relationLoadStrategy: "join",
     include: {
       author: {
         select: postAuthorSelect
@@ -197,6 +251,48 @@ export async function getPostComments(postId: string, currentUserId?: string): P
   });
 
   return comments.map((comment) => toPostComment(comment, currentUserId, post.authorId));
+}
+
+export async function getCommentsForPosts(
+  posts: ReadonlyArray<{ id: string; author: { id: string } }>,
+  currentUserId?: string
+): Promise<Map<string, PostComment[]>> {
+  if (posts.length === 0) {
+    return new Map();
+  }
+
+  const comments = await prisma.comment.findMany({
+    where: {
+      postId: { in: posts.map((post) => post.id) },
+      parentId: null
+    },
+    relationLoadStrategy: "join",
+    include: {
+      author: { select: postAuthorSelect },
+      replies: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          author: { select: postAuthorSelect },
+          replies: false
+        }
+      }
+    },
+    orderBy: { createdAt: "asc" }
+  });
+  const postAuthorIds = new Map(posts.map((post) => [post.id, post.author.id]));
+  const commentsByPostId = new Map<string, PostComment[]>(
+    posts.map((post) => [post.id, []])
+  );
+
+  for (const comment of comments) {
+    const postAuthorId = postAuthorIds.get(comment.postId);
+    if (!postAuthorId) continue;
+    commentsByPostId.get(comment.postId)?.push(
+      toPostComment(comment, currentUserId, postAuthorId)
+    );
+  }
+
+  return commentsByPostId;
 }
 
 async function getAcceptedFriendIds(currentUserId?: string) {
@@ -222,7 +318,7 @@ async function getAcceptedFriendIds(currentUserId?: string) {
   );
 }
 
-function visibilityWhere(currentUserId: string | undefined, friendIds: Set<string>): Prisma.PostWhereInput {
+function visibilityWhere(currentUserId: string | undefined): Prisma.PostWhereInput {
   const publicWhere: Prisma.PostWhereInput = { visibility: "PUBLIC" };
 
   if (!currentUserId) {
@@ -235,8 +331,19 @@ function visibilityWhere(currentUserId: string | undefined, friendIds: Set<strin
       { authorId: currentUserId },
       {
         visibility: "FRIENDS_ONLY",
-        authorId: {
-          in: [...friendIds]
+        author: {
+          OR: [
+            {
+              sentFriendRequests: {
+                some: { status: "ACCEPTED", addresseeId: currentUserId }
+              }
+            },
+            {
+              receivedFriendRequests: {
+                some: { status: "ACCEPTED", requesterId: currentUserId }
+              }
+            }
+          ]
         }
       }
     ]

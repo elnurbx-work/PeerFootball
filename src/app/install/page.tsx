@@ -4,10 +4,20 @@ import { ArrowLeft, Bell, Cloud, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InstallAppCard } from "@/components/pwa/install-app-card";
 import { getServerTranslator } from "@/i18n/server";
+import { siteConfig } from "@/config/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getServerTranslator();
-  return { title: t("pwa.page.metadataTitle"), description: t("pwa.page.metadataDescription") };
+  return {
+    title: t("pwa.page.metadataTitle"),
+    description: t("pwa.page.metadataDescription"),
+    alternates: { canonical: "/install" },
+    openGraph: {
+      title: t("pwa.page.metadataTitle"),
+      description: t("pwa.page.metadataDescription"),
+      url: `${siteConfig.url}/install`
+    }
+  };
 }
 
 export default async function InstallPage() {
