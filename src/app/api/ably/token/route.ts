@@ -9,46 +9,49 @@ import { isConversationMember } from "@/server/queries/message.queries";
 import { getAblyRestClient } from "@/server/services/ably.service";
 import { getServerTranslator } from "@/i18n/server";
 import type { Translate } from "@/i18n/dictionary";
+import { measureAsync } from "@/lib/performance";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
 export async function GET(request: Request) {
-  const t = await getServerTranslator();
-  const currentUser = await getCurrentUser();
+  return measureAsync("ably.tokenRoute", async () => {
+    const t = await getServerTranslator();
+    const currentUser = await getCurrentUser();
 
-  if (!currentUser) {
-    return NextResponse.json({ ok: false, message: t("responses.signInRequired") }, { status: 401 });
-  }
-
-  const { searchParams } = new URL(request.url);
-  const channel = searchParams.get("channel");
-  const conversationId = searchParams.get("conversationId");
-  const channelName = channel ?? (conversationId ? `private:room:${conversationId}` : null);
-
-  if (!channelName) {
-    return NextResponse.json({ ok: false, message: t("responses.api.channelMissing") }, { status: 400 });
-  }
-
-  const roomConversationId = parseRoomChannelName(channelName);
-  const inboxUserId = parseUserInboxChannelName(channelName);
-
-  if (roomConversationId) {
-    if (!(await isConversationMember(roomConversationId, currentUser.id))) {
-      return NextResponse.json({ ok: false, message: t("responses.message.conversationNotFound") }, { status: 403 });
+    if (!currentUser) {
+      return NextResponse.json({ ok: false, message: t("responses.signInRequired") }, { status: 401 });
     }
 
-    return createTokenRequest(currentUser.id, channelName, ["subscribe", "presence"], t);
-  }
+    const { searchParams } = new URL(request.url);
+    const channel = searchParams.get("channel");
+    const conversationId = searchParams.get("conversationId");
+    const channelName = channel ?? (conversationId ? `private:room:${conversationId}` : null);
 
-  if (inboxUserId) {
-    if (channelName !== getUserInboxChannelName(currentUser.id)) {
-      return NextResponse.json({ ok: false, message: t("responses.api.inboxForbidden") }, { status: 403 });
+    if (!channelName) {
+      return NextResponse.json({ ok: false, message: t("responses.api.channelMissing") }, { status: 400 });
     }
 
-    return createTokenRequest(currentUser.id, channelName, ["subscribe"], t);
-  }
+    const roomConversationId = parseRoomChannelName(channelName);
+    const inboxUserId = parseUserInboxChannelName(channelName);
 
-  return NextResponse.json({ ok: false, message: t("responses.api.channelInvalid") }, { status: 400 });
+    if (roomConversationId) {
+      if (!(await isConversationMember(roomConversationId, currentUser.id))) {
+        return NextResponse.json({ ok: false, message: t("responses.message.conversationNotFound") }, { status: 403 });
+      }
+
+      return createTokenRequest(currentUser.id, channelName, ["subscribe", "presence"], t);
+    }
+
+    if (inboxUserId) {
+      if (channelName !== getUserInboxChannelName(currentUser.id)) {
+        return NextResponse.json({ ok: false, message: t("responses.api.inboxForbidden") }, { status: 403 });
+      }
+
+      return createTokenRequest(currentUser.id, channelName, ["subscribe"], t);
+    }
+
+    return NextResponse.json({ ok: false, message: t("responses.api.channelInvalid") }, { status: 400 });
+  }, { route: "/api/ably/token", requestType: "api" });
 }
 
 async function createTokenRequest(clientId: string, channelName: string, operations: string[], t: Translate) {

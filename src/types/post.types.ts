@@ -48,6 +48,12 @@ export type FeedPost = {
   originalPost: OriginalPostPreview | null;
 };
 
+export type PostPageItem = {
+  id: string;
+  post: FeedPost;
+  comments: PostComment[];
+};
+
 export type PostComment = {
   id: string;
   postId: string;

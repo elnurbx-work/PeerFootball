@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { MapPin, Search } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { FriendButton } from "@/components/friends/FriendButton";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { searchPlayersForUser } from "@/server/queries/user.queries";
 import { createTranslator } from "@/i18n/dictionary";
+import { normalizePage } from "@/lib/pagination";
+import { NumberedPagination } from "@/components/pagination/numbered-pagination";
+import { SearchForm } from "@/components/search/search-form";
 
 type SearchPageProps = {
   searchParams: Promise<{
     q?: string | string[];
+    page?: string | string[];
   }>;
 };
 
@@ -33,7 +36,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   const params = await searchParams;
   const query = getSearchQuery(params.q);
-  const players = query.length >= 2 ? await searchPlayersForUser(currentUser.id, query) : [];
+  const page = normalizePage(params.page);
+  const result = query.length >= 2 ? await searchPlayersForUser(currentUser.id, query, page) : null;
+  const players = result?.items ?? [];
 
   return (
     <section className="mx-auto grid max-w-3xl gap-5 px-4 py-10">
@@ -43,29 +48,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           {t("search.description")}
         </p>
       </div>
-      <form action="/search" className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            defaultValue={query}
-            name="q"
-            placeholder={t("search.placeholder")}
-            type="search"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button type="submit">
-            <Search className="h-4 w-4" />
-            {t("search.submit")}
-          </Button>
-          {query ? (
-            <Button asChild type="button" variant="outline">
-              <Link href="/search">{t("search.clear")}</Link>
-            </Button>
-          ) : null}
-        </div>
-      </form>
+      <SearchForm defaultValue={query} placeholder={t("search.placeholder")} submitLabel={t("search.submit")} />
+      {query ? <Button asChild type="button" variant="outline" className="w-fit"><Link href="/search">{t("search.clear")}</Link></Button> : null}
 
       {!query ? (
         <Card>
@@ -139,6 +123,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           })}
         </div>
       ) : null}
+      {result && result.totalPages > 1 ? <NumberedPagination page={result.page} totalPages={result.totalPages} pathname="/search" searchParams={{ q: query }} /> : null}
     </section>
   );
 }

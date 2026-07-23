@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckCheck, Inbox } from "lucide-react";
 import { markAllNotificationsReadAction } from "@/actions/notification.actions";
@@ -7,10 +8,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getCurrentUser } from "@/lib/auth";
 import { toNotificationListItem } from "@/lib/notifications/notification-copy";
-import { getNotifications } from "@/server/queries/notification.queries";
+import {
+  getNotificationsPage,
+  getUnreadNotificationCount
+} from "@/server/queries/notification.queries";
 import { createTranslator } from "@/i18n/dictionary";
+import { PaginationStatus } from "@/components/pagination/pagination-status";
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ cursor?: string }>;
+}) {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -18,8 +27,13 @@ export default async function NotificationsPage() {
   }
   const t = createTranslator(currentUser.locale);
 
-  const notifications = (await getNotifications(currentUser.id)).map((notification) => toNotificationListItem(notification, t));
-  const hasUnread = notifications.some((notification) => !notification.readAt);
+  const { cursor } = await searchParams;
+  const [page, unreadCount] = await Promise.all([
+    getNotificationsPage(currentUser.id, cursor),
+    getUnreadNotificationCount(currentUser.id)
+  ]);
+  const notifications = page.items.map((notification) => toNotificationListItem(notification, t));
+  const hasUnread = unreadCount > 0;
 
   async function markAllReadFromPage() {
     "use server";
@@ -44,13 +58,23 @@ export default async function NotificationsPage() {
       </div>
 
       {notifications.length ? (
-        <Card>
-          <CardContent className="p-0">
-            {notifications.map((notification) => (
-              <NotificationItem key={notification.id} notification={notification} />
-            ))}
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardContent className="p-0">
+              {notifications.map((notification) => (
+                <NotificationItem key={notification.id} notification={notification} />
+              ))}
+            </CardContent>
+          </Card>
+          <PaginationStatus itemCount={notifications.length} hasMore={page.hasMore} />
+          {page.hasMore && page.nextCursor ? (
+            <Button asChild variant="outline">
+              <Link href={`/notifications?cursor=${encodeURIComponent(page.nextCursor)}`}>
+                Daha çox göstər
+              </Link>
+            </Button>
+          ) : null}
+        </>
       ) : (
         <EmptyState
           icon={Inbox}

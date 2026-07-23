@@ -1,3 +1,5 @@
+import { measureAsync } from "@/lib/performance";
+
 const textEncoder = new TextEncoder();
 
 export const adminSessionCookieName =
@@ -59,31 +61,33 @@ async function verifySignedToken(
   secret: string | undefined,
   purpose: AdminSessionPayload["purpose"]
 ) {
-  if (!token || !expectedEmail || !secret || secret.length < 32) return false;
+  return measureAsync("adminAuth.hmacVerify", async () => {
+    if (!token || !expectedEmail || !secret || secret.length < 32) return false;
 
-  try {
-    const [encodedPayload, encodedSignature, extra] = token.split(".");
-    if (!encodedPayload || !encodedSignature || extra) return false;
+    try {
+      const [encodedPayload, encodedSignature, extra] = token.split(".");
+      if (!encodedPayload || !encodedSignature || extra) return false;
 
-    const key = await importSigningKey(secret, "verify");
-    const isValid = await crypto.subtle.verify(
-      "HMAC",
-      key,
-      fromBase64Url(encodedSignature),
-      textEncoder.encode(encodedPayload)
-    );
-    if (!isValid) return false;
+      const key = await importSigningKey(secret, "verify");
+      const isValid = await crypto.subtle.verify(
+        "HMAC",
+        key,
+        fromBase64Url(encodedSignature),
+        textEncoder.encode(encodedPayload)
+      );
+      if (!isValid) return false;
 
-    const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(encodedPayload))) as AdminSessionPayload;
-    return (
-      payload.email === expectedEmail.trim().toLowerCase() &&
-      payload.purpose === purpose &&
-      Number.isFinite(payload.expiresAt) &&
-      payload.expiresAt > Date.now()
-    );
-  } catch {
-    return false;
-  }
+      const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(encodedPayload))) as AdminSessionPayload;
+      return (
+        payload.email === expectedEmail.trim().toLowerCase() &&
+        payload.purpose === purpose &&
+        Number.isFinite(payload.expiresAt) &&
+        payload.expiresAt > Date.now()
+      );
+    } catch {
+      return false;
+    }
+  }, { route: "admin", purpose });
 }
 
 export function createAdminSessionToken(email: string, secret: string) {

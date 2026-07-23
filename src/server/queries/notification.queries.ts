@@ -8,6 +8,13 @@ import {
   toAppNotification
 } from "@/server/services/notification.service";
 import type { AppNotification } from "@/types/notification.types";
+import {
+  cursorSchema,
+  PAGINATION_LIMITS,
+  toCursorPage,
+  type CursorPage
+} from "@/lib/pagination";
+import { measureAsync } from "@/lib/performance";
 
 type NotificationCenterRow = {
   id: string;
@@ -50,7 +57,7 @@ const getNotificationCenterData = cache(async (userId: string) => {
     WHERE notification."recipientId" = ${userId}
       AND notification."type" <> 'MESSAGE'
     ORDER BY notification."createdAt" DESC
-    LIMIT 30
+    LIMIT ${PAGINATION_LIMITS.notificationDropdown}
   `);
 
   return {
@@ -78,6 +85,29 @@ const getNotificationCenterData = cache(async (userId: string) => {
 
 export async function getNotifications(userId: string): Promise<AppNotification[]> {
   return (await getNotificationCenterData(userId)).notifications;
+}
+
+export async function getNotificationsPage(
+  userId: string,
+  cursor?: string | null
+): Promise<CursorPage<AppNotification>> {
+  const parsedCursor = cursorSchema.parse(cursor) ?? undefined;
+  const metadata = { route: "/notifications", itemCount: 0, hasMore: false };
+
+  return measureAsync("notifications.page", async () => {
+    const records = await prisma.notification.findMany({
+      where: { recipientId: userId, type: { not: "MESSAGE" } },
+      include: notificationInclude,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      cursor: parsedCursor ? { id: parsedCursor } : undefined,
+      skip: parsedCursor ? 1 : 0,
+      take: PAGINATION_LIMITS.notifications + 1
+    });
+    const page = toCursorPage(records.map(toAppNotification), PAGINATION_LIMITS.notifications);
+    metadata.itemCount = page.items.length;
+    metadata.hasMore = page.hasMore;
+    return page;
+  }, metadata);
 }
 
 export async function getUnreadNotificationCount(userId: string) {

@@ -19,6 +19,9 @@ import type { SessionUser } from "@/types/auth.types";
 import type { ConversationUpdatePayload } from "@/types/message.types";
 import type { AppNotification } from "@/types/notification.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { logPerformance, performanceNow } from "@/lib/performance";
+
+let developmentSidebarAblyInstances = 0;
 
 type SiteSidebarProps = {
   currentUser: SessionUser | null;
@@ -109,10 +112,33 @@ function useUnreadDirectConversationCounts(
     }
 
     const channelName = getUserInboxChannelName(currentUserId);
+    const connectionStartedAt = performanceNow();
+    const instanceStartedAt = performanceNow();
     const ably = new Realtime({
       authUrl: `/api/ably/token?channel=${encodeURIComponent(channelName)}`,
       closeOnUnload: true
     });
+    if (process.env.NODE_ENV === "development") {
+      developmentSidebarAblyInstances += 1;
+    }
+    logPerformance("ably.sidebar.instanceCreated", performanceNow() - instanceStartedAt, "success", {
+      route: "(main)",
+      component: "SiteSidebar",
+      connectionState: ably.connection.state,
+      instanceCount: developmentSidebarAblyInstances
+    });
+    const handleConnected = () => {
+      const durationMs = performanceNow() - connectionStartedAt;
+      const metadata = {
+        route: "(main)",
+        component: "SiteSidebar",
+        connectionState: ably.connection.state,
+        instanceCount: developmentSidebarAblyInstances
+      };
+      logPerformance("ably.sidebar.tokenAuth", durationMs, "success", metadata);
+      logPerformance("ably.sidebar.connected", durationMs, "success", metadata);
+    };
+    ably.connection.on("connected", handleConnected);
     const channel = ably.channels.get(channelName);
 
     const handleConversationUpdate = (message: InboundMessage) => {
@@ -150,7 +176,17 @@ function useUnreadDirectConversationCounts(
 
     return () => {
       channel.unsubscribe(INBOX_EVENTS.conversationUpdate, handleConversationUpdate);
+      ably.connection.off("connected", handleConnected);
       ably.close();
+      if (process.env.NODE_ENV === "development") {
+        developmentSidebarAblyInstances = Math.max(0, developmentSidebarAblyInstances - 1);
+      }
+      logPerformance("ably.sidebar.unmounted", performanceNow() - connectionStartedAt, "success", {
+        route: "(main)",
+        component: "SiteSidebar",
+        connectionState: "closed",
+        instanceCount: developmentSidebarAblyInstances
+      });
     };
   }, [currentUserId]);
 

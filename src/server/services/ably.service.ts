@@ -4,6 +4,7 @@ import { Rest } from "ably";
 import { getRoomChannelName, getUserInboxChannelName, INBOX_EVENTS, NOTIFICATION_EVENTS, ROOM_EVENTS } from "@/lib/ably-channels";
 import type { ConversationUpdatePayload, RealtimeChatMessage } from "@/types/message.types";
 import type { AppNotification } from "@/types/notification.types";
+import { measureAsync } from "@/lib/performance";
 
 type ConversationReadPayload = {
   conversationId: string;
@@ -53,9 +54,10 @@ export async function publishNotificationCreated(userId: string, notification: A
 }
 
 export async function publishNotificationRead(userId: string, notificationId: string) {
-  await publishToChannel(getUserInboxChannelName(userId), NOTIFICATION_EVENTS.notificationRead, {
-    notificationId
-  });
+  await measureAsync("ably.publish.notificationRead", () =>
+    publishToChannel(getUserInboxChannelName(userId), NOTIFICATION_EVENTS.notificationRead, {
+      notificationId
+    }), { route: "notification-destination" });
 }
 
 export async function publishNotificationsReadAll(userId: string) {

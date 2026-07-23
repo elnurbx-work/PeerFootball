@@ -4,6 +4,8 @@ import { Prisma, type MatchCategory, type MatchStatus, type MatchType } from "@p
 import { prisma } from "@/lib/prisma";
 import { canCreateClubMatches } from "@/server/services/club-permissions.service";
 import type { MatchCommentDto, MatchDto, MatchListItemDto, MatchPermissions, MatchPlayerDto, MatchVideoDto } from "@/types/match.types";
+import { measureAsync } from "@/lib/performance";
+import { PAGINATION_LIMITS } from "@/lib/pagination";
 
 const clubSelect = { id: true, name: true, slug: true, logoUrl: true } as const;
 const userSelect = { id: true, name: true, username: true, image: true } as const;
@@ -48,11 +50,20 @@ type MatchListRecord = {
 };
 
 export async function getClubMatches(clubId: string, _currentUserId?: string): Promise<MatchListItemDto[]> {
-  return getMatchList(Prisma.sql`
-    match_record."creatorClubId" = ${clubId}
-    OR match_record."homeClubId" = ${clubId}
-    OR match_record."awayClubId" = ${clubId}
-  `);
+  const metadata = { route: "/clubs/[slug]/matches", matchCount: 0 };
+  return measureAsync("matches.clubList", async () => {
+    const matches = await measureAsync(
+      "club.matchesPage",
+      () => getMatchList(Prisma.sql`
+        match_record."creatorClubId" = ${clubId}
+        OR match_record."homeClubId" = ${clubId}
+        OR match_record."awayClubId" = ${clubId}
+      `),
+      { route: "/clubs/[slug]/matches" }
+    );
+    metadata.matchCount = matches.length;
+    return matches;
+  }, metadata);
 }
 
 export async function getUpcomingClubMatches(clubId: string, _currentUserId?: string): Promise<MatchListItemDto[]> {
@@ -84,24 +95,51 @@ export async function getMatchesForClubs(clubIds: string[]): Promise<MatchListIt
 }
 
 export async function getMatchesForUserClubs(userId: string): Promise<MatchListItemDto[]> {
-  return getMatchList(Prisma.sql`
-    EXISTS (
-      SELECT 1
-      FROM "ClubMember" AS membership
-      WHERE membership."userId" = ${userId}
-        AND membership."status" = 'ACTIVE'
-        AND (
-          membership."clubId" = match_record."creatorClubId"
-          OR membership."clubId" = match_record."homeClubId"
-          OR membership."clubId" = match_record."awayClubId"
-        )
-    )
-  `);
+  const metadata = { route: "/matches", matchCount: 0 };
+  return measureAsync("matches.list", async () => {
+    const matches = await measureAsync(
+      "matches.page",
+      () => getMatchList(Prisma.sql`
+        EXISTS (
+          SELECT 1
+          FROM "ClubMember" AS membership
+          WHERE membership."userId" = ${userId}
+            AND membership."status" = 'ACTIVE'
+            AND (
+              membership."clubId" = match_record."creatorClubId"
+              OR membership."clubId" = match_record."homeClubId"
+              OR membership."clubId" = match_record."awayClubId"
+            )
+          )
+      `),
+      { route: "/matches" }
+    );
+    metadata.matchCount = matches.length;
+    return matches;
+  }, metadata);
 }
 
 export async function getMatchById(matchId: string, currentUserId?: string): Promise<MatchDto | null> {
+  const metadata = {
+    route: "/matches/[matchId]",
+    sideCount: 0,
+    playerCount: 0,
+    videoCount: 0,
+    goalCount: 0,
+    commentCount: 0,
+    replyCount: 0
+  };
   const [match, manageableClubIds] = await Promise.all([
-    prisma.match.findUnique({ where: { id: matchId }, relationLoadStrategy: "join", include: matchInclude }),
+    measureAsync("matches.detail", async () => {
+      const result = await prisma.match.findUnique({ where: { id: matchId }, relationLoadStrategy: "join", include: matchInclude });
+      metadata.sideCount = result?.sides.length ?? 0;
+      metadata.playerCount = result?.sides.reduce((count, side) => count + side.players.length, 0) ?? 0;
+      metadata.videoCount = result?.videos.length ?? 0;
+      metadata.goalCount = result?.goals.length ?? 0;
+      metadata.commentCount = result?.comments.length ?? 0;
+      metadata.replyCount = result?.comments.reduce((count, comment) => count + comment.replies.length, 0) ?? 0;
+      return result;
+    }, metadata),
     getManageableClubIds(currentUserId)
   ]);
   return match ? toMatchDto(match, manageableClubIds) : null;
@@ -198,7 +236,8 @@ async function getMatchList(where: Prisma.Sql, orderBy: Prisma.Sql = Prisma.sql`
     LEFT JOIN side_counts ON side_counts."matchId" = match_record."id"
     WHERE ${where}
     GROUP BY match_record."id"
-    ORDER BY ${orderBy}
+    ORDER BY ${orderBy}, match_record."id" DESC
+    LIMIT ${PAGINATION_LIMITS.matches}
   `);
   return matches.map(toMatchListItemDto);
 }

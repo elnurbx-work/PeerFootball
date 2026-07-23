@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { normalizeEmail } from "@/server/services/auth.service";
 import { adminSessionCookieName, verifyAdminSessionToken } from "@/lib/admin-session";
+import { measureAsync } from "@/lib/performance";
 
 function secureStringEqual(supplied: string, expected: string) {
   const suppliedDigest = createHash("sha256").update(supplied).digest();
@@ -92,5 +93,8 @@ export async function isAdminAuthenticated() {
 }
 
 export async function requireAdmin() {
-  if (!(await isAdminAuthenticated())) redirect("/admin/login");
+  const authenticated = await measureAsync("adminAuth.requireAdmin", isAdminAuthenticated, {
+    route: "admin"
+  });
+  if (!authenticated) redirect("/admin/login");
 }

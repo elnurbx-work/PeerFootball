@@ -3,6 +3,11 @@ import "server-only";
 import { FriendshipStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { FriendshipStatusResult, FriendshipWithUser } from "@/types/friendship.types";
+import {
+  PAGINATION_LIMITS,
+  toNumberedPage,
+  type NumberedPage
+} from "@/lib/pagination";
 
 const friendUserSelect = {
   id: true,
@@ -163,4 +168,43 @@ export async function getFriendshipListsForUser(userId: string) {
       .filter((friendship) => friendship.status === "PENDING" && friendship.requesterId === userId)
       .sort(byCreatedAtDescending)
   };
+}
+
+export async function getFriendshipsPageForUser(
+  userId: string,
+  tab: "friends" | "incoming" | "sent",
+  page: number
+): Promise<NumberedPage<FriendshipWithUser>> {
+  const pageSize = PAGINATION_LIMITS.friends;
+  const where = tab === "friends"
+    ? {
+        status: FriendshipStatus.ACCEPTED,
+        OR: [{ requesterId: userId }, { addresseeId: userId }]
+      }
+    : tab === "incoming"
+      ? { status: FriendshipStatus.PENDING, addresseeId: userId }
+      : { status: FriendshipStatus.PENDING, requesterId: userId };
+  const [records, totalItems] = await Promise.all([
+    prisma.friendship.findMany({
+      where,
+      relationLoadStrategy: "join",
+      include: {
+        requester: { select: friendUserSelect },
+        addressee: { select: friendUserSelect }
+      },
+      orderBy: tab === "friends"
+        ? [{ acceptedAt: "desc" }, { id: "desc" }]
+        : [{ createdAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    }),
+    prisma.friendship.count({ where })
+  ]);
+
+  return toNumberedPage(
+    records.map((record) => toFriendshipWithUser(record, userId)),
+    page,
+    pageSize,
+    totalItems
+  );
 }

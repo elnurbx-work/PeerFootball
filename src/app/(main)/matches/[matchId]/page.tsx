@@ -10,9 +10,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { getMatchClubOptions } from "@/server/queries/club.queries";
 import { getMatchById } from "@/server/queries/match.queries";
 import { createTranslator } from "@/i18n/dictionary";
+import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
 
 export default async function MatchDetailsPage({ params }: { params: Promise<{ matchId: string }> }) {
-  const user = await getCurrentUser();
+  const totalStartedAt = performanceNow();
+  const user = await measureAsync("matches.detailPage.currentUser", getCurrentUser, {
+    route: "/matches/[matchId]"
+  });
   if (!user) redirect("/auth/login");
   const t = createTranslator(user.locale);
   const { matchId } = await params;
@@ -20,7 +24,11 @@ export default async function MatchDetailsPage({ params }: { params: Promise<{ m
   if (!match) notFound();
 
   const clubIds = [...new Set(match.sides.map((side) => side.clubId ?? match.creatorClubId))];
-  const options = await getMatchClubOptions(clubIds, user.id);
+  const options = await measureAsync(
+    "matches.detailPage.clubOptions",
+    () => getMatchClubOptions(clubIds, user.id),
+    { route: "/matches/[matchId]", sideCount: match.sides.length }
+  );
   const goalsEditable = ["DRAFT", "SCHEDULED", "LIVE"].includes(match.status);
   const manageableSideIds = match.sides
     .filter((side) => goalsEditable && options[side.clubId ?? match.creatorClubId]?.canManage)
@@ -35,6 +43,15 @@ export default async function MatchDetailsPage({ params }: { params: Promise<{ m
     .filter((player) => player.userId === user.id && player.status === "INVITED");
   const recordedHomeScore = match.goals.filter((goal) => goal.matchSideId === match.sides[0]?.id).length;
   const recordedAwayScore = match.goals.filter((goal) => goal.matchSideId === match.sides[1]?.id).length;
+  logPerformance("matches.detailPage.totalData", performanceNow() - totalStartedAt, "success", {
+    route: "/matches/[matchId]",
+    sideCount: match.sides.length,
+    playerCount: match.sides.reduce((count, side) => count + side.players.length, 0),
+    videoCount: match.videos.length,
+    goalCount: match.goals.length,
+    commentCount: match.comments.length,
+    replyCount: match.comments.reduce((count, comment) => count + comment.replies.length, 0)
+  });
 
   const summaryActions = (
     <div className="grid gap-3">

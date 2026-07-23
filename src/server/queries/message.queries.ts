@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decryptMessage } from "@/server/services/message-encryption.service";
 import type { ChatMessage, ConversationSummary, EncryptedMessagePayload, RealtimeChatMessage } from "@/types/message.types";
+import { PAGINATION_LIMITS } from "@/lib/pagination";
 
 const messageSenderSelect = {
   id: true,
@@ -70,13 +71,11 @@ export async function getConversationMessages(conversationId: string, currentUse
     },
     relationLoadStrategy: "join",
     include: messageInclude,
-    orderBy: {
-      createdAt: "asc"
-    },
-    take: 100
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: PAGINATION_LIMITS.messages
   });
 
-  return messages.map((message) => toChatMessage(message, currentUserId));
+  return messages.reverse().map((message) => toChatMessage(message, currentUserId));
 }
 
 export async function getLatestConversationMessage(conversationId: string): Promise<RealtimeChatMessage | null> {
@@ -122,7 +121,8 @@ export async function getConversationSummaries(currentUserId: string): Promise<C
       },
       orderBy: {
         updatedAt: "desc"
-      }
+      },
+      take: PAGINATION_LIMITS.conversations
     }),
     getUnreadConversationCounts(currentUserId)
   ]);

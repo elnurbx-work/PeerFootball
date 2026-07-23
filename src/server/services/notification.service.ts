@@ -8,6 +8,7 @@ import {
   publishNotificationsReadAll
 } from "@/server/services/ably.service";
 import type { AppNotification, NotificationType } from "@/types/notification.types";
+import { measureAsync } from "@/lib/performance";
 
 export const notificationActorSelect = {
   id: true,
@@ -256,33 +257,35 @@ export async function createMessageNotification({
 }
 
 export async function markNotificationRead(notificationId: string, userId: string) {
-  const notification = await prisma.notification.findFirst({
-    where: {
-      id: notificationId,
-      recipientId: userId
-    },
-    select: {
-      id: true,
-      readAt: true
-    }
-  });
+  const notification = await measureAsync("notification.service.findFirst", () =>
+    prisma.notification.findFirst({
+      where: {
+        id: notificationId,
+        recipientId: userId
+      },
+      select: {
+        id: true,
+        readAt: true
+      }
+    }), { route: "notification-destination" });
 
   if (!notification) {
     return null;
   }
 
   if (!notification.readAt) {
-    await prisma.notification.update({
-      where: {
-        id: notification.id
-      },
-      data: {
-        readAt: new Date()
-      },
-      select: {
-        id: true
-      }
-    });
+    await measureAsync("notification.service.update", () =>
+      prisma.notification.update({
+        where: {
+          id: notification.id
+        },
+        data: {
+          readAt: new Date()
+        },
+        select: {
+          id: true
+        }
+      }), { route: "notification-destination" });
   }
 
   await publishReadBestEffort(userId, notification.id);
@@ -349,7 +352,11 @@ async function publishNotificationBestEffort(userId: string, notification: AppNo
 
 async function publishReadBestEffort(userId: string, notificationId: string) {
   try {
-    await publishNotificationRead(userId, notificationId);
+    await measureAsync(
+      "notification.service.ablyPublish",
+      () => publishNotificationRead(userId, notificationId),
+      { route: "notification-destination" }
+    );
   } catch (error) {
     logAblyFailure("notification read publish failed", error);
   }

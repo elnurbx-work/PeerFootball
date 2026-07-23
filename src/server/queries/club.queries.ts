@@ -27,6 +27,12 @@ import type {
   ClubSettingsDto,
   ClubSummary
 } from "@/types/club.types";
+import {
+  PAGINATION_LIMITS,
+  toNumberedPage,
+  type NumberedPage
+} from "@/lib/pagination";
+import { measureAsync } from "@/lib/performance";
 
 export async function getMyClubs(userId: string): Promise<ClubSummary[]> {
   const memberships = await prisma.clubMember.findMany({
@@ -266,8 +272,17 @@ export async function getClubInvitationForUser(clubId: string, userId: string): 
   return invite ? toClubMemberDto(invite) : null;
 }
 
-export async function getClubMembersPageData(clubId: string, userId: string) {
-  const [currentMembership, membershipRecords] = await Promise.all([
+export async function getClubMembersPageData(clubId: string, userId: string, page = 1) {
+  const pageSize = PAGINATION_LIMITS.clubMembers;
+  const membersWhere: Prisma.ClubMemberWhereInput = {
+    clubId,
+    OR: [
+      { status: "ACTIVE" },
+      { status: "REQUESTED" },
+      { status: "INVITED", userId }
+    ]
+  };
+  const [currentMembership, memberPage, ownInviteRecord] = await Promise.all([
     prisma.clubMember.findFirst({
       where: { clubId, userId, status: { in: ["ACTIVE", "INVITED", "REQUESTED"] } },
       relationLoadStrategy: "join",
@@ -286,20 +301,24 @@ export async function getClubMembersPageData(clubId: string, userId: string) {
         }
       }
     }),
-    prisma.clubMember.findMany({
-      where: {
-        clubId,
-        OR: [
-          { status: "ACTIVE" },
-          { status: "REQUESTED" },
-          { status: "INVITED", userId }
-        ]
-      },
-      relationLoadStrategy: "join",
+    measureAsync("club.membersPage", () => Promise.all([
+      prisma.clubMember.findMany({
+        where: membersWhere,
+        relationLoadStrategy: "join",
+        include: clubMemberInclude,
+        orderBy: [{ status: "asc" }, { role: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      }),
+      prisma.clubMember.count({ where: membersWhere })
+    ]), { route: "/clubs/[slug]/members", page, pageSize }),
+    prisma.clubMember.findFirst({
+      where: { clubId, userId, status: "INVITED" },
       include: clubMemberInclude,
-      orderBy: [{ status: "asc" }, { role: "asc" }, { createdAt: "asc" }]
+      orderBy: { createdAt: "desc" }
     })
   ]);
+  const [membershipRecords, totalItems] = memberPage;
 
   const role = currentMembership?.status === "ACTIVE" ? currentMembership.role : null;
   const settings = currentMembership?.club.settings;
@@ -318,10 +337,13 @@ export async function getClubMembersPageData(clubId: string, userId: string) {
     pendingRequests: canManageRequests
       ? members.filter((member) => member.status === "REQUESTED")
       : [],
-    ownInvite: members.findLast((member) => member.status === "INVITED" && member.userId === userId) ?? null,
+    ownInvite: ownInviteRecord ? toClubMemberDto(ownInviteRecord) : null,
     canManageRequests,
     canInvite,
-    owner: role === "OWNER"
+    owner: role === "OWNER",
+    page,
+    totalItems,
+    totalPages: Math.max(1, Math.ceil(totalItems / pageSize))
   };
 }
 
@@ -357,4 +379,56 @@ export async function searchClubs(query?: string, currentUserId?: string): Promi
     const membership = memberships.find((item) => item.clubId === club.id);
     return toClubSummaryDto(club, membership ?? null);
   });
+}
+
+export async function searchClubsPage(
+  query: string | undefined,
+  currentUserId: string,
+  page: number
+): Promise<NumberedPage<ClubSummary>> {
+  const trimmedQuery = query?.trim();
+  const where: Prisma.ClubWhereInput = {
+    isActive: true,
+    ...(trimmedQuery
+      ? {
+          OR: [
+            { name: { contains: trimmedQuery, mode: "insensitive" } },
+            { city: { contains: trimmedQuery, mode: "insensitive" } },
+            { country: { contains: trimmedQuery, mode: "insensitive" } }
+          ]
+        }
+      : {})
+  };
+  const pageSize = PAGINATION_LIMITS.clubs;
+  const metadata = { route: "/clubs", itemCount: 0, page };
+
+  return measureAsync("clubs.page", async () => {
+    const [clubs, totalItems] = await Promise.all([
+      prisma.club.findMany({
+        where,
+        include: clubSummaryInclude,
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      }),
+      prisma.club.count({ where })
+    ]);
+    const memberships = await prisma.clubMember.findMany({
+      where: {
+        userId: currentUserId,
+        clubId: { in: clubs.map((club) => club.id) },
+        status: { in: ["ACTIVE", "INVITED", "REQUESTED"] }
+      },
+      select: { clubId: true, role: true, status: true }
+    });
+    const membershipByClubId = new Map(memberships.map((item) => [item.clubId, item]));
+    const result = toNumberedPage(
+      clubs.map((club) => toClubSummaryDto(club, membershipByClubId.get(club.id) ?? null)),
+      page,
+      pageSize,
+      totalItems
+    );
+    metadata.itemCount = result.items.length;
+    return result;
+  }, metadata);
 }

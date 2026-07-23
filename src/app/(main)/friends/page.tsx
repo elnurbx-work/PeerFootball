@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  getFriendshipListsForUser
-} from "@/server/queries/friendship.queries";
+import { getFriendshipsPageForUser } from "@/server/queries/friendship.queries";
 import { FriendsList } from "@/components/friends/FriendsList";
 import { getCurrentUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { createTranslator } from "@/i18n/dictionary";
+import { normalizePage } from "@/lib/pagination";
+import { NumberedPagination } from "@/components/pagination/numbered-pagination";
 
 type FriendsPageProps = {
   searchParams: Promise<{
     tab?: string;
+    page?: string;
   }>;
 };
 
@@ -28,8 +29,12 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
   ];
 
   const params = await searchParams;
-  const activeTab = tabs.some((tab) => tab.key === params.tab) ? params.tab : "friends";
-  const { friends, incoming, outgoing } = await getFriendshipListsForUser(currentUser.id);
+  const activeTab = (tabs.some((tab) => tab.key === params.tab) ? params.tab : "friends") as "friends" | "incoming" | "sent";
+  const result = await getFriendshipsPageForUser(
+    currentUser.id,
+    activeTab,
+    normalizePage(params.page)
+  );
 
   return (
     <section className="mx-auto grid max-w-4xl gap-5 px-4 py-10">
@@ -57,15 +62,23 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         ))}
       </nav>
 
-      {activeTab === "friends" ? (
-        <FriendsList items={friends} mode="friend" emptyMessage={t("friends.pages.emptyFriends")} />
-      ) : null}
-      {activeTab === "incoming" ? (
-        <FriendsList items={incoming} mode="incoming" emptyMessage={t("profile.pages.noIncoming")} />
-      ) : null}
-      {activeTab === "sent" ? (
-        <FriendsList items={outgoing} mode="outgoing" emptyMessage={t("profile.pages.noSent")} />
-      ) : null}
+      <FriendsList
+        items={result.items}
+        mode={activeTab === "friends" ? "friend" : activeTab === "incoming" ? "incoming" : "outgoing"}
+        emptyMessage={
+          activeTab === "friends"
+            ? t("friends.pages.emptyFriends")
+            : activeTab === "incoming"
+              ? t("profile.pages.noIncoming")
+              : t("profile.pages.noSent")
+        }
+      />
+      <NumberedPagination
+        page={result.page}
+        totalPages={result.totalPages}
+        pathname="/friends"
+        searchParams={{ tab: activeTab }}
+      />
     </section>
   );
 }

@@ -1,16 +1,18 @@
 import { notFound, redirect } from "next/navigation";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { Lock } from "lucide-react";
 import { FriendButton } from "@/components/friends/FriendButton";
-import { PostCard } from "@/components/posts/post-card";
+import { PaginatedPostList } from "@/components/posts/paginated-post-list";
 import { ProfileSummary } from "@/components/profile/profile-summary";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
 import { getFriendshipStatusForUsers } from "@/server/queries/friendship.queries";
-import { getProfilePostsWithComments } from "@/server/queries/post.queries";
+import { getProfilePostsPage } from "@/server/queries/post.queries";
 import { getProfileSummaryBySlug } from "@/server/queries/profile.queries";
 import { canViewProfile } from "@/server/services/privacy.service";
 import { createTranslator, type Translate } from "@/i18n/dictionary";
+import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
+import { PostListSkeleton } from "@/components/skeletons";
 
 type UserProfilePageProps = {
   params: Promise<{
@@ -19,7 +21,11 @@ type UserProfilePageProps = {
 };
 
 export default async function UserProfilePage({ params }: UserProfilePageProps) {
-  const currentUser = await getCurrentUser();
+  const totalStartedAt = performanceNow();
+  const currentUser = await measureAsync("profile.currentUser", getCurrentUser, {
+    route: "/profile/[username]",
+    isOwnProfile: false
+  });
 
   if (!currentUser) {
     redirect("/auth/login");
@@ -27,7 +33,11 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   const t = createTranslator(currentUser.locale);
 
   const { username } = await params;
-  const result = await getProfileSummaryBySlug(decodeURIComponent(username));
+  const result = await measureAsync(
+    "profile.user",
+    () => getProfileSummaryBySlug(decodeURIComponent(username)),
+    { route: "/profile/[username]", isOwnProfile: false }
+  );
 
   if (!result?.profile) {
     notFound();
@@ -43,11 +53,24 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     redirect(`/profile/${canonicalUsername}`);
   }
 
+  const isOwnProfile = currentUser.id === profile.id;
+  const accessStartedAt = performanceNow();
   const friendshipStatus =
-    currentUser.id === profile.id ? undefined : await getFriendshipStatusForUsers(currentUser.id, profile.id);
+    isOwnProfile ? undefined : await getFriendshipStatusForUsers(currentUser.id, profile.id);
   const canView = await canViewProfile(currentUser.id, profile.id);
+  logPerformance("profile.access", performanceNow() - accessStartedAt, "success", {
+    route: "/profile/[username]",
+    isOwnProfile
+  });
 
   if (!canView) {
+    logPerformance("profile.totalData", performanceNow() - totalStartedAt, "success", {
+      route: "/profile/[username]",
+      postCount: 0,
+      rootCommentCount: 0,
+      replyCount: 0,
+      isOwnProfile
+    });
     return (
       <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">
         <PrivateProfileNotice
@@ -69,8 +92,6 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     );
   }
 
-  const { posts, commentsByPostId } = await getProfilePostsWithComments(profile.id, currentUser.id);
-
   return (
     <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">
       <ProfileSummary
@@ -86,19 +107,67 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
         user={profile}
       />
       <div className="mx-auto grid w-full max-w-3xl gap-5">
-        {posts.length ? (
-          posts.map((post) => (
-            <PostCard key={post.id} post={post} comments={commentsByPostId.get(post.id) ?? []} />
-          ))
-        ) : (
-          <Card>
-            <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              {t("profile.pages.noPosts")}
-            </CardContent>
-          </Card>
-        )}
+        <Suspense fallback={<PostListSkeleton count={2} />}>
+          <UserProfilePosts
+            currentUserId={currentUser.id}
+            isOwnProfile={isOwnProfile}
+            profileUserId={profile.id}
+            startedAt={totalStartedAt}
+            t={t}
+          />
+        </Suspense>
       </div>
     </section>
+  );
+}
+
+async function UserProfilePosts({
+  currentUserId,
+  isOwnProfile,
+  profileUserId,
+  startedAt,
+  t
+}: {
+  currentUserId: string;
+  isOwnProfile: boolean;
+  profileUserId: string;
+  startedAt: number;
+  t: Translate;
+}) {
+  const page = await measureAsync(
+    "profile.postsWithComments",
+    () => getProfilePostsPage(profileUserId, currentUserId),
+    { route: "/profile/[username]", isOwnProfile }
+  );
+  const rootCommentCount = page.items.reduce((count, item) => count + item.comments.length, 0);
+  const replyCount = page.items.reduce(
+    (count, item) => count + item.comments.reduce((sum, comment) => sum + comment.replies.length, 0),
+    0
+  );
+  logPerformance("profile.totalData", performanceNow() - startedAt, "success", {
+    route: "/profile/[username]",
+    postCount: page.items.length,
+    rootCommentCount,
+    replyCount,
+    isOwnProfile
+  });
+
+  if (!page.items.length) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-sm text-muted-foreground">
+          {t("profile.pages.noPosts")}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <PaginatedPostList
+      initialPage={page}
+      mode="profile"
+      profileUserId={profileUserId}
+    />
   );
 }
 

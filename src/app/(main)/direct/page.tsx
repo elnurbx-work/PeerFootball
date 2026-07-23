@@ -4,6 +4,7 @@ import { DirectInbox } from "@/components/direct/direct-inbox";
 import { getFriendsForUser } from "@/server/queries/friendship.queries";
 import { getConversationMessages, getConversationSummaries } from "@/server/queries/message.queries";
 import type { DirectFriend } from "@/types/message.types";
+import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
 
 type DirectPageProps = {
   searchParams: Promise<{
@@ -12,6 +13,7 @@ type DirectPageProps = {
 };
 
 export default async function DirectPage({ searchParams }: DirectPageProps) {
+  const totalStartedAt = performanceNow();
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -19,9 +21,23 @@ export default async function DirectPage({ searchParams }: DirectPageProps) {
   }
 
   const params = await searchParams;
+  const friendsMetadata = { route: "/direct", friendCount: 0 };
+  const conversationsMetadata = { route: "/direct", conversationCount: 0 };
   const [friends, conversations] = await Promise.all([
-    getFriendsForUser(currentUser.id),
-    getConversationSummaries(currentUser.id)
+    measureAsync("direct.friends", async () => {
+      const result = await getFriendsForUser(currentUser.id);
+      friendsMetadata.friendCount = result.length;
+      return result;
+    }, friendsMetadata),
+    measureAsync("direct.conversations", async () => {
+      const result = await measureAsync(
+        "direct.conversationsPage",
+        () => getConversationSummaries(currentUser.id),
+        { route: "/direct" }
+      );
+      conversationsMetadata.conversationCount = result.length;
+      return result;
+    }, conversationsMetadata)
   ]);
   const directFriends = friends.map((friendship): DirectFriend => {
     const conversation = conversations.find(
@@ -37,9 +53,33 @@ export default async function DirectPage({ searchParams }: DirectPageProps) {
   });
   const initialFriend = directFriends.find((friend) => friend.conversationId === params.conversationId) ?? directFriends[0];
   const initialConversationId = initialFriend?.conversationId ?? null;
+  const initialMessagesMetadata = {
+    route: "/direct",
+    initialMessageCount: 0,
+    hasInitialConversation: Boolean(initialConversationId)
+  };
   const messagesByConversationId = initialConversationId
-    ? { [initialConversationId]: await getConversationMessages(initialConversationId, currentUser.id) }
+    ? { [initialConversationId]: await measureAsync("direct.initialMessages", async () => {
+        const result = await measureAsync(
+          "direct.messagesPage",
+          () => getConversationMessages(initialConversationId, currentUser.id),
+          { route: "/direct" }
+        );
+        initialMessagesMetadata.initialMessageCount = result.length;
+        return result;
+      }, initialMessagesMetadata) }
     : {};
+  if (!initialConversationId) {
+    logPerformance("direct.initialMessages", 0, "success", initialMessagesMetadata);
+  }
+  const initialMessageCount = initialConversationId ? messagesByConversationId[initialConversationId]?.length ?? 0 : 0;
+  logPerformance("direct.totalData", performanceNow() - totalStartedAt, "success", {
+    route: "/direct",
+    friendCount: friends.length,
+    conversationCount: conversations.length,
+    initialMessageCount,
+    hasInitialConversation: Boolean(initialConversationId)
+  });
   const currentMessageUser = {
     id: currentUser.id,
     name: currentUser.name,

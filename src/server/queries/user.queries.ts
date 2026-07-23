@@ -1,10 +1,11 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { getFriendshipStatusForUsers } from "@/server/queries/friendship.queries";
 import type { SessionUser } from "@/types/auth.types";
 import type { FriendshipStatusResult } from "@/types/friendship.types";
 import { toLocale } from "@/i18n/config";
+import { measureAsync } from "@/lib/performance";
+import { PAGINATION_LIMITS, toNumberedPage, type NumberedPage } from "@/lib/pagination";
 
 export type PlayerSearchResult = {
   id: string;
@@ -55,59 +56,96 @@ export async function userExistsById(userId: string): Promise<boolean> {
   return Boolean(user);
 }
 
-export async function searchPlayersForUser(currentUserId: string, rawQuery: string): Promise<PlayerSearchResult[]> {
+export async function searchPlayersForUser(currentUserId: string, rawQuery: string, page = 1): Promise<NumberedPage<PlayerSearchResult>> {
   const query = rawQuery.trim().replace(/\s+/g, " ");
+  const pageSize = PAGINATION_LIMITS.search;
+  const normalizedPage = Math.max(1, Math.trunc(page));
 
   if (query.length < 2) {
-    return [];
+    return toNumberedPage([], normalizedPage, pageSize, 0);
   }
 
-  const players = await prisma.user.findMany({
-    where: {
+  const totalMetadata = { route: "/search", playerCount: 0, friendshipQueryCount: 0, searchTermLength: query.length };
+
+  return measureAsync("search.total", async () => {
+    const playersMetadata = { route: "/search", playerCount: 0, searchTermLength: query.length };
+    const where = {
       id: { not: currentUserId },
       email: { not: null },
       NOT: [
-        {
-          blockedUsers: {
-            some: {
-              blockedId: currentUserId
-            }
-          }
-        },
-        {
-          blockedByUsers: {
-            some: {
-              blockerId: currentUserId
-            }
-          }
-        }
+        { blockedUsers: { some: { blockedId: currentUserId } } },
+        { blockedByUsers: { some: { blockerId: currentUserId } } }
       ],
       OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { username: { contains: query, mode: "insensitive" } },
-        { location: { contains: query, mode: "insensitive" } },
-        { favoriteClub: { contains: query, mode: "insensitive" } },
-        { preferredPosition: { contains: query, mode: "insensitive" } }
+        { name: { contains: query, mode: "insensitive" as const } },
+        { username: { contains: query, mode: "insensitive" as const } },
+        { location: { contains: query, mode: "insensitive" as const } },
+        { favoriteClub: { contains: query, mode: "insensitive" as const } },
+        { preferredPosition: { contains: query, mode: "insensitive" as const } }
       ]
-    },
-    select: {
-      id: true,
-      name: true,
-      username: true,
-      image: true,
-      bio: true,
-      favoriteClub: true,
-      preferredPosition: true,
-      location: true
-    },
-    orderBy: [{ name: "asc" }, { username: "asc" }],
-    take: 12
-  });
+    };
+    const [players, totalItems] = await measureAsync("search.players", () => Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          image: true,
+          bio: true,
+          favoriteClub: true,
+          preferredPosition: true,
+          location: true
+        },
+        orderBy: [{ name: "asc" }, { username: "asc" }, { id: "asc" }],
+        skip: (normalizedPage - 1) * pageSize,
+        take: pageSize
+      }),
+      prisma.user.count({ where })
+    ]).then((result) => {
+      playersMetadata.playerCount = result[0].length;
+      return result;
+    }), playersMetadata);
 
-  return Promise.all(
-    players.map(async (player) => ({
+    totalMetadata.playerCount = players.length;
+    totalMetadata.friendshipQueryCount = players.length ? 1 : 0;
+    const friendshipsMetadata = {
+      route: "/search",
+      playerCount: players.length,
+      friendshipQueryCount: players.length ? 1 : 0,
+      searchTermLength: query.length
+    };
+    const playerIds = players.map((player) => player.id);
+    const friendships = playerIds.length
+      ? await measureAsync("search.friendships.total", () => prisma.friendship.findMany({
+          where: {
+            OR: [
+              { requesterId: currentUserId, addresseeId: { in: playerIds } },
+              { requesterId: { in: playerIds }, addresseeId: currentUserId }
+            ]
+          }
+        }), friendshipsMetadata)
+      : [];
+    const friendshipByPlayerId = new Map(friendships.map((friendship) => [
+      friendship.requesterId === currentUserId ? friendship.addresseeId : friendship.requesterId,
+      friendship
+    ]));
+    const items = players.map((player): PlayerSearchResult => ({
       ...player,
-      friendship: await getFriendshipStatusForUsers(currentUserId, player.id)
-    }))
-  );
+      friendship: toFriendshipStatus(friendshipByPlayerId.get(player.id), currentUserId)
+    }));
+    return toNumberedPage(items, normalizedPage, pageSize, totalItems);
+  }, totalMetadata);
+}
+
+function toFriendshipStatus(
+  friendship: { id: string; requesterId: string; addresseeId: string; status: "PENDING" | "ACCEPTED" | "DECLINED" | "BLOCKED" } | undefined,
+  currentUserId: string
+): FriendshipStatusResult {
+  if (!friendship || friendship.status === "DECLINED") return { state: "ADD_FRIEND" };
+  if (friendship.status === "BLOCKED") return { state: "BLOCKED", friendshipId: friendship.id };
+  if (friendship.status === "ACCEPTED") return { state: "FRIENDS", friendshipId: friendship.id };
+  return friendship.addresseeId === currentUserId
+    ? { state: "RESPOND", friendshipId: friendship.id, direction: "INCOMING" }
+    : { state: "REQUEST_SENT", friendshipId: friendship.id, direction: "OUTGOING" };
 }

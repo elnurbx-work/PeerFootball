@@ -6,17 +6,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/server/services/admin-auth.service";
+import { normalizePage, PAGINATION_LIMITS } from "@/lib/pagination";
+import { NumberedPagination } from "@/components/pagination/numbered-pagination";
+import { measureAsync } from "@/lib/performance";
 
-export default async function AdminReportsPage() {
+export default async function AdminReportsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdmin();
-  const reports = await prisma.postReport.findMany({
-    include: {
-      reporter: { select: { name: true, username: true, email: true } },
-      postAuthor: { select: { name: true, username: true, email: true, isBanned: true } },
-      post: { select: { content: true, isHidden: true } }
-    },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }]
-  });
+  const page = normalizePage((await searchParams).page);
+  const [reports, totalItems] = await measureAsync("admin.reportsPage", () => Promise.all([
+    prisma.postReport.findMany({
+      include: {
+        reporter: { select: { name: true, username: true, email: true } },
+        postAuthor: { select: { name: true, username: true, email: true, isBanned: true } },
+        post: { select: { content: true, isHidden: true } }
+      },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * PAGINATION_LIMITS.admin,
+      take: PAGINATION_LIMITS.admin
+    }),
+    prisma.postReport.count()
+  ]), { route: "/admin/reports" });
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGINATION_LIMITS.admin));
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50 sm:px-8">
@@ -49,6 +63,7 @@ export default async function AdminReportsPage() {
             </Card>
           )) : <p className="text-slate-400">Report yoxdur.</p>}
         </div>
+        <NumberedPagination page={page} totalPages={totalPages} pathname="/admin/reports" />
       </div>
     </main>
   );

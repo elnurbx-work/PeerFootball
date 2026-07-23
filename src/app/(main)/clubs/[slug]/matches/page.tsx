@@ -8,14 +8,16 @@ import { getClubBySlug } from "@/server/queries/club.queries";
 import { getClubMatches } from "@/server/queries/match.queries";
 import { canCreateClubMatches } from "@/server/services/club-permissions.service";
 import { createTranslator } from "@/i18n/dictionary";
+import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
 
 export default async function ClubMatchesPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string }> }) {
-  const user = await getCurrentUser(); if (!user) redirect("/auth/login");
+  const totalStartedAt = performanceNow();
+  const user = await measureAsync("matches.clubPage.currentUser", getCurrentUser, { route: "/clubs/[slug]/matches" }); if (!user) redirect("/auth/login");
   const t = createTranslator(user.locale);
   const tabs = [
     ["upcoming", t("matches.pages.club.tabs.upcoming")], ["pending", t("matches.pages.club.tabs.pending")], ["finished", t("matches.pages.club.tabs.finished")], ["disputed", t("matches.pages.club.tabs.disputed")]
   ] as const;
-  const { slug } = await params; const club = await getClubBySlug(decodeURIComponent(slug), user.id); if (!club) notFound();
+  const { slug } = await params; const club = await measureAsync("matches.clubPage.access", () => getClubBySlug(decodeURIComponent(slug), user.id), { route: "/clubs/[slug]/matches" }); if (!club) notFound();
   if (club.currentUserMemberStatus !== "ACTIVE") notFound();
   const [matches, canManage] = await Promise.all([getClubMatches(club.id, user.id), canCreateClubMatches(user.id, club.id)]);
   const activeTab = (await searchParams).tab ?? "upcoming";
@@ -24,6 +26,10 @@ export default async function ClubMatchesPage({ params, searchParams }: { params
     if (activeTab === "finished") return ["FINISHED", "CANCELLED"].includes(match.status);
     if (activeTab === "disputed") return match.status === "DISPUTED";
     return ["DRAFT", "SCHEDULED", "LIVE"].includes(match.status);
+  });
+  logPerformance("matches.clubPage.totalData", performanceNow() - totalStartedAt, "success", {
+    route: "/clubs/[slug]/matches",
+    matchCount: matches.length
   });
   return <section className="mx-auto grid max-w-6xl gap-6 px-4 py-8">
     <div className="flex flex-wrap items-center justify-between gap-3"><Button asChild variant="ghost"><Link href={`/clubs/${club.slug}`}><ArrowLeft className="h-4 w-4" />{club.name}</Link></Button>{canManage ? <div className="flex gap-2"><Button asChild><Link href={`/clubs/${club.slug}/matches/new/internal`}><Plus className="h-4 w-4" />{t("matches.pages.club.internalMatch")}</Link></Button><Button asChild variant="outline"><Link href={`/clubs/${club.slug}/matches/new/club-vs-club`}>{t("matches.pages.club.clubVsClub")}</Link></Button></div> : null}</div>

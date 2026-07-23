@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { MessageCircle, Trash2 } from "lucide-react";
 import { deleteCommentAction } from "@/actions/post.actions";
+import { loadCommentRepliesAction } from "@/actions/pagination.actions";
 import { CommentForm } from "@/components/posts/comment-form";
+import { LoadMoreButton } from "@/components/pagination/load-more-button";
 import type { PostComment } from "@/types/post.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { RelativeTime } from "@/components/i18n/relative-time";
@@ -19,6 +21,8 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
   const { locale, t } = useI18n();
   const router = useRouter();
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const [replies, setReplies] = useState(comment.replies);
+  const [hasMoreReplies, setHasMoreReplies] = useState(comment.replies.length >= 2);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const authorName = comment.author.name ?? t("profile.summary.playerFallback");
@@ -36,6 +40,23 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
       }
 
       router.refresh();
+    });
+  }
+
+  function loadMoreReplies() {
+    const cursor = replies.at(-1)?.id ?? null;
+    setMessage(null);
+    startTransition(async () => {
+      const result = await loadCommentRepliesAction(comment.id, cursor);
+      if (!result.ok || !result.data) {
+        setMessage(result.message);
+        return;
+      }
+      setReplies((current) => {
+        const ids = new Set(current.map((reply) => reply.id));
+        return [...current, ...result.data!.items.filter((reply) => !ids.has(reply.id))];
+      });
+      setHasMoreReplies(result.data.hasMore);
     });
   }
 
@@ -98,11 +119,18 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
         </div>
       ) : null}
 
-      {comment.replies.length ? (
+      {replies.length ? (
         <div className="ml-8 grid gap-3 border-l pl-4">
-          {comment.replies.map((reply) => (
+          {replies.map((reply) => (
             <CommentItem key={reply.id} comment={reply} canReply={false} />
           ))}
+          {canReply ? (
+            <LoadMoreButton
+              hasMore={hasMoreReplies}
+              pending={pending}
+              onClick={loadMoreReplies}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>

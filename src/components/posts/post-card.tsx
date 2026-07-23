@@ -235,7 +235,13 @@ export function PostCard({ post, comments = [], isAuthenticated = true }: PostCa
         ) : null}
 
         {message ? <p className="text-sm text-destructive">{message}</p> : null}
-        {showComments ? <CommentList postId={post.id} comments={comments} /> : null}
+        {showComments ? (
+          <CommentList
+            postId={post.id}
+            comments={comments}
+            totalCount={post.commentsCount}
+          />
+        ) : null}
       </CardContent>
 
       <DeletePostDialog

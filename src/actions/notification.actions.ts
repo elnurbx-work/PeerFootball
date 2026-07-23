@@ -10,16 +10,23 @@ import {
 } from "@/server/services/notification.service";
 import type { ApiResponse } from "@/types/api.types";
 import { getServerTranslator } from "@/i18n/server";
+import { measureAsync } from "@/lib/performance";
 
 export async function markNotificationReadAction(notificationId: string): Promise<ApiResponse<{ notificationId: string }>> {
   const t = await getServerTranslator();
-  const user = await getCurrentUser();
+  const user = await measureAsync("notification.action.currentUser", getCurrentUser, {
+    route: "notification-destination"
+  });
 
   if (!user) {
     return { ok: false, message: t("responses.signInRequired") };
   }
 
-  const notification = await getNotificationById(notificationId, user.id);
+  const notification = await measureAsync(
+    "notification.action.lookup",
+    () => getNotificationById(notificationId, user.id),
+    { route: "notification-destination" }
+  );
 
   if (!notification) {
     return {
@@ -28,7 +35,11 @@ export async function markNotificationReadAction(notificationId: string): Promis
     };
   }
 
-  const result = await markNotificationRead(notification.id, user.id);
+  const result = await measureAsync(
+    "notification.action.markAsRead",
+    () => markNotificationRead(notification.id, user.id),
+    { route: "notification-destination" }
+  );
 
   if (!result) {
     return {

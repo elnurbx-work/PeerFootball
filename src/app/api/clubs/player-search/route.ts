@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    players: players.slice(0, 8).map((player) => ({
+    players: players.items.slice(0, 8).map((player) => ({
       id: player.id,
       name: player.name,
       username: player.username,

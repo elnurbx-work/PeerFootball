@@ -2,7 +2,15 @@ import "server-only";
 
 import type { Prisma, PostVisibility } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import type { FeedPost, OriginalPostPreview, PostComment, PostMedia } from "@/types/post.types";
+import type { FeedPost, OriginalPostPreview, PostComment, PostMedia, PostPageItem } from "@/types/post.types";
+import { measureAsync } from "@/lib/performance";
+import {
+  cursorSchema,
+  pageSizeSchema,
+  PAGINATION_LIMITS,
+  toCursorPage,
+  type CursorPage
+} from "@/lib/pagination";
 
 const anonymousUserId = "__anonymous__";
 
@@ -103,6 +111,32 @@ function postWithCommentsInclude(currentUserId?: string) {
   } satisfies Prisma.PostInclude;
 }
 
+function postWithCommentPreviewInclude(currentUserId?: string) {
+  return {
+    ...postInclude(currentUserId),
+    comments: {
+      where: { parentId: null },
+      take: PAGINATION_LIMITS.commentPreview,
+      orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }],
+      include: {
+        author: { select: postAuthorSelect },
+        replies: {
+          take: PAGINATION_LIMITS.replyPreview,
+          orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }],
+          include: {
+            author: { select: postAuthorSelect },
+            replies: false
+          }
+        }
+      }
+    }
+  } satisfies Prisma.PostInclude;
+}
+
+type FeedPostWithPreviewRecord = Prisma.PostGetPayload<{
+  include: ReturnType<typeof postWithCommentPreviewInclude>;
+}>;
+
 type CommentRecord = Prisma.CommentGetPayload<{
   include: {
     author: {
@@ -145,6 +179,34 @@ export async function getFeedPosts(currentUserId?: string): Promise<FeedPost[]> 
   return posts.map((post) => toFeedPost(post, currentUserId, friendIds));
 }
 
+export async function getFeedPostsPage(
+  currentUserId?: string,
+  cursor?: string | null
+): Promise<CursorPage<PostPageItem>> {
+  const parsedCursor = cursorSchema.parse(cursor) ?? undefined;
+  const pageSize = pageSizeSchema.parse(PAGINATION_LIMITS.feedPosts);
+  const metadata = { route: "/feed", itemCount: 0, hasMore: false };
+
+  return measureAsync("feed.page", async () => {
+    const [friendIds, records] = await Promise.all([
+      getAcceptedFriendIds(currentUserId),
+      prisma.post.findMany({
+        where: { isHidden: false, AND: [visibilityWhere(currentUserId)] },
+        relationLoadStrategy: "join",
+        include: postWithCommentPreviewInclude(currentUserId),
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        cursor: parsedCursor ? { id: parsedCursor } : undefined,
+        skip: parsedCursor ? 1 : 0,
+        take: pageSize + 1
+      })
+    ]);
+    const page = toPostPage(records, currentUserId, friendIds, pageSize);
+    metadata.itemCount = page.items.length;
+    metadata.hasMore = page.hasMore;
+    return page;
+  }, metadata);
+}
+
 export async function getProfilePosts(profileUserId: string, currentUserId?: string): Promise<FeedPost[]> {
   const friendIds = profileUserId === currentUserId
     ? new Set<string>()
@@ -165,30 +227,188 @@ export async function getProfilePosts(profileUserId: string, currentUserId?: str
   return posts.map((post) => toFeedPost(post, currentUserId, friendIds));
 }
 
-export async function getProfilePostsWithComments(profileUserId: string, currentUserId?: string) {
-  const friendIds = profileUserId === currentUserId
-    ? new Set<string>()
-    : await getAcceptedFriendIds(currentUserId);
-  const records = await prisma.post.findMany({
-    where: {
-      authorId: profileUserId,
-      isHidden: false,
-      ...profileVisibilityWhere(profileUserId, currentUserId, friendIds)
-    },
-    relationLoadStrategy: "join",
-    include: postWithCommentsInclude(currentUserId),
-    orderBy: { createdAt: "desc" }
-  });
-
-  return {
-    posts: records.map((post) => toFeedPost(post, currentUserId, friendIds)),
-    commentsByPostId: new Map(
-      records.map((post) => [
-        post.id,
-        post.comments.map((comment) => toPostComment(comment, currentUserId, post.authorId))
-      ])
-    )
+export async function getProfilePostsPage(
+  profileUserId: string,
+  currentUserId?: string,
+  cursor?: string | null
+): Promise<CursorPage<PostPageItem>> {
+  const parsedCursor = cursorSchema.parse(cursor) ?? undefined;
+  const pageSize = pageSizeSchema.parse(PAGINATION_LIMITS.profilePosts);
+  const metadata = {
+    route: profileUserId === currentUserId ? "/profile" : "/profile/[username]",
+    itemCount: 0,
+    hasMore: false,
+    isOwnProfile: profileUserId === currentUserId
   };
+
+  return measureAsync("profile.postsPage", async () => {
+    const friendIds = profileUserId === currentUserId
+      ? new Set<string>()
+      : await getAcceptedFriendIds(currentUserId);
+    const records = await prisma.post.findMany({
+      where: {
+        authorId: profileUserId,
+        isHidden: false,
+        ...profileVisibilityWhere(profileUserId, currentUserId, friendIds)
+      },
+      relationLoadStrategy: "join",
+      include: postWithCommentPreviewInclude(currentUserId),
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      cursor: parsedCursor ? { id: parsedCursor } : undefined,
+      skip: parsedCursor ? 1 : 0,
+      take: pageSize + 1
+    });
+    const page = toPostPage(records, currentUserId, friendIds, pageSize);
+    metadata.itemCount = page.items.length;
+    metadata.hasMore = page.hasMore;
+    return page;
+  }, metadata);
+}
+
+export async function getPostCommentsPage(
+  postId: string,
+  currentUserId?: string,
+  cursor?: string | null
+): Promise<CursorPage<PostComment>> {
+  const parsedCursor = cursorSchema.parse(cursor) ?? undefined;
+  const pageSize = pageSizeSchema.parse(PAGINATION_LIMITS.comments);
+  const metadata = { route: "/feed", itemCount: 0, hasMore: false };
+
+  return measureAsync("comments.page", async () => {
+    const [post, friendIds] = await Promise.all([
+      prisma.post.findUnique({
+        where: { id: postId },
+        select: { authorId: true, visibility: true, isHidden: true }
+      }),
+      getAcceptedFriendIds(currentUserId)
+    ]);
+
+    if (!post || post.isHidden || !canViewerSeePost(post, currentUserId, friendIds)) {
+      return { items: [], nextCursor: null, hasMore: false };
+    }
+
+    const records = await prisma.comment.findMany({
+      where: { postId, parentId: null },
+      relationLoadStrategy: "join",
+      include: {
+        author: { select: postAuthorSelect },
+        replies: {
+          take: PAGINATION_LIMITS.replyPreview,
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          include: {
+            author: { select: postAuthorSelect },
+            replies: false
+          }
+        }
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      cursor: parsedCursor ? { id: parsedCursor } : undefined,
+      skip: parsedCursor ? 1 : 0,
+      take: pageSize + 1
+    });
+    const serialized = records.map((comment) => toPostComment(comment, currentUserId, post.authorId));
+    const page = toCursorPage(serialized, pageSize);
+    metadata.itemCount = page.items.length;
+    metadata.hasMore = page.hasMore;
+    return page;
+  }, metadata);
+}
+
+export async function getCommentRepliesPage(
+  commentId: string,
+  currentUserId?: string,
+  cursor?: string | null
+): Promise<CursorPage<PostComment>> {
+  const parsedCursor = cursorSchema.parse(cursor) ?? undefined;
+  const pageSize = pageSizeSchema.parse(PAGINATION_LIMITS.replies);
+  const metadata = { route: "/feed", itemCount: 0, hasMore: false };
+
+  return measureAsync("replies.page", async () => {
+    const parent = await prisma.comment.findUnique({
+      where: { id: commentId },
+      select: {
+        id: true,
+        post: { select: { authorId: true, visibility: true, isHidden: true } }
+      }
+    });
+    const friendIds = await getAcceptedFriendIds(currentUserId);
+    if (!parent || parent.post.isHidden || !canViewerSeePost(parent.post, currentUserId, friendIds)) {
+      return { items: [], nextCursor: null, hasMore: false };
+    }
+
+    const records = await prisma.comment.findMany({
+      where: { parentId: parent.id },
+      relationLoadStrategy: "join",
+      include: {
+        author: { select: postAuthorSelect },
+        replies: false
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      cursor: parsedCursor ? { id: parsedCursor } : undefined,
+      skip: parsedCursor ? 1 : 0,
+      take: pageSize + 1
+    });
+    const serialized = records.map((reply) => ({
+      id: reply.id,
+      postId: reply.postId,
+      authorId: reply.authorId,
+      parentId: reply.parentId,
+      content: reply.content,
+      createdAt: reply.createdAt.toISOString(),
+      updatedAt: reply.updatedAt.toISOString(),
+      author: reply.author,
+      replies: [],
+      isOwner: reply.authorId === currentUserId,
+      canDelete: reply.authorId === currentUserId || parent.post.authorId === currentUserId
+    }));
+    const page = toCursorPage(serialized, pageSize);
+    metadata.itemCount = page.items.length;
+    metadata.hasMore = page.hasMore;
+    return page;
+  }, metadata);
+}
+
+export async function getProfilePostsWithComments(profileUserId: string, currentUserId?: string) {
+  const metadata = {
+    route: profileUserId === currentUserId ? "/profile" : "/profile/[username]",
+    postCount: 0,
+    rootCommentCount: 0,
+    replyCount: 0,
+    isOwnProfile: profileUserId === currentUserId
+  };
+
+  return measureAsync("profile.postsWithComments", async () => {
+    const friendIds = profileUserId === currentUserId
+      ? new Set<string>()
+      : await getAcceptedFriendIds(currentUserId);
+    const records = await prisma.post.findMany({
+      where: {
+        authorId: profileUserId,
+        isHidden: false,
+        ...profileVisibilityWhere(profileUserId, currentUserId, friendIds)
+      },
+      relationLoadStrategy: "join",
+      include: postWithCommentsInclude(currentUserId),
+      orderBy: { createdAt: "desc" }
+    });
+
+    metadata.postCount = records.length;
+    metadata.rootCommentCount = records.reduce((count, post) => count + post.comments.length, 0);
+    metadata.replyCount = records.reduce(
+      (count, post) => count + post.comments.reduce((sum, comment) => sum + comment.replies.length, 0),
+      0
+    );
+
+    return {
+      posts: records.map((post) => toFeedPost(post, currentUserId, friendIds)),
+      commentsByPostId: new Map(
+        records.map((post) => [
+          post.id,
+          post.comments.map((comment) => toPostComment(comment, currentUserId, post.authorId))
+        ])
+      )
+    };
+  }, metadata);
 }
 
 export async function getPostById(postId: string, currentUserId?: string): Promise<(FeedPost & { comments: PostComment[] }) | null> {
@@ -382,6 +602,23 @@ function canViewerSeePost(
   }
 
   return post.visibility === "FRIENDS_ONLY" && friendIds.has(post.authorId);
+}
+
+function toPostPage(
+  records: FeedPostWithPreviewRecord[],
+  currentUserId: string | undefined,
+  friendIds: Set<string>,
+  pageSize: number
+): CursorPage<PostPageItem> {
+  const serialized = records.map((record) => ({
+    id: record.id,
+    post: toFeedPost(record, currentUserId, friendIds),
+    comments: record.comments.map((comment) =>
+      toPostComment(comment, currentUserId, record.authorId)
+    )
+  }));
+
+  return toCursorPage(serialized, pageSize);
 }
 
 function toFeedPost(post: FeedPostRecord, currentUserId: string | undefined, friendIds: Set<string>): FeedPost {

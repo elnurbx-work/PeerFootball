@@ -2,16 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus, Search, Shield } from "lucide-react";
 import { ClubCard } from "@/components/clubs/club-card";
+import { ClubSearchForm } from "@/components/clubs/club-search-form";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
 import { getCurrentUser } from "@/lib/auth";
-import { getMyClubs, getMyPendingClubs, searchClubs } from "@/server/queries/club.queries";
+import { getMyClubs, getMyPendingClubs, searchClubsPage } from "@/server/queries/club.queries";
 import { createTranslator } from "@/i18n/dictionary";
+import { normalizePage } from "@/lib/pagination";
+import { NumberedPagination } from "@/components/pagination/numbered-pagination";
 
 type ClubsPageProps = {
   searchParams: Promise<{
     q?: string | string[];
+    page?: string | string[];
   }>;
 };
 
@@ -33,11 +36,13 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
 
   const params = await searchParams;
   const query = getSearchQuery(params.q);
-  const [activeClubs, pendingClubs, clubs] = await Promise.all([
+  const page = normalizePage(params.page);
+  const [activeClubs, pendingClubs, clubPage] = await Promise.all([
     getMyClubs(currentUser.id),
     getMyPendingClubs(currentUser.id),
-    searchClubs(query, currentUser.id)
+    searchClubsPage(query, currentUser.id, page)
   ]);
+  const clubs = clubPage.items;
   const myClubs = [...activeClubs, ...pendingClubs];
 
   return (
@@ -55,16 +60,11 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
         </Button>
       </div>
 
-      <form action="/clubs" className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" defaultValue={query} name="q" placeholder={t("clubs.pages.index.searchPlaceholder")} type="search" />
-        </div>
-        <Button type="submit">
-          <Search className="h-4 w-4" />
-          {t("clubs.pages.index.search")}
-        </Button>
-      </form>
+      <ClubSearchForm
+        initialQuery={query}
+        placeholder={t("clubs.pages.index.searchPlaceholder")}
+        submitLabel={t("clubs.pages.index.search")}
+      />
 
       <div className="grid gap-4">
         <div>
@@ -118,6 +118,12 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
             }
           />
         )}
+        <NumberedPagination
+          page={clubPage.page}
+          totalPages={clubPage.totalPages}
+          pathname="/clubs"
+          searchParams={{ q: query || undefined }}
+        />
       </div>
     </section>
   );

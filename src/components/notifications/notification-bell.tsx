@@ -10,6 +10,9 @@ import { cn } from "@/lib/utils";
 import { toNotificationListItem } from "@/lib/notifications/notification-copy";
 import type { AppNotification, NotificationListItem } from "@/types/notification.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { logPerformance, performanceNow } from "@/lib/performance";
+
+let developmentNotificationBellAblyInstances = 0;
 
 type NotificationBellProps = {
   currentUserId: string;
@@ -66,10 +69,33 @@ export function NotificationBell({
 
   useEffect(() => {
     const channelName = getUserInboxChannelName(currentUserId);
+    const connectionStartedAt = performanceNow();
+    const instanceStartedAt = performanceNow();
     const ably = new Realtime({
       authUrl: `/api/ably/token?channel=${encodeURIComponent(channelName)}`,
       closeOnUnload: true
     });
+    if (process.env.NODE_ENV === "development") {
+      developmentNotificationBellAblyInstances += 1;
+    }
+    logPerformance("ably.notificationBell.instanceCreated", performanceNow() - instanceStartedAt, "success", {
+      route: "(main)",
+      component: "NotificationBell",
+      connectionState: ably.connection.state,
+      instanceCount: developmentNotificationBellAblyInstances
+    });
+    const handleConnected = () => {
+      const durationMs = performanceNow() - connectionStartedAt;
+      const metadata = {
+        route: "(main)",
+        component: "NotificationBell",
+        connectionState: ably.connection.state,
+        instanceCount: developmentNotificationBellAblyInstances
+      };
+      logPerformance("ably.notificationBell.tokenAuth", durationMs, "success", metadata);
+      logPerformance("ably.notificationBell.connected", durationMs, "success", metadata);
+    };
+    ably.connection.on("connected", handleConnected);
     const channel = ably.channels.get(channelName);
 
     const handleNewNotification = (message: InboundMessage) => {
@@ -116,7 +142,17 @@ export function NotificationBell({
       channel.unsubscribe(NOTIFICATION_EVENTS.notificationNew, handleNewNotification);
       channel.unsubscribe(NOTIFICATION_EVENTS.notificationRead, handleNotificationRead);
       channel.unsubscribe(NOTIFICATION_EVENTS.notificationsReadAll, handleNotificationsReadAll);
+      ably.connection.off("connected", handleConnected);
       ably.close();
+      if (process.env.NODE_ENV === "development") {
+        developmentNotificationBellAblyInstances = Math.max(0, developmentNotificationBellAblyInstances - 1);
+      }
+      logPerformance("ably.notificationBell.unmounted", performanceNow() - connectionStartedAt, "success", {
+        route: "(main)",
+        component: "NotificationBell",
+        connectionState: "closed",
+        instanceCount: developmentNotificationBellAblyInstances
+      });
     };
   }, [currentUserId, t]);
 

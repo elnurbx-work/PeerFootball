@@ -9,6 +9,7 @@ import { getActorDisplayName } from "@/lib/notifications/notification-copy";
 import type { NotificationListItem, NotificationType } from "@/types/notification.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { RelativeTime } from "@/components/i18n/relative-time";
+import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
 
 type NotificationItemProps = {
   notification: NotificationListItem;
@@ -35,18 +36,33 @@ export function NotificationItem({ notification, onNavigate, onRead }: Notificat
   const isUnread = !notification.readAt;
 
   async function handleClick() {
+    const navigationStartedAt = performanceNow();
+
     if (pending) {
       return;
     }
 
     if (!isUnread) {
       onNavigate?.();
+      logPerformance("notification.navigation.beforePush", performanceNow() - navigationStartedAt, "success", {
+        route: "notification-destination",
+        notificationWasUnread: false,
+        hasDestination: Boolean(notification.href)
+      });
       router.push(notification.href);
       return;
     }
 
     setPending(true);
-    const result = await markNotificationReadAction(notification.id);
+    const result = await measureAsync(
+      "notification.navigation.markReadAction",
+      () => markNotificationReadAction(notification.id),
+      {
+        route: "notification-destination",
+        notificationWasUnread: true,
+        hasDestination: Boolean(notification.href)
+      }
+    );
 
     if (result.ok) {
       onRead?.(notification.id);
@@ -54,6 +70,11 @@ export function NotificationItem({ notification, onNavigate, onRead }: Notificat
 
     setPending(false);
     onNavigate?.();
+    logPerformance("notification.navigation.beforePush", performanceNow() - navigationStartedAt, "success", {
+      route: "notification-destination",
+      notificationWasUnread: true,
+      hasDestination: Boolean(notification.href)
+    });
     router.push(notification.href);
   }
 

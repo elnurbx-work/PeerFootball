@@ -10,14 +10,17 @@ import {
   getClubMembersPageData
 } from "@/server/queries/club.queries";
 import { createTranslator } from "@/i18n/dictionary";
+import { normalizePage } from "@/lib/pagination";
+import { NumberedPagination } from "@/components/pagination/numbered-pagination";
 
 type ClubMembersPageProps = {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{ page?: string }>;
 };
 
-export default async function ClubMembersPage({ params }: ClubMembersPageProps) {
+export default async function ClubMembersPage({ params, searchParams }: ClubMembersPageProps) {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -38,8 +41,14 @@ export default async function ClubMembersPage({ params }: ClubMembersPageProps) 
     canInvite,
     owner,
     pendingRequests,
-    ownInvite
-  } = await getClubMembersPageData(club.id, currentUser.id);
+    ownInvite,
+    page,
+    totalPages
+  } = await getClubMembersPageData(
+    club.id,
+    currentUser.id,
+    normalizePage((await searchParams).page)
+  );
   const members = [...activeMembers, ...pendingRequests, ...(ownInvite ? [ownInvite] : [])]
     .filter((member, index, all) => all.findIndex((item) => item.id === member.id) === index);
 
@@ -63,6 +72,11 @@ export default async function ClubMembersPage({ params }: ClubMembersPageProps) 
         canManageRequests={canManageRequests}
         canManageRoles={owner}
         currentUserId={currentUser.id}
+      />
+      <NumberedPagination
+        page={page}
+        totalPages={totalPages}
+        pathname={`/clubs/${club.slug}/members`}
       />
     </section>
   );

@@ -6,8 +6,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { getMyClubNavigation } from "@/server/queries/club.queries";
 import { getMatchesForUserClubs } from "@/server/queries/match.queries";
 import { createTranslator } from "@/i18n/dictionary";
+import { logPerformance, performanceNow } from "@/lib/performance";
 
 export default async function MatchesPage() {
+  const totalStartedAt = performanceNow();
   const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
   const t = createTranslator(user.locale);
@@ -16,6 +18,10 @@ export default async function MatchesPage() {
     getMyClubNavigation(user.id),
     getMatchesForUserClubs(user.id)
   ]);
+  logPerformance("matches.page.totalData", performanceNow() - totalStartedAt, "success", {
+    route: "/matches",
+    matchCount: matches.length
+  });
   const groups = clubs.map((club) => ({
     club,
     matches: matches.filter((match) =>

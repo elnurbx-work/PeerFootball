@@ -5,13 +5,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/server/services/admin-auth.service";
+import { normalizePage, PAGINATION_LIMITS } from "@/lib/pagination";
+import { NumberedPagination } from "@/components/pagination/numbered-pagination";
+import { measureAsync } from "@/lib/performance";
 
-export default async function AdminFeedbackPage() {
+export default async function AdminFeedbackPage({
+  searchParams
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdmin();
-  const feedbacks = await prisma.feedback.findMany({
-    include: { user: { select: { name: true, email: true, username: true } } },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }]
-  });
+  const page = normalizePage((await searchParams).page);
+  const [feedbacks, totalItems] = await measureAsync("admin.feedbackPage", () => Promise.all([
+    prisma.feedback.findMany({
+      include: { user: { select: { name: true, email: true, username: true } } },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * PAGINATION_LIMITS.admin,
+      take: PAGINATION_LIMITS.admin
+    }),
+    prisma.feedback.count()
+  ]), { route: "/admin/feedback" });
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGINATION_LIMITS.admin));
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50 sm:px-8">
@@ -38,6 +52,7 @@ export default async function AdminFeedbackPage() {
             </Card>
           )) : <p className="text-slate-400">Feedback yoxdur.</p>}
         </div>
+        <NumberedPagination page={page} totalPages={totalPages} pathname="/admin/feedback" />
       </div>
     </main>
   );
