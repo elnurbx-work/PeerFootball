@@ -1,11 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminSessionCookieName, verifyAdminSessionToken } from "@/lib/admin-session";
 import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
+import {
+  DOCUMENT_SECURITY_HEADERS,
+  createBaselineContentSecurityPolicy,
+  createStrictAdSenseContentSecurityPolicy
+} from "@/lib/security/headers";
 
 const productionHost = "peerfootball.vercel.app";
 const authenticatedRoute = /^\/(?:clubs(?:\/|$)|create\/?$|direct\/?$|feedback\/?$|friends\/?$|matches(?:\/|$)|notifications\/?$|profile(?:\/|$)|search\/?$|settings\/?$|teams\/?$)/;
 const personalizedRoute = /^\/(?:admin(?:\/|$)|api(?:\/|$)|auth(?:\/|$)|clubs(?:\/|$)|create\/?$|direct\/?$|feed\/?$|feedback\/?$|friends\/?$|matches(?:\/|$)|notifications\/?$|profile(?:\/|$)|search\/?$|settings\/?$|teams\/?$)/;
 const sessionCookieNames = ["fanpitch.session-token", "__Secure-fanpitch.session-token"];
+const feedRoute = /^\/feed\/?$/;
 
 function hasSessionCookie(request: NextRequest) {
   return request.cookies.getAll().some(({ name }) =>
@@ -17,6 +23,13 @@ export async function middleware(request: NextRequest) {
   const startedAt = performanceNow();
   const pathnameCategory = getPathnameCategory(request.nextUrl.pathname);
   const requestType = request.headers.has("rsc") ? "rsc" : request.method.toLowerCase();
+  const isProductionDocument = process.env.NODE_ENV === "production" && pathnameCategory === "page";
+  const nonce = isProductionDocument && feedRoute.test(request.nextUrl.pathname)
+    ? crypto.randomUUID().replaceAll("-", "")
+    : null;
+  const contentSecurityPolicy = nonce
+    ? createStrictAdSenseContentSecurityPolicy(nonce)
+    : createBaselineContentSecurityPolicy();
   const finish = (response: NextResponse) => {
     const durationMs = performanceNow() - startedAt;
     logPerformance("middleware.total", durationMs, "success", {
@@ -36,6 +49,13 @@ export async function middleware(request: NextRequest) {
 
     if (personalizedRoute.test(request.nextUrl.pathname)) {
       response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+    }
+
+    if (isProductionDocument) {
+      response.headers.set("Content-Security-Policy", contentSecurityPolicy);
+      for (const [name, value] of Object.entries(DOCUMENT_SECURITY_HEADERS)) {
+        response.headers.set(name, value);
+      }
     }
 
     return response;
@@ -85,6 +105,10 @@ export async function middleware(request: NextRequest) {
   requestHeaders.delete("x-fanpitch-route-locale");
   if (routeLocale) {
     requestHeaders.set("x-fanpitch-route-locale", routeLocale);
+  }
+  if (nonce) {
+    requestHeaders.set("x-nonce", nonce);
+    requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
   }
 
   return finish(NextResponse.next({ request: { headers: requestHeaders } }));

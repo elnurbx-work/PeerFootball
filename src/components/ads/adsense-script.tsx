@@ -21,7 +21,7 @@ function markScriptStatus(status: "error" | "loaded") {
   }
 }
 
-export function AdSenseScript() {
+export function AdSenseScript({ nonce }: { nonce?: string }) {
   const pathname = usePathname();
   const consent = useAdConsent();
 
@@ -52,6 +52,7 @@ export function AdSenseScript() {
       id={ADSENSE_SCRIPT_ID}
       async
       crossOrigin="anonymous"
+      nonce={nonce}
       strategy="afterInteractive"
       src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseConfig.clientId}`}
       onLoad={() => {

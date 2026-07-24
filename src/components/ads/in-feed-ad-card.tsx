@@ -24,6 +24,10 @@ export function InFeedAdCard() {
   const hasLoggedErrorRef = useRef(false);
 
   useEffect(() => {
+    if (consent !== "accepted") {
+      return;
+    }
+
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
     const initialize = () => {
@@ -65,7 +69,7 @@ export function InFeedAdCard() {
         clearTimeout(retryTimer);
       }
     };
-  }, [pathname]);
+  }, [consent, pathname]);
 
   if (
     consent !== "accepted" ||

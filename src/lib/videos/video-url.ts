@@ -23,7 +23,7 @@ export function normalizeMatchVideoUrl(url: string): NormalizedMatchVideoUrl {
     }
     const videoId = getYoutubeVideoId(parsed);
     if (videoId) {
-      return { provider: "YOUTUBE", originalUrl, embedUrl: `https://www.youtube.com/embed/${encodeURIComponent(videoId)}`, videoId, supportsTimestampSeek: true, seekMode: "YOUTUBE_START_PARAM" };
+      return { provider: "YOUTUBE", originalUrl, embedUrl: `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}`, videoId, supportsTimestampSeek: true, seekMode: "YOUTUBE_START_PARAM" };
     }
   } catch {
     // Validation reports malformed URLs; normalization stays side-effect free.

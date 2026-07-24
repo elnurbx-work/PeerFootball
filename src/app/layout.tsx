@@ -8,7 +8,6 @@ import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-regis
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { getRequestLocale } from "@/i18n/server";
 import { getServerTranslator } from "@/i18n/server";
-import { AdSenseScript } from "@/components/ads/adsense-script";
 import { adsenseConfig } from "@/config/adsense";
 import { siteConfig } from "@/config/site";
 import { AdConsentBanner } from "@/components/ads/ad-consent-banner";
@@ -89,7 +88,6 @@ export default async function RootLayout({
           {children}
           <AdConsentBanner />
         </I18nProvider>
-        <AdSenseScript />
         <Analytics />
         <SpeedInsights />
       </body>

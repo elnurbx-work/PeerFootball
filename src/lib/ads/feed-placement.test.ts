@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { createAdSenseConfig } from "../../config/adsense";
 import { getFeedAdPostIndexes } from "./feed-placement";
 import { initializeAdSenseElement } from "./initialize";
+import {
+  createBaselineContentSecurityPolicy,
+  createStrictAdSenseContentSecurityPolicy
+} from "../security/headers";
+import { normalizeMatchVideoUrl } from "../videos/video-url";
 
 const defaults = { enabled: true, interval: 2, maximumAds: 5 };
 
@@ -58,4 +63,16 @@ assert.equal(queue.length, 1);
 assert.equal(initializeAdSenseElement(completedAdElement, queue), "already-initialized");
 assert.equal(queue.length, 1);
 
-console.log("AdSense feed placement tests passed.");
+const baselineCsp = createBaselineContentSecurityPolicy();
+assert.match(baselineCsp, /frame-ancestors 'none'/);
+assert.match(baselineCsp, /object-src 'none'/);
+
+const strictCsp = createStrictAdSenseContentSecurityPolicy("testnonce");
+assert.match(strictCsp, /script-src 'nonce-testnonce' 'strict-dynamic'/);
+assert.match(strictCsp, /frame-ancestors 'none'/);
+
+const youtubeVideo = normalizeMatchVideoUrl("https://youtu.be/dQw4w9WgXcQ");
+assert.equal(youtubeVideo.provider, "YOUTUBE");
+assert.equal(youtubeVideo.embedUrl, "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+
+console.log("Ads, security header, and media privacy tests passed.");

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { PenSquare } from "lucide-react";
 import { Suspense } from "react";
 import { PaginatedPostList } from "@/components/posts/paginated-post-list";
@@ -12,6 +13,7 @@ import { getRequestLocale } from "@/i18n/server";
 import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
 import { PostListSkeleton } from "@/components/skeletons";
 import type { Translate } from "@/i18n/dictionary";
+import { AdSenseScript } from "@/components/ads/adsense-script";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = createTranslator(await getRequestLocale());
@@ -36,11 +38,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function FeedPage() {
   const totalStartedAt = performanceNow();
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const currentUser = await measureAsync("feed.currentUser", getCurrentUser, { route: "/feed" });
   const t = createTranslator(currentUser?.locale ?? await getRequestLocale());
 
   return (
-    <section className="mx-auto grid max-w-3xl gap-5 px-4 py-10">
+    <>
+      <AdSenseScript nonce={nonce} />
+      <section className="mx-auto grid max-w-3xl gap-5 px-4 py-10">
       <div>
         <h1 className="text-3xl font-bold">{t("posts.pages.feed.title")}</h1>
         {currentUser ? (
@@ -57,7 +62,8 @@ export default async function FeedPage() {
           t={t}
         />
       </Suspense>
-    </section>
+      </section>
+    </>
   );
 }
 

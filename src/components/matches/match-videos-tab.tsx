@@ -25,5 +25,5 @@ function MatchVideoPlayer({ selectedVideo, seekRequest }: { selectedVideo: Match
   const seekMode = selectedVideo.provider === "YOUTUBE" ? "YOUTUBE_START_PARAM" : "GOOGLE_DRIVE_RELOAD";
   const shouldSeek = seekRequest?.videoId === selectedVideo.id;
   const src = shouldSeek ? getMatchVideoSeekUrl({ embedUrl: selectedVideo.embedUrl, seekMode }, seekRequest.seconds) : selectedVideo.embedUrl;
-  return <iframe key={`${selectedVideo.id}:${seekRequest?.nonce ?? 0}`} className="aspect-video w-full" src={src} title={selectedVideo.title ?? t("matches.videos.defaultTitle")} allow="autoplay; fullscreen" allowFullScreen />;
+  return <iframe key={`${selectedVideo.id}:${seekRequest?.nonce ?? 0}`} className="aspect-video w-full" src={src} title={selectedVideo.title ?? t("matches.videos.defaultTitle")} allow="autoplay; fullscreen" allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />;
 }

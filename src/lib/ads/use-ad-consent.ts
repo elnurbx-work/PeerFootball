@@ -8,8 +8,12 @@ const AD_CONSENT_STORAGE_KEY = "fanpitch:ad-consent";
 const AD_CONSENT_CHANGE_EVENT = "fanpitch:ad-consent-change";
 
 function readAdConsent(): AdConsent {
-  const value = window.localStorage.getItem(AD_CONSENT_STORAGE_KEY);
-  return value === "accepted" || value === "rejected" ? value : null;
+  try {
+    const value = window.localStorage.getItem(AD_CONSENT_STORAGE_KEY);
+    return value === "accepted" || value === "rejected" ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 function subscribe(onStoreChange: () => void) {
@@ -27,6 +31,10 @@ export function useAdConsent() {
 }
 
 export function setAdConsent(consent: Exclude<AdConsent, null>) {
-  window.localStorage.setItem(AD_CONSENT_STORAGE_KEY, consent);
+  try {
+    window.localStorage.setItem(AD_CONSENT_STORAGE_KEY, consent);
+  } catch {
+    // Fail closed: ads remain disabled when consent cannot be persisted.
+  }
   window.dispatchEvent(new Event(AD_CONSENT_CHANGE_EVENT));
 }
