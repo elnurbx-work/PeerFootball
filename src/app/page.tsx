@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import { MarketingHome } from "@/components/marketing/marketing-home";
-import { marketingCopy } from "@/content/marketing";
 import { getRequestLocale } from "@/i18n/server";
 import { localizedAlternates } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
-  const copy = marketingCopy[locale];
+  const title = "PeerFootball — Find Players, Teams and Matches Near You";
+  const description = "Create your football profile, discover nearby players, build teams, organize matches and find local football pitches with PeerFootball.";
   return {
-    title: { absolute: copy.homeTitle },
-    description: copy.homeDescription,
+    title: { absolute: title },
+    description,
     alternates: { canonical: `/${locale}`, languages: localizedAlternates() },
-    openGraph: { title: copy.homeTitle, description: copy.homeDescription, url: `/${locale}`, locale },
-    twitter: { title: copy.homeTitle, description: copy.homeDescription }
+    openGraph: { title, description, url: `/${locale}`, locale },
+    twitter: { title, description }
   };
 }
 
