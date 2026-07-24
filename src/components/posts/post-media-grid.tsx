@@ -43,8 +43,12 @@ export function PostMediaGrid({ media, compact = false }: PostMediaGridProps) {
           ) : (
             <video
               className="h-full w-full object-cover"
+              autoPlay
               controls
-              preload="metadata"
+              loop
+              muted
+              playsInline
+              preload="auto"
               src={item.url}
             />
           )}

@@ -135,7 +135,14 @@ export function PostComposer() {
                     }
                   >
                     {preview.file.type.startsWith("video/") ? (
-                      <video className="h-full w-full bg-black object-contain object-top" src={preview.url} muted />
+                      <video
+                        className="h-full w-full bg-black object-contain object-top"
+                        src={preview.url}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                      />
                     ) : (
                       <img className="h-full w-full object-contain object-top" src={preview.url} alt="" />
                     )}

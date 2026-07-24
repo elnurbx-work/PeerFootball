@@ -6,7 +6,7 @@ export const COMMENT_CONTENT_MAX_LENGTH = 500;
 export const REPOST_NOTE_MAX_LENGTH = 500;
 export const MAX_POST_MEDIA_COUNT = 4;
 export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-export const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
+export const MAX_VIDEO_SIZE_BYTES = 20 * 1024 * 1024;
 
 export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"] as const;
@@ -43,7 +43,7 @@ export function getPostMediaValidationError(file: File, t: Translate): string | 
 
   const isImage = ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number]);
   const maxSize = isImage ? MAX_IMAGE_SIZE_BYTES : MAX_VIDEO_SIZE_BYTES;
-  const maxSizeLabel = isImage ? "5MB" : "50MB";
+  const maxSizeLabel = isImage ? "5MB" : "20MB";
 
   if (file.size > maxSize) {
     return t("responses.validation.mediaSize", { name: file.name, size: maxSizeLabel });
