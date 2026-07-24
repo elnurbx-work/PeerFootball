@@ -29,6 +29,24 @@ const nextConfig = {
             value: "application/manifest+json"
           }
         ]
+      },
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-store, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        source: "/auth/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-store, max-age=0, must-revalidate"
+          }
+        ]
       }
     ];
   }

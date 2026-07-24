@@ -4,6 +4,7 @@ import { logPerformance, measureAsync, performanceNow } from "@/lib/performance"
 
 const productionHost = "peerfootball.vercel.app";
 const authenticatedRoute = /^\/(?:clubs(?:\/|$)|create\/?$|direct\/?$|feedback\/?$|friends\/?$|matches(?:\/|$)|notifications\/?$|profile(?:\/|$)|search\/?$|settings\/?$|teams\/?$)/;
+const personalizedRoute = /^\/(?:admin(?:\/|$)|api(?:\/|$)|auth(?:\/|$)|clubs(?:\/|$)|create\/?$|direct\/?$|feed\/?$|feedback\/?$|friends\/?$|matches(?:\/|$)|notifications\/?$|profile(?:\/|$)|search\/?$|settings\/?$|teams\/?$)/;
 const sessionCookieNames = ["fanpitch.session-token", "__Secure-fanpitch.session-token"];
 
 function hasSessionCookie(request: NextRequest) {
@@ -31,6 +32,10 @@ export async function middleware(request: NextRequest) {
         "Server-Timing",
         currentServerTiming ? `${currentServerTiming}, ${middlewareTiming}` : middlewareTiming
       );
+    }
+
+    if (personalizedRoute.test(request.nextUrl.pathname)) {
+      response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
     }
 
     return response;

@@ -9,20 +9,16 @@ export function ServiceWorkerRegistration() {
     }
 
     if (process.env.NODE_ENV !== "production") {
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((registrations) => {
-          registrations.forEach((registration) => {
-            void registration.unregister();
-          });
-        })
-        .catch(() => undefined);
+      void removeDevelopmentServiceWorker().catch(() => undefined);
 
       return;
     }
 
     const registerServiceWorker = () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      navigator.serviceWorker
+        .register("/sw.js", { updateViaCache: "none" })
+        .then((registration) => registration.update())
+        .catch(() => undefined);
     };
 
     if (document.readyState === "complete") {
@@ -38,4 +34,26 @@ export function ServiceWorkerRegistration() {
   }, []);
 
   return null;
+}
+
+async function removeDevelopmentServiceWorker() {
+  const registrations = await navigator.serviceWorker.getRegistrations();
+
+  await Promise.all(
+    registrations
+      .filter((registration) =>
+        [registration.active, registration.waiting, registration.installing]
+          .some((worker) => worker?.scriptURL.endsWith("/sw.js"))
+      )
+      .map((registration) => registration.unregister())
+  );
+
+  if ("caches" in window) {
+    const keys = await window.caches.keys();
+    await Promise.all(
+      keys
+        .filter((key) => key.startsWith("fanpitch-pwa-"))
+        .map((key) => window.caches.delete(key))
+    );
+  }
 }
