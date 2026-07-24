@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { PenSquare } from "lucide-react";
 import { Suspense } from "react";
 import { PaginatedPostList } from "@/components/posts/paginated-post-list";
@@ -11,6 +12,27 @@ import { getRequestLocale } from "@/i18n/server";
 import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
 import { PostListSkeleton } from "@/components/skeletons";
 import type { Translate } from "@/i18n/dictionary";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = createTranslator(await getRequestLocale());
+
+  return {
+    title: t("posts.pages.feed.title"),
+    description: t("common.metadataDescription"),
+    alternates: { canonical: "/feed" },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1
+      }
+    }
+  };
+}
 
 export default async function FeedPage() {
   const totalStartedAt = performanceNow();

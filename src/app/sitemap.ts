@@ -30,6 +30,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${siteConfig.url}/install`,
       changeFrequency: "monthly",
       priority: 0.5
+    },
+    {
+      url: `${siteConfig.url}/feed`,
+      changeFrequency: "daily",
+      priority: 0.9
     }
   ];
 }

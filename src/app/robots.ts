@@ -8,7 +8,6 @@ const privatePaths = [
   "/clubs",
   "/create",
   "/direct",
-  "/feed",
   "/feedback",
   "/friends",
   "/matches",
