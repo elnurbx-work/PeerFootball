@@ -18,6 +18,9 @@ const initialState: ApiResponse = {
   message: ""
 };
 
+const fileInputClassName =
+  "cursor-pointer overflow-hidden p-0 file:mr-3 file:h-full file:cursor-pointer file:border-0 file:border-r file:bg-primary file:px-4 file:py-0 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90";
+
 type ProfileEditFormProps = {
   profile: UserProfile;
 };
@@ -41,18 +44,18 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
         <CardTitle>{t("profile.editForm.title")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={formAction} encType="multipart/form-data" className="grid gap-4">
+        <form action={formAction} className="grid gap-4">
           <Field label={t("profile.editForm.name")} name="name" defaultValue={profile.name} error={issues?.name?.[0]} />
           <Field label={t("profile.editForm.username")} name="username" defaultValue={profile.username} error={issues?.username?.[0]} />
           <input type="hidden" name="image" value={profile.image ?? ""} />
           <input type="hidden" name="coverImage" value={profile.coverImage ?? ""} />
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="grid gap-3 rounded-md border bg-secondary/35 p-4 text-sm font-medium">
+            <label className="grid grid-rows-[auto_1fr_auto] gap-3 rounded-md border bg-secondary/35 p-4 text-sm font-medium">
               <span className="flex items-center gap-2">
                 <Camera className="h-4 w-4" />
                 {t("profile.editForm.photo")}
               </span>
-              <span className="flex items-center gap-4">
+              <span className="flex min-h-32 items-center justify-center rounded-md border bg-background p-4">
                 <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background text-xl font-semibold text-muted-foreground">
                   {profile.image ? (
                     <img src={profile.image} alt="" className="h-full w-full object-cover" />
@@ -60,39 +63,37 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                     displayInitial
                   )}
                 </span>
-                <Input
-                  name="imageFile"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  aria-invalid={Boolean(issues?.imageFile)}
-                  className="file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground"
-                />
               </span>
+              <Input
+                name="imageFile"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                aria-invalid={Boolean(issues?.imageFile)}
+                className={fileInputClassName}
+              />
               {issues?.imageFile?.[0] ? (
                 <span className="text-xs text-destructive">{issues.imageFile[0]}</span>
               ) : null}
             </label>
-            <label className="grid gap-3 rounded-md border bg-secondary/35 p-4 text-sm font-medium">
+            <label className="grid grid-rows-[auto_1fr_auto] gap-3 rounded-md border bg-secondary/35 p-4 text-sm font-medium">
               <span className="flex items-center gap-2">
                 <Image className="h-4 w-4" />
                 {t("profile.editForm.cover")}
               </span>
-              <span className="grid gap-3">
-                <span className="flex aspect-[5/2] w-full items-center justify-center overflow-hidden rounded-md border bg-background text-sm text-muted-foreground">
-                  {profile.coverImage ? (
-                    <img src={profile.coverImage} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    t("profile.editForm.noCover")
-                  )}
-                </span>
-                <Input
-                  name="coverImageFile"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  aria-invalid={Boolean(issues?.coverImageFile)}
-                  className="file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground"
-                />
+              <span className="flex min-h-32 w-full items-center justify-center overflow-hidden rounded-md border bg-background text-sm text-muted-foreground">
+                {profile.coverImage ? (
+                  <img src={profile.coverImage} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  t("profile.editForm.noCover")
+                )}
               </span>
+              <Input
+                name="coverImageFile"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                aria-invalid={Boolean(issues?.coverImageFile)}
+                className={fileInputClassName}
+              />
               {issues?.coverImageFile?.[0] ? (
                 <span className="text-xs text-destructive">{issues.coverImageFile[0]}</span>
               ) : null}
