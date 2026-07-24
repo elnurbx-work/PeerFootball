@@ -11,6 +11,7 @@ import { getServerTranslator } from "@/i18n/server";
 import { AdSenseScript } from "@/components/ads/adsense-script";
 import { adsenseConfig } from "@/config/adsense";
 import { siteConfig } from "@/config/site";
+import { AdConsentBanner } from "@/components/ads/ad-consent-banner";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getServerTranslator();
@@ -86,6 +87,7 @@ export default async function RootLayout({
         <I18nProvider locale={locale}>
           <ServiceWorkerRegistration />
           {children}
+          <AdConsentBanner />
         </I18nProvider>
         <AdSenseScript />
         <Analytics />

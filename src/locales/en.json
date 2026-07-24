@@ -1,5 +1,5 @@
 {
-  "ads": { "sponsored": "Sponsored", "ariaLabel": "Sponsored advertisement" },
+  "ads": { "sponsored": "Sponsored", "ariaLabel": "Sponsored advertisement", "consentTitle": "Advertising cookies", "consentDescription": "If you consent, Google may use cookies and similar technologies to display and measure advertisements.", "consentAccept": "Accept", "consentReject": "Decline" },
   "common": {
     "save": "Save",
     "saving": "Saving...",

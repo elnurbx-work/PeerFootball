@@ -10,6 +10,7 @@ import {
   ADSENSE_SCRIPT_ID,
   ADSENSE_SCRIPT_READY_EVENT
 } from "@/lib/ads/script-events";
+import { useAdConsent } from "@/lib/ads/use-ad-consent";
 
 let hasWarnedAboutConfiguration = false;
 
@@ -22,6 +23,7 @@ function markScriptStatus(status: "error" | "loaded") {
 
 export function AdSenseScript() {
   const pathname = usePathname();
+  const consent = useAdConsent();
 
   useEffect(() => {
     if (
@@ -36,7 +38,12 @@ export function AdSenseScript() {
     }
   }, []);
 
-  if (!adsenseConfig.enabled || !adsenseConfig.clientId || !isAdSenseRoute(pathname)) {
+  if (
+    consent !== "accepted" ||
+    !adsenseConfig.enabled ||
+    !adsenseConfig.clientId ||
+    !isAdSenseRoute(pathname)
+  ) {
     return null;
   }
 

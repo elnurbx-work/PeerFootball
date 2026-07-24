@@ -128,6 +128,7 @@ export function PostCard({ post, comments = [], isAuthenticated = true }: PostCa
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Link
+              aria-label={authorName}
               className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary font-semibold"
               href={profileHref}
             >
@@ -264,6 +265,7 @@ function OriginalPostPreviewCard({ post }: { post: OriginalPostPreview }) {
     <div className="grid gap-3 rounded-md border bg-background p-3">
       <div className="flex min-w-0 items-center gap-2">
         <Link
+          aria-label={authorName}
           className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-sm font-semibold"
           href={`/profile/${post.author.username ?? post.author.id}`}
         >

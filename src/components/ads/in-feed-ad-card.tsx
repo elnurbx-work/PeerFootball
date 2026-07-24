@@ -11,12 +11,14 @@ import {
   ADSENSE_SCRIPT_READY_EVENT
 } from "@/lib/ads/script-events";
 import { usePathname } from "next/navigation";
+import { useAdConsent } from "@/lib/ads/use-ad-consent";
 
 const SCRIPT_RETRY_DELAY_MS = 750;
 
 export function InFeedAdCard() {
   const { t } = useI18n();
   const pathname = usePathname();
+  const consent = useAdConsent();
   const adElementRef = useRef<HTMLModElement>(null);
   const initializedRef = useRef(false);
   const hasLoggedErrorRef = useRef(false);
@@ -65,7 +67,12 @@ export function InFeedAdCard() {
     };
   }, [pathname]);
 
-  if (!adsenseConfig.enabled || !adsenseConfig.clientId || !adsenseConfig.feedSlot) {
+  if (
+    consent !== "accepted" ||
+    !adsenseConfig.enabled ||
+    !adsenseConfig.clientId ||
+    !adsenseConfig.feedSlot
+  ) {
     return null;
   }
 

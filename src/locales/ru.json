@@ -1,5 +1,5 @@
 {
-  "ads": { "sponsored": "Реклама", "ariaLabel": "Спонсируемая реклама" },
+  "ads": { "sponsored": "Реклама", "ariaLabel": "Спонсируемая реклама", "consentTitle": "Рекламные cookie-файлы", "consentDescription": "С вашего согласия Google может использовать cookie-файлы и похожие технологии для показа и измерения рекламы.", "consentAccept": "Принять", "consentReject": "Отклонить" },
   "common": { "save": "Сохранить", "saving": "Сохранение...", "metadataDescription": "Футбольная социальная сеть для игроков и болельщиков.", "feedShortcutDescription": "Откройте свою ленту FanPitch.", "matchesShortcutDescription": "Находите и организуйте местные футбольные матчи.", "membersCount": "Участников: {count}" },
   "nav": {
     "home": "Главная", "match": "Матчи", "direct": "Сообщения", "search": "Поиск", "profile": "Профиль", "createPost": "Создать пост", "matches": "Матчи", "clubs": "Клубы", "inbox": "Входящие", "friends": "Друзья", "contacts": "Контакты", "overview": "Обзор", "logout": "Выйти", "login": "Войти",
