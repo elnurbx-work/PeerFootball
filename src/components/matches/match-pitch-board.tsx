@@ -160,8 +160,8 @@ export function MatchPitchBoard({ sides, goals, manageableSideIds }: MatchPitchB
               </Button>
             ) : null}
             <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <TeamLegend color="bg-blue-600" name={sides[0]?.name ?? t("matches.common.teamA")} />
-              <TeamLegend color="bg-red-600" name={sides[1]?.name ?? t("matches.common.teamB")} />
+              <TeamLegend color="bg-team-a" name={sides[0]?.name ?? t("matches.common.teamA")} />
+              <TeamLegend color="bg-team-b" name={sides[1]?.name ?? t("matches.common.teamB")} />
             </div>
           </div>
         </div>
@@ -171,7 +171,7 @@ export function MatchPitchBoard({ sides, goals, manageableSideIds }: MatchPitchB
       <CardContent className="p-3 pt-0 sm:p-5 sm:pt-0">
         <div
           ref={pitchRef}
-          className={`relative mx-auto aspect-[4/3] w-full overflow-hidden rounded-lg border-2 border-white/80 bg-emerald-700 shadow-inner sm:aspect-[16/9] sm:min-h-[360px] sm:rounded-xl sm:border-4 lg:min-h-[460px] ${
+          className={`relative mx-auto aspect-[4/3] w-full overflow-hidden rounded-lg border-2 border-pitch-line bg-pitch shadow-inner sm:aspect-[16/9] sm:min-h-[360px] sm:rounded-xl sm:border-4 lg:min-h-[460px] ${
             editing ? "ring-2 ring-primary ring-offset-2" : ""
           }`}
           role="group"
@@ -200,10 +200,10 @@ export function MatchPitchBoard({ sides, goals, manageableSideIds }: MatchPitchB
                   <div className="relative mx-auto w-fit">
                     <button
                       type="button"
-                      className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 bg-slate-900 text-[10px] font-bold text-white shadow-lg ring-2 ring-white/80 transition sm:h-14 sm:w-14 sm:text-sm ${
-                        sideIndex === 0 ? "border-blue-500" : "border-red-500"
-                      } ${draggable ? "touch-none cursor-grab hover:scale-110 hover:ring-yellow-300 active:cursor-grabbing" : "cursor-default"} ${
-                        isDragging ? "scale-110 ring-yellow-300" : ""
+                      className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 bg-brand text-[10px] font-bold text-brand-foreground shadow-lg ring-2 ring-pitch-line transition sm:h-14 sm:w-14 sm:text-sm ${
+                        sideIndex === 0 ? "border-team-a" : "border-team-b"
+                      } ${draggable ? "touch-none cursor-grab hover:scale-110 hover:ring-accent active:cursor-grabbing" : "cursor-default"} ${
+                        isDragging ? "scale-110 ring-accent" : ""
                       }`}
                       aria-label={t("matches.pitch.playerAriaLabel", { name, position: displayPosition ?? t("matches.pitch.withoutPosition"), dragHint: draggable ? `, ${t("matches.pitch.dragHint")}` : "" })}
                       onPointerDown={(event) => startDrag(event, player)}
@@ -219,11 +219,11 @@ export function MatchPitchBoard({ sides, goals, manageableSideIds }: MatchPitchB
                     </button>
 
                     {goalCount ? (
-                      <span className="pointer-events-none absolute -bottom-1 -right-2 flex min-h-4 min-w-4 items-center justify-center whitespace-nowrap rounded-full border border-emerald-950/20 bg-white px-0.5 text-[8px] font-black leading-none text-slate-950 shadow-md sm:-bottom-1.5 sm:-right-3 sm:min-h-5 sm:min-w-5 sm:px-1 sm:text-[10px]">
+                      <span className="pointer-events-none absolute -bottom-1 -right-2 flex min-h-4 min-w-4 items-center justify-center whitespace-nowrap rounded-full border border-border-strong bg-card px-0.5 text-[8px] font-black leading-none text-card-foreground shadow-md sm:-bottom-1.5 sm:-right-3 sm:min-h-5 sm:min-w-5 sm:px-1 sm:text-[10px]">
                         ⚽{goalCount > 1 ? `×${goalCount}` : ""}
                       </span>
                     ) : null}
-                    <span className="pointer-events-none absolute -left-1 -top-1 rounded bg-slate-950/85 px-1 text-[7px] font-bold leading-3 text-white sm:-left-2 sm:text-[9px] sm:leading-4">
+                    <span className="pointer-events-none absolute -left-1 -top-1 rounded bg-background/85 px-1 text-[7px] font-bold leading-3 text-white sm:-left-2 sm:text-[9px] sm:leading-4">
                       {displayPosition ?? "?"}
                     </span>
                   </div>

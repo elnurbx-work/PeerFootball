@@ -43,7 +43,7 @@ export function LanguageSettings() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <select className="h-11 w-full rounded-md border bg-background px-3 text-sm" value={selected} disabled={pending} onChange={(event) => change(event.target.value as Locale)}>
+          <select className="h-11 w-full rounded-md border bg-surface px-3 text-sm text-foreground outline-none hover:border-input-hover focus-visible:ring-2 focus-visible:ring-ring disabled:bg-muted disabled:text-muted-foreground" value={selected} disabled={pending} onChange={(event) => change(event.target.value as Locale)}>
             {locales.map((item) => <option key={item} value={item}>{names[item]}</option>)}
           </select>
           <p className="text-xs text-muted-foreground">{t("settings.languageHint")}</p>

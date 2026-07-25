@@ -3,24 +3,132 @@
 @tailwind utilities;
 
 :root {
-  --background: 42 33% 97%;
-  --foreground: 218 23% 15%;
+  color-scheme: light;
+  --background: 75 20% 96%;
+  --foreground: 128 14% 11%;
+  --surface: 0 0% 100%;
+  --surface-raised: 0 0% 100%;
+  --surface-muted: 100 17% 93%;
+  --surface-hover: 105 15% 90%;
   --card: 0 0% 100%;
-  --card-foreground: 218 23% 15%;
-  --primary: 151 68% 28%;
+  --card-foreground: 128 14% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 128 14% 11%;
+  --primary: 132 50% 37%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 35% 94%;
-  --secondary-foreground: 218 23% 17%;
-  --muted: 210 26% 92%;
-  --muted-foreground: 217 12% 41%;
-  --accent: 7 82% 55%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 72% 51%;
+  --primary-hover: 132 51% 31%;
+  --secondary: 100 17% 93%;
+  --secondary-foreground: 128 14% 14%;
+  --muted: 100 17% 93%;
+  --muted-foreground: 125 8% 42%;
+  --accent: 84 75% 53%;
+  --accent-foreground: 130 28% 14%;
+  --destructive: 0 64% 55%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 22% 86%;
-  --input: 214 22% 86%;
-  --ring: 151 68% 28%;
-  --radius: 0.5rem;
+  --success: 130 59% 33%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 78% 43%;
+  --warning-foreground: 35 65% 13%;
+  --info: 212 59% 49%;
+  --info-foreground: 0 0% 100%;
+  --border: 109 15% 87%;
+  --border-strong: 110 12% 79%;
+  --input: 109 15% 87%;
+  --input-hover: 110 12% 79%;
+  --ring: 132 50% 37%;
+  --overlay: 130 25% 5% / 0.68;
+  --sidebar: 120 14% 98%;
+  --sidebar-foreground: 128 14% 11%;
+  --sidebar-hover: 105 15% 90%;
+  --sidebar-active: 126 29% 88%;
+  --header: 75 20% 96% / 0.92;
+  --header-foreground: 128 14% 11%;
+  --pitch: 140 32% 44%;
+  --pitch-line: 0 0% 100% / 0.72;
+  --team-a: 212 59% 49%;
+  --team-b: 0 64% 55%;
+  --brand: 140 28% 10%;
+  --brand-foreground: 108 22% 95%;
+  --map: 78 18% 89%;
+  --map-block: 0 0% 100% / 0.42;
+  --map-road: 90 25% 97%;
+  --radius: 0.625rem;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: 132 14% 11%;
+  --foreground: 108 22% 95%;
+  --surface: 132 14% 14%;
+  --surface-raised: 132 13% 17%;
+  --surface-muted: 132 12% 19%;
+  --surface-hover: 130 12% 22%;
+  --card: 132 14% 14%;
+  --card-foreground: 108 22% 95%;
+  --popover: 132 13% 17%;
+  --popover-foreground: 108 22% 95%;
+  --primary: 130 45% 55%;
+  --primary-foreground: 135 28% 9%;
+  --primary-hover: 129 54% 63%;
+  --secondary: 132 12% 19%;
+  --secondary-foreground: 108 22% 95%;
+  --muted: 132 12% 19%;
+  --muted-foreground: 128 8% 69%;
+  --accent: 83 83% 60%;
+  --accent-foreground: 135 28% 9%;
+  --destructive: 0 81% 68%;
+  --destructive-foreground: 0 30% 10%;
+  --success: 130 50% 55%;
+  --success-foreground: 135 28% 9%;
+  --warning: 38 74% 57%;
+  --warning-foreground: 35 65% 13%;
+  --info: 212 70% 65%;
+  --info-foreground: 216 35% 11%;
+  --border: 132 11% 25%;
+  --border-strong: 130 10% 32%;
+  --input: 132 11% 25%;
+  --input-hover: 130 10% 32%;
+  --ring: 130 45% 55%;
+  --overlay: 0 0% 0% / 0.64;
+  --sidebar: 132 14% 13%;
+  --sidebar-foreground: 108 22% 95%;
+  --sidebar-hover: 130 12% 21%;
+  --sidebar-active: 130 18% 24%;
+  --header: 132 14% 12% / 0.92;
+  --header-foreground: 108 22% 95%;
+  --pitch: 139 38% 35%;
+  --pitch-line: 0 0% 100% / 0.62;
+  --team-a: 212 70% 65%;
+  --team-b: 0 81% 68%;
+  --brand: 140 20% 10%;
+  --brand-foreground: 108 22% 95%;
+  --map: 132 12% 18%;
+  --map-block: 133 13% 25% / 0.74;
+  --map-road: 130 10% 29%;
+}
+
+.dark[data-theme="system"] {
+  --background: 137 39% 23%;
+  --surface: 136 34% 27%;
+  --surface-raised: 135 31% 31%;
+  --surface-muted: 134 27% 34%;
+  --surface-hover: 133 24% 38%;
+  --card: 136 34% 27%;
+  --popover: 135 31% 31%;
+  --secondary: 134 27% 34%;
+  --muted: 134 27% 34%;
+  --border: 132 21% 42%;
+  --border-strong: 131 19% 49%;
+  --input: 132 21% 42%;
+  --input-hover: 131 19% 49%;
+  --sidebar: 138 37% 25%;
+  --sidebar-hover: 134 27% 35%;
+  --sidebar-active: 130 32% 41%;
+  --header: 137 39% 23% / 0.92;
+  --brand: 132 50% 34%;
+  --map: 135 29% 31%;
+  --map-block: 133 25% 38% / 0.8;
+  --map-road: 131 20% 46%;
 }
 
 * {
@@ -29,9 +137,30 @@
 
 body {
   min-height: 100vh;
-  background:
-    linear-gradient(180deg, hsl(42 33% 97%) 0%, hsl(206 38% 96%) 100%);
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.24);
+}
+
+:focus-visible {
+  outline-color: hsl(var(--ring));
+}
+
+input,
+textarea,
+select {
+  color-scheme: inherit;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: hsl(var(--foreground));
+  box-shadow: 0 0 0 1000px hsl(var(--surface)) inset;
+  caret-color: hsl(var(--foreground));
 }
 
 a {
@@ -49,23 +178,23 @@ a {
 }
 
 .landing-page {
-  color: #0f172a;
+  color: hsl(var(--foreground));
 }
 
 .landing-page header nav[aria-label="Language"] a,
 .landing-languages nav[aria-label="Language"] a {
-  color: rgb(255 255 255 / 0.55);
+  color: hsl(var(--brand-foreground) / 0.62);
 }
 
 .landing-page header nav[aria-label="Language"] a[aria-current="page"],
 .landing-languages nav[aria-label="Language"] a[aria-current="page"] {
-  color: #bef264;
+  color: hsl(var(--accent));
 }
 
 .landing-grid {
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+    linear-gradient(hsl(var(--brand-foreground) / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--brand-foreground) / 0.06) 1px, transparent 1px);
   background-size: 72px 72px;
   mask-image: linear-gradient(to bottom, black, transparent 90%);
 }
@@ -89,9 +218,9 @@ a {
 
 .map-block {
   position: absolute;
-  border: 1px solid rgb(15 23 42 / 0.06);
+  border: 1px solid hsl(var(--border));
   border-radius: 24px;
-  background: rgb(255 255 255 / 0.38);
+  background: hsl(var(--map-block));
 }
 
 .map-block-one { left: -4%; top: -7%; width: 44%; height: 34%; transform: rotate(-6deg); }
@@ -103,8 +232,8 @@ a {
   position: absolute;
   z-index: 5;
   border-radius: 999px;
-  background: #f8faf4;
-  box-shadow: 0 0 0 1px rgb(15 23 42 / 0.04);
+  background: hsl(var(--map-road));
+  box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
 .map-road-one { left: -10%; top: 47%; width: 120%; height: 26px; transform: rotate(-10deg); }
@@ -116,10 +245,10 @@ a {
   z-index: 10;
   width: 82px;
   height: 52px;
-  border: 3px solid #fff;
+  border: 3px solid hsl(var(--pitch-line));
   border-radius: 7px;
-  background: #4c956c;
-  box-shadow: 0 6px 18px rgb(15 23 42 / 0.18);
+  background: hsl(var(--pitch));
+  box-shadow: 0 6px 18px hsl(var(--overlay));
 }
 
 .map-pitch::before {
@@ -128,7 +257,7 @@ a {
   left: 50%;
   top: 0;
   height: 100%;
-  border-left: 1px solid rgb(255 255 255 / 0.7);
+  border-left: 1px solid hsl(var(--pitch-line));
 }
 
 .map-pitch span {
@@ -138,7 +267,7 @@ a {
   width: 22px;
   height: 22px;
   transform: translate(-50%, -50%);
-  border: 1px solid rgb(255 255 255 / 0.7);
+  border: 1px solid hsl(var(--pitch-line));
   border-radius: 50%;
 }
 

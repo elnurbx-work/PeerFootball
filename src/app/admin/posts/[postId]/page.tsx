@@ -49,13 +49,13 @@ export default async function AdminPostDetailPage({
   ]);
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50 sm:px-8">
+    <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-8">
       <div className="mx-auto max-w-5xl">
         <AdminNav />
-        <Card className="border-slate-800 bg-slate-900 text-slate-50">
+        <Card className="border-border bg-card text-foreground">
           <CardHeader>
             <CardTitle>{post.author.name ?? post.author.username ?? post.author.email}</CardTitle>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {post.createdAt.toLocaleString("az-AZ")} · {post.visibility}
               {post.isHidden ? " · GİZLİ" : ""}
               {post.author.isBanned ? " · BANLI" : ""}
@@ -67,27 +67,27 @@ export default async function AdminPostDetailPage({
               <div className="grid gap-3 sm:grid-cols-2">
                 {post.media.map((media) => media.type === "IMAGE" ? (
                   <a key={media.id} href={media.url} target="_blank" rel="noreferrer">
-                    <img src={media.url} alt="" className="max-h-96 w-full rounded-md border border-slate-700 object-contain" />
+                    <img src={media.url} alt="" className="max-h-96 w-full rounded-md border border-border-strong object-contain" />
                   </a>
                 ) : (
-                  <a key={media.id} href={media.url} target="_blank" rel="noreferrer" className="rounded-md border border-slate-700 p-4 text-emerald-400 hover:underline">
+                  <a key={media.id} href={media.url} target="_blank" rel="noreferrer" className="rounded-md border border-border-strong p-4 text-success hover:underline">
                     Videonu aç
                   </a>
                 ))}
               </div>
             ) : null}
             {post.moderationNote ? (
-              <p className="rounded-md border border-amber-800/50 bg-amber-950/30 p-3 text-sm text-amber-300">
+              <p className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
                 Moderator qeydi: {post.moderationNote}
               </p>
             ) : null}
-            <form action={moderatePostAction} className="grid gap-3 rounded-md border border-slate-800 p-4 sm:grid-cols-[1fr_auto_auto_auto]">
+            <form action={moderatePostAction} className="grid gap-3 rounded-md border border-border p-4 sm:grid-cols-[1fr_auto_auto_auto]">
               <input type="hidden" name="postId" value={post.id} />
-              <Input name="adminNote" placeholder="Moderator qərarının səbəbi" className="border-slate-700 bg-slate-950" />
+              <Input name="adminNote" placeholder="Moderator qərarının səbəbi" className="border-border-strong bg-background" />
               {post.isHidden
                 ? <Button name="decision" value="UNHIDE" variant="outline">Postu aç</Button>
                 : <Button name="decision" value="HIDE" variant="outline">Postu gizlət</Button>}
-              <Button name="decision" value="BAN_AUTHOR" className="bg-red-600 hover:bg-red-700" disabled={post.author.isBanned}>
+              <Button name="decision" value="BAN_AUTHOR" className="bg-destructive hover:bg-destructive/85" disabled={post.author.isBanned}>
                 Müəllifi ban et
               </Button>
             </form>
@@ -95,18 +95,18 @@ export default async function AdminPostDetailPage({
         </Card>
 
         <section className="mt-6 grid gap-4 lg:grid-cols-2">
-          <Card className="border-slate-800 bg-slate-900 text-slate-50">
+          <Card className="border-border bg-card text-foreground">
             <CardHeader><CardTitle className="text-lg">Reportlar ({post._count.reports})</CardTitle></CardHeader>
             <CardContent className="grid gap-3">
               {reports.map((report) => (
-                <div key={report.id} className="rounded-md border border-slate-800 p-3 text-sm">
+                <div key={report.id} className="rounded-md border border-border p-3 text-sm">
                   <p>{report.note}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {report.reporter.name ?? report.reporter.username ?? report.reporter.email} · {report.status}
                   </p>
                 </div>
               ))}
-              {!reports.length ? <p className="text-sm text-slate-500">Report yoxdur.</p> : null}
+              {!reports.length ? <p className="text-sm text-muted-foreground">Report yoxdur.</p> : null}
               <NumberedPagination
                 page={reportsPage}
                 totalPages={Math.max(1, Math.ceil(post._count.reports / PAGINATION_LIMITS.admin))}
@@ -116,18 +116,18 @@ export default async function AdminPostDetailPage({
               />
             </CardContent>
           </Card>
-          <Card className="border-slate-800 bg-slate-900 text-slate-50">
+          <Card className="border-border bg-card text-foreground">
             <CardHeader><CardTitle className="text-lg">Şərhlər ({post._count.comments})</CardTitle></CardHeader>
             <CardContent className="grid gap-3">
               {comments.map((comment) => (
-                <div key={comment.id} className="rounded-md border border-slate-800 p-3 text-sm">
+                <div key={comment.id} className="rounded-md border border-border p-3 text-sm">
                   <p>{comment.content}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {comment.author.name ?? comment.author.username ?? comment.author.email}
                   </p>
                 </div>
               ))}
-              {!comments.length ? <p className="text-sm text-slate-500">Şərh yoxdur.</p> : null}
+              {!comments.length ? <p className="text-sm text-muted-foreground">Şərh yoxdur.</p> : null}
               <NumberedPagination
                 page={commentsPage}
                 totalPages={Math.max(1, Math.ceil(post._count.comments / PAGINATION_LIMITS.admin))}

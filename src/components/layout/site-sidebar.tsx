@@ -57,7 +57,7 @@ export function SiteSidebar({
           />
         </div>
       ) : null}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden bg-background/95 shadow-sm backdrop-blur md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden bg-sidebar text-sidebar-foreground shadow-sm backdrop-blur md:flex">
         <div className="flex w-20 shrink-0 flex-col items-center border-r px-2 py-4">
           <MatchTopButton />
 

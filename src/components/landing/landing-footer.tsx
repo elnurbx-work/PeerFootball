@@ -13,7 +13,7 @@ export function LandingFooter({ copy, locale }: { copy: LandingCopy; locale: Loc
     { title: copy.footer.legal, links: [[copy.footer.privacy], [copy.footer.terms], [copy.footer.cookies]] }
   ] as const;
   return (
-    <footer className="bg-[#07110d] text-white">
+    <footer className="bg-brand text-white">
       <div className="landing-container py-14">
         <div className="grid gap-10 border-b border-white/10 pb-12 md:grid-cols-[1.25fr_2fr]">
           <div><Link href={`/${locale}`}><BrandMark inverse /></Link><p className="mt-4 text-sm text-white/50">{copy.footer.tagline}</p><div className="landing-languages mt-6"><LanguageLinks currentLocale={locale} /></div></div>

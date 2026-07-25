@@ -57,7 +57,7 @@ export function RepostDialog({ open, originalPost, onOpenChange }: RepostDialogP
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-overlay p-4 sm:items-center">
       <form
         className="grid max-h-[90vh] w-full max-w-lg gap-4 overflow-y-auto rounded-md bg-card p-4 shadow-xl"
         role="dialog"

@@ -33,35 +33,35 @@ export default async function AdminReportsPage({
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGINATION_LIMITS.admin));
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50 sm:px-8">
+    <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-8">
       <div className="mx-auto max-w-5xl">
         <AdminNav />
         <h1 className="mb-5 text-3xl font-bold">Post reports</h1>
         <div className="grid gap-4">
           {reports.length ? reports.map((report) => (
-            <Card key={report.id} className="border-slate-800 bg-slate-900 text-slate-50">
+            <Card key={report.id} className="border-border bg-card text-foreground">
               <CardHeader>
                 <CardTitle className="text-base">{report.postAuthor.name ?? report.postAuthor.username ?? report.postAuthor.email}</CardTitle>
-                <p className="text-xs text-slate-500">{report.createdAt.toLocaleString("az-AZ")} · {report.status}{report.post.isHidden ? " · GİZLİ" : ""}{report.postAuthor.isBanned ? " · BANLI" : ""}</p>
+                <p className="text-xs text-muted-foreground">{report.createdAt.toLocaleString("az-AZ")} · {report.status}{report.post.isHidden ? " · GİZLİ" : ""}{report.postAuthor.isBanned ? " · BANLI" : ""}</p>
               </CardHeader>
               <CardContent className="grid gap-4">
-                <div className="rounded-md border border-slate-800 bg-slate-950 p-3 text-sm">
-                  <p className="text-slate-500">Post</p>
+                <div className="rounded-md border border-border bg-background p-3 text-sm">
+                  <p className="text-muted-foreground">Post</p>
                   <p className="mt-1 whitespace-pre-wrap">{report.post.content || "Media postu"}</p>
-                  <Link href={`/admin/posts/${report.postId}`} className="mt-2 inline-block text-emerald-400 hover:underline">Moderator görünüşündə aç</Link>
+                  <Link href={`/admin/posts/${report.postId}`} className="mt-2 inline-block text-success hover:underline">Moderator görünüşündə aç</Link>
                 </div>
-                <div className="text-sm"><span className="text-slate-500">Report qeydi:</span> {report.note}</div>
-                <div className="text-xs text-slate-500">Göndərən: {report.reporter.name ?? report.reporter.username ?? report.reporter.email}</div>
+                <div className="text-sm"><span className="text-muted-foreground">Report qeydi:</span> {report.note}</div>
+                <div className="text-xs text-muted-foreground">Göndərən: {report.reporter.name ?? report.reporter.username ?? report.reporter.email}</div>
                 <form action={moderatePostReportAction} className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
                   <input type="hidden" name="reportId" value={report.id} />
-                  <Input name="adminNote" defaultValue={report.adminNote ?? ""} placeholder="Qərar səbəbi" className="border-slate-700 bg-slate-950" />
+                  <Input name="adminNote" defaultValue={report.adminNote ?? ""} placeholder="Qərar səbəbi" className="border-border-strong bg-background" />
                   <Button name="decision" value="DISMISS" variant="ghost">Rədd et</Button>
                   <Button name="decision" value="HIDE_POST" variant="outline">Postu gizlət</Button>
-                  <Button name="decision" value="BAN_AUTHOR" className="bg-red-600 hover:bg-red-700">Müəllifi ban et</Button>
+                  <Button name="decision" value="BAN_AUTHOR" className="bg-destructive hover:bg-destructive/85">Müəllifi ban et</Button>
                 </form>
               </CardContent>
             </Card>
-          )) : <p className="text-slate-400">Report yoxdur.</p>}
+          )) : <p className="text-muted-foreground">Report yoxdur.</p>}
         </div>
         <NumberedPagination page={page} totalPages={totalPages} pathname="/admin/reports" />
       </div>

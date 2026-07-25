@@ -11,6 +11,10 @@ import { getServerTranslator } from "@/i18n/server";
 import { adsenseConfig } from "@/config/adsense";
 import { siteConfig } from "@/config/site";
 import { AdConsentBanner } from "@/components/ads/ad-consent-banner";
+import {
+  ThemeProvider,
+  themeInitializationScript
+} from "@/components/providers/theme-provider";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getServerTranslator();
@@ -71,7 +75,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#166b43"
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F6F7F3" },
+    { media: "(prefers-color-scheme: dark)", color: "#0C110E" }
+  ]
 };
 
 export default async function RootLayout({
@@ -81,13 +88,18 @@ export default async function RootLayout({
 }>) {
   const locale = await getRequestLocale();
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitializationScript }} />
+      </head>
       <body className={cn("font-sans antialiased")}>
-        <I18nProvider locale={locale}>
-          <ServiceWorkerRegistration />
-          {children}
-          <AdConsentBanner />
-        </I18nProvider>
+        <ThemeProvider>
+          <I18nProvider locale={locale}>
+            <ServiceWorkerRegistration />
+            {children}
+            <AdConsentBanner />
+          </I18nProvider>
+        </ThemeProvider>
         <Analytics />
         <SpeedInsights />
       </body>

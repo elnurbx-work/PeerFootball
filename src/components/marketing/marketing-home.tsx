@@ -16,7 +16,7 @@ export function MarketingHome({ locale }: { locale: Locale }) {
   const copy = landingCopy[locale];
 
   return (
-    <div className="landing-page min-h-screen overflow-x-clip bg-[#f5f5ee]">
+    <div className="landing-page min-h-screen overflow-x-clip bg-background">
       <LandingHeader copy={copy} locale={locale} />
       <main>
         <HeroSection copy={copy} />

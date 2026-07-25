@@ -134,7 +134,7 @@ export function SiteSidebarRailNav({ hasUnreadDirectMessages = false }: DirectUn
               variant="ghost"
               className={cn(
                 "relative h-11 w-11 px-0 text-muted-foreground hover:text-foreground",
-                isActive && "bg-secondary text-foreground"
+                isActive && "bg-sidebar-active text-primary"
               )}
               title={t(item.labelKey)}
             >
@@ -162,7 +162,7 @@ export function CreatePostButton() {
       variant="ghost"
       className={cn(
         "h-11 w-11 px-0 text-muted-foreground hover:text-foreground",
-        isActive && "bg-secondary text-foreground"
+        isActive && "bg-sidebar-active text-primary"
       )}
       title={t(createItem.labelKey)}
     >
@@ -222,8 +222,8 @@ export function SiteSidebarPanelNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-colors hover:bg-secondary",
-                isActive ? "bg-secondary text-foreground" : "text-muted-foreground"
+                "flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-colors hover:bg-sidebar-hover",
+                isActive ? "bg-sidebar-active text-primary" : "text-muted-foreground"
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
@@ -246,7 +246,7 @@ export function MobileBottomNav({ hasUnreadDirectMessages = false }: DirectUnrea
   const items = [...primaryNavItems, createItem];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-6 border-t bg-background/95 px-2 backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-6 border-t bg-sidebar/95 px-2 text-sidebar-foreground backdrop-blur md:hidden">
       {items.map((item) => {
         const isActive = item.href === "/create" ? pathname.startsWith(item.href) : activeRoot === item.href;
 
@@ -257,7 +257,7 @@ export function MobileBottomNav({ hasUnreadDirectMessages = false }: DirectUnrea
             aria-label={t(item.labelKey)}
             className={cn(
               "relative flex items-center justify-center text-muted-foreground transition-colors hover:text-foreground",
-              isActive && "text-foreground"
+              isActive && "text-primary"
             )}
           >
             <item.icon

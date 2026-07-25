@@ -55,7 +55,7 @@ export function ProfileSummary({ action, user }: ProfileSummaryProps) {
 
   return (
     <Card className="relative isolate overflow-hidden">
-      <div className="relative z-0 h-48 bg-[linear-gradient(135deg,hsl(151_68%_28%),hsl(206_46%_38%)_52%,hsl(7_82%_55%))]">
+      <div className="relative z-0 h-48 bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--info))_55%,hsl(var(--accent)))]">
         {user.coverImage ? (
           <img
             src={user.coverImage}
@@ -64,7 +64,7 @@ export function ProfileSummary({ action, user }: ProfileSummaryProps) {
           />
         ) : null}
         <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.24),transparent_28%),radial-gradient(circle_at_76%_38%,rgba(255,255,255,0.18),transparent_24%)]" />
-        {user.coverImage ? <div className="absolute inset-0 bg-black/25" /> : null}
+        {user.coverImage ? <div className="absolute inset-0 bg-overlay" /> : null}
       </div>
       <CardContent className="relative z-10 grid gap-8 p-6 pt-0 md:grid-cols-[1fr_320px]">
         <div className="space-y-6">

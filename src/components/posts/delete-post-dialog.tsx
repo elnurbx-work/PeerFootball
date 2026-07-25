@@ -19,7 +19,7 @@ export function DeletePostDialog({ error, open, pending = false, onConfirm, onOp
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-overlay p-4 sm:items-center">
       <div className="grid w-full max-w-md gap-4 rounded-md bg-card p-4 shadow-xl" role="dialog" aria-modal="true">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">

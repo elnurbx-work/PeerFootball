@@ -81,7 +81,7 @@ export function LoginPanel() {
 
         <form action={signInWithGoogleAction}>
           <Button
-            className="w-full border-border !bg-white !text-slate-950 hover:!bg-white/90"
+            className="w-full border-border !bg-[#fff] !text-[#202124] hover:!bg-[#f8f9fa]"
             type="submit"
             size="lg"
             variant="outline"

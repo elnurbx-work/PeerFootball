@@ -10,6 +10,7 @@ import {
   SettingsTabs,
   type SettingsTabKey
 } from "@/components/settings/settings-tabs";
+import { AppearanceSettings } from "@/components/settings/appearance-settings";
 
 type SettingsPageProps = {
   searchParams: Promise<{ tab?: string }>;
@@ -66,7 +67,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           key: "appearance",
           label: t("settings.appearance"),
           description: t("settings.appearanceDescription"),
-          content: <LanguageSettings />
+          content: (
+            <>
+              <AppearanceSettings />
+              <LanguageSettings />
+            </>
+          )
         }
       ]}
     />

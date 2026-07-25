@@ -33,11 +33,13 @@ export function Toast({ message, open, variant = "success", onOpenChange }: Toas
       <div
         className={cn(
           "flex items-start gap-3 rounded-md border bg-card p-3 text-sm shadow-lg",
-          variant === "success" ? "border-primary/30" : "border-destructive/30"
+          variant === "success"
+            ? "border-success/40 bg-success/10"
+            : "border-destructive/40 bg-destructive/10"
         )}
         role="status"
       >
-        <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", variant === "success" ? "text-primary" : "text-destructive")} />
+        <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", variant === "success" ? "text-success" : "text-destructive")} />
         <p className="min-w-0 flex-1 font-medium">{message}</p>
         <button
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"

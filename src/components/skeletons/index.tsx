@@ -199,11 +199,11 @@ export function NotificationListSkeleton() {
 
 export function AdminTableSkeleton() {
   return (
-    <LoadingRegion className="min-h-screen bg-slate-950 px-4 py-8 sm:px-8">
+    <LoadingRegion className="min-h-screen bg-background px-4 py-8 sm:px-8">
       <div className="mx-auto grid w-full max-w-6xl gap-5">
-        <Block className="h-10 w-72 max-w-full bg-slate-800" />
+        <Block className="h-10 w-72 max-w-full bg-muted" />
         {Array.from({ length: 6 }, (_, index) => (
-          <Block key={index} className="h-36 border border-slate-800 bg-slate-900" />
+          <Block key={index} className="h-36 border border-border bg-card" />
         ))}
       </div>
     </LoadingRegion>

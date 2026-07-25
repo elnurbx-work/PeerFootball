@@ -20,20 +20,20 @@ export function AdminLoginForm() {
   const showCodeForm = state.step === "code" && codeState.step !== "credentials";
 
   return (
-    <Card className="w-full max-w-md border-slate-800 bg-slate-950 text-slate-50 shadow-2xl">
+    <Card className="w-full max-w-md border-border bg-background text-foreground shadow-2xl">
       <CardHeader>
-        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
+        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/100/15 text-success">
           <ShieldCheck className="h-6 w-6" />
         </div>
         <CardTitle>Admin girişi</CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-muted-foreground">
           Bu zona parol və email-ə göndərilən birdəfəlik kodla qorunur.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {showCodeForm ? (
           <form action={codeAction} className="grid gap-4">
-            <div className="rounded-md border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+            <div className="rounded-md border border-success/30 bg-primary/100/10 p-3 text-sm text-success">
               <MailCheck className="mr-2 inline h-4 w-4" />
               {state.message}
             </div>
@@ -49,10 +49,10 @@ export function AdminLoginForm() {
                 required
                 autoFocus
                 placeholder="000000"
-                className="border-slate-700 bg-slate-900 font-mono tracking-[0.35em]"
+                className="border-border-strong bg-card font-mono tracking-[0.35em]"
               />
             </label>
-            {codeState.message ? <p className="text-sm text-red-400">{codeState.message}</p> : null}
+            {codeState.message ? <p className="text-sm text-destructive">{codeState.message}</p> : null}
             <Button type="submit" size="lg" disabled={codePending} className="mt-1 w-full">
               <KeyRound className="h-4 w-4" />
               {codePending ? "Kod yoxlanılır..." : "Kodu təsdiqlə"}
@@ -62,13 +62,13 @@ export function AdminLoginForm() {
         <form action={formAction} className="grid gap-4">
           <label className="grid gap-2 text-sm font-medium">
             Email
-            <Input name="email" type="email" autoComplete="username" required className="border-slate-700 bg-slate-900" />
+            <Input name="email" type="email" autoComplete="username" required className="border-border-strong bg-card" />
           </label>
           <label className="grid gap-2 text-sm font-medium">
             Parol
-            <Input name="password" type="password" autoComplete="current-password" required className="border-slate-700 bg-slate-900" />
+            <Input name="password" type="password" autoComplete="current-password" required className="border-border-strong bg-card" />
           </label>
-          {state.message ? <p className="text-sm text-red-400">{state.message}</p> : null}
+          {state.message ? <p className="text-sm text-destructive">{state.message}</p> : null}
           <Button type="submit" size="lg" disabled={pending} className="mt-1 w-full">
             <KeyRound className="h-4 w-4" />
             {pending ? "Göndərilir..." : "Email kodu göndər"}

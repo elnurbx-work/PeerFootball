@@ -24,24 +24,24 @@ export default async function AdminPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50 sm:px-8">
+    <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-8">
       <div className="mx-auto max-w-6xl">
         <AdminNav />
         <h1 className="mb-8 text-3xl font-bold">Admin panel</h1>
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {stats.map(({ label, value, icon: Icon }) => (
-            <Card key={label} className="border-slate-800 bg-slate-900 text-slate-50">
+            <Card key={label} className="border-border bg-card text-foreground">
               <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-sm font-medium text-slate-400">{label}</CardTitle>
-                <Icon className="h-4 w-4 text-emerald-400" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+                <Icon className="h-4 w-4 text-success" />
               </CardHeader>
               <CardContent><p className="text-3xl font-bold">{value.toLocaleString("az-AZ")}</p></CardContent>
             </Card>
           ))}
         </section>
-        <Card className="mt-6 border-slate-800 bg-slate-900 text-slate-50">
+        <Card className="mt-6 border-border bg-card text-foreground">
           <CardHeader><CardTitle>Təhlükəsizlik aktivdir</CardTitle></CardHeader>
-          <CardContent className="grid gap-2 text-sm text-slate-400">
+          <CardContent className="grid gap-2 text-sm text-muted-foreground">
             <p>Admin sessiyası 8 saatdan sonra avtomatik bitir.</p>
             <p>Hər girişdə parol və email-ə göndərilən 6 rəqəmli birdəfəlik kod tələb olunur.</p>
             <p>Admin cookie-si HttpOnly, SameSite=Strict və production-da Secure-dur.</p>
