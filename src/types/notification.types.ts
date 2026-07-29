@@ -21,6 +21,7 @@ export type AppNotification = {
   commentId: string | null;
   conversationId: string | null;
   friendshipId: string | null;
+  matchId: string | null;
 };
 
 export type NotificationListItem = AppNotification & {

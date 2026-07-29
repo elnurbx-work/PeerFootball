@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Prisma, type MatchCategory, type MatchStatus, type MatchType } from "@prisma/client";
+import { Prisma, type MatchCategory, type MatchFormat, type MatchSource, type MatchStatus, type MatchType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { canCreateClubMatches } from "@/server/services/club-permissions.service";
 import type { MatchCommentDto, MatchDto, MatchListItemDto, MatchPermissions, MatchPlayerDto, MatchVideoDto } from "@/types/match.types";
@@ -38,6 +38,8 @@ type MatchRecord = Prisma.MatchGetPayload<{ include: typeof matchInclude }>;
 type MatchListRecord = {
   id: string;
   type: MatchType;
+  source: MatchSource;
+  format: MatchFormat | null;
   category: MatchCategory;
   status: MatchStatus;
   creatorClubId: string;
@@ -81,8 +83,43 @@ export async function getPendingMatchProposals(clubId: string, currentUserId: st
   if (!(await canCreateClubMatches(currentUserId, clubId))) return [];
   return getMatchList(Prisma.sql`
     match_record."awayClubId" = ${clubId}
-    AND match_record."status" = 'PENDING_OPPONENT_APPROVAL'
+    AND match_record."status" = 'PENDING'
   `, Prisma.sql`match_record."createdAt" DESC`);
+}
+
+export async function getSentMatchProposals(clubId: string, currentUserId: string): Promise<MatchListItemDto[]> {
+  if (!(await canCreateClubMatches(currentUserId, clubId))) return [];
+  return getMatchList(Prisma.sql`
+    match_record."creatorClubId" = ${clubId}
+    AND match_record."type" = 'CLUB_VS_CLUB'
+    AND match_record."status" = 'PENDING'
+  `, Prisma.sql`match_record."createdAt" DESC`);
+}
+
+export async function getReceivedMatchProposals(clubId: string, currentUserId: string): Promise<MatchListItemDto[]> {
+  if (!(await canCreateClubMatches(currentUserId, clubId))) return [];
+  return getMatchList(Prisma.sql`
+    match_record."creatorClubId" <> ${clubId}
+    AND (match_record."homeClubId" = ${clubId} OR match_record."awayClubId" = ${clubId})
+    AND match_record."type" = 'CLUB_VS_CLUB'
+    AND match_record."status" = 'PENDING'
+  `, Prisma.sql`match_record."createdAt" DESC`);
+}
+
+export async function getPastClubMatches(clubId: string): Promise<MatchListItemDto[]> {
+  return getMatchList(Prisma.sql`
+    (match_record."homeClubId" = ${clubId} OR match_record."awayClubId" = ${clubId})
+    AND match_record."status" = 'COMPLETED'
+  `, Prisma.sql`match_record."completedAt" DESC NULLS LAST`);
+}
+
+export async function getClubMatchesAwaitingResultReview(clubId: string, currentUserId: string): Promise<MatchListItemDto[]> {
+  if (!(await canCreateClubMatches(currentUserId, clubId))) return [];
+  return getMatchList(Prisma.sql`
+    (match_record."homeClubId" = ${clubId} OR match_record."awayClubId" = ${clubId})
+    AND match_record."resultSubmittedByClubId" <> ${clubId}
+    AND match_record."status" = 'RESULT_PENDING'
+  `, Prisma.sql`match_record."resultSubmittedAt" DESC`);
 }
 
 export async function getMatchesForClubs(clubIds: string[]): Promise<MatchListItemDto[]> {
@@ -111,6 +148,10 @@ export async function getMatchesForUserClubs(userId: string): Promise<MatchListI
               OR membership."clubId" = match_record."awayClubId"
             )
           )
+        AND NOT (
+          match_record."type" = 'CLUB_VS_CLUB'
+          AND match_record."status" IN ('PENDING', 'REJECTED')
+        )
       `),
       { route: "/matches" }
     );
@@ -163,10 +204,16 @@ export async function getMatchVideos(matchId: string): Promise<MatchVideoDto[]> 
 function toMatchDto(match: MatchRecord, manageableClubIds: Set<string>): MatchDto {
   const permissions = getPermissions(match, manageableClubIds);
   return {
-    id: match.id, type: match.type, category: match.category, status: match.status,
+    id: match.id, type: match.type, source: match.source, format: match.format, category: match.category, status: match.status,
     creatorClubId: match.creatorClubId, homeClubId: match.homeClubId, awayClubId: match.awayClubId,
-    title: match.title, venue: match.venue, startTime: match.startTime.toISOString(), endTime: match.endTime?.toISOString() ?? null,
-    homeScore: match.homeScore, awayScore: match.awayScore, resultNote: match.resultNote, disputeReason: match.disputeReason,
+    title: match.title, venue: match.venue, note: match.note, startTime: match.startTime.toISOString(), endTime: match.endTime?.toISOString() ?? null,
+    durationMinutes: match.durationMinutes,
+    homeScore: match.homeScore, awayScore: match.awayScore, resultNote: match.resultNote,
+    resultSubmittedByClubId: match.resultSubmittedByClubId,
+    alternativeHomeScore: match.alternativeHomeScore, alternativeAwayScore: match.alternativeAwayScore,
+    rejectionReason: match.rejectionReason, cancellationReason: match.cancellationReason,
+    cancellationNote: match.cancellationNote, disputeReason: match.disputeReason,
+    completedAt: match.completedAt?.toISOString() ?? null,
     creatorClub: match.creatorClub, homeClub: match.homeClub, awayClub: match.awayClub,
     sides: match.sides.map((side) => ({
       id: side.id, matchId: side.matchId, clubId: side.clubId, name: side.name, side: side.side, score: side.score,
@@ -184,6 +231,8 @@ function toMatchListItemDto(match: MatchListRecord): MatchListItemDto {
   return {
     id: match.id,
     type: match.type,
+    source: match.source,
+    format: match.format,
     category: match.category,
     status: match.status,
     creatorClubId: match.creatorClubId,
@@ -194,9 +243,13 @@ function toMatchListItemDto(match: MatchListRecord): MatchListItemDto {
     startTime: match.startTime.toISOString(),
     sides: sides.flatMap((side) => {
       if (!side || typeof side !== "object") return [];
-      const value = side as { name?: unknown; playerCount?: unknown };
+      const value = side as { name?: unknown; logoUrl?: unknown; playerCount?: unknown };
       if (typeof value.name !== "string") return [];
-      return [{ name: value.name, playerCount: Number(value.playerCount) || 0 }];
+      return [{
+        name: value.name,
+        logoUrl: typeof value.logoUrl === "string" ? value.logoUrl : null,
+        playerCount: Number(value.playerCount) || 0
+      }];
     })
   };
 }
@@ -208,15 +261,19 @@ async function getMatchList(where: Prisma.Sql, orderBy: Prisma.Sql = Prisma.sql`
         side."id",
         side."matchId",
         side."name",
+        club."logoUrl",
         side."createdAt",
         COUNT(player."id") FILTER (WHERE player."status" <> 'REMOVED')::integer AS "playerCount"
       FROM "MatchSide" AS side
+      LEFT JOIN "Club" AS club ON club."id" = side."clubId"
       LEFT JOIN "MatchPlayer" AS player ON player."matchSideId" = side."id"
-      GROUP BY side."id"
+      GROUP BY side."id", club."logoUrl"
     )
     SELECT
       match_record."id",
       match_record."type",
+      match_record."source",
+      match_record."format",
       match_record."category",
       match_record."status",
       match_record."creatorClubId",
@@ -227,7 +284,11 @@ async function getMatchList(where: Prisma.Sql, orderBy: Prisma.Sql = Prisma.sql`
       match_record."startTime",
       COALESCE(
         jsonb_agg(
-          jsonb_build_object('name', side_counts."name", 'playerCount', side_counts."playerCount")
+          jsonb_build_object(
+            'name', side_counts."name",
+            'logoUrl', side_counts."logoUrl",
+            'playerCount', side_counts."playerCount"
+          )
           ORDER BY side_counts."createdAt"
         ) FILTER (WHERE side_counts."id" IS NOT NULL),
         '[]'::jsonb
@@ -256,6 +317,7 @@ function toMatchCommentDto(comment: {
 function toMatchPlayerDto(player: {
   id: string; matchId: string; matchSideId: string; userId: string | null; clubGuestId: string | null; guestName: string | null;
   position: MatchPlayerDto["position"]; shirtNumber: number | null; status: MatchPlayerDto["status"];
+  lineupRole: MatchPlayerDto["lineupRole"]; isCaptain: boolean; isGoalkeeper: boolean;
   user: MatchPlayerDto["user"]; clubGuest: MatchPlayerDto["clubGuest"];
 }): MatchPlayerDto {
   return { ...player };
@@ -273,16 +335,19 @@ function getPermissions(match: MatchRecord, manageableClubIds: Set<string>): Mat
   const creator = manageableClubIds.has(match.creatorClubId);
   const home = match.homeClubId ? manageableClubIds.has(match.homeClubId) : false;
   const away = match.awayClubId ? manageableClubIds.has(match.awayClubId) : false;
-  const editable = !["FINISHED", "CANCELLED"].includes(match.status);
-  const canManagePlayers = (match.type === "INTERNAL" ? creator : home || away) && editable;
+  const editable = !["COMPLETED", "CANCELLED", "REJECTED"].includes(match.status);
+  const canManagePlayers = match.type === "INTERNAL"
+    ? creator && editable
+    : (home || away) && match.status === "SCHEDULED";
   return {
     canEditMatch: creator && editable,
     canAddPlayers: canManagePlayers,
-    canSubmitResult: (match.type === "INTERNAL" ? creator : home) && ["SCHEDULED", "LIVE"].includes(match.status),
-    canConfirmResult: match.type === "CLUB_VS_CLUB" && away && !home && match.status === "RESULT_PENDING_CONFIRMATION",
-    canDisputeResult: match.type === "CLUB_VS_CLUB" && away && !home && match.status === "RESULT_PENDING_CONFIRMATION",
-    canAddMatchVideo: (match.type === "INTERNAL" ? creator : home) && match.status !== "FINISHED",
-    canManagePlayers
+    canSubmitResult: (match.type === "INTERNAL" ? creator : (home || away) && home !== away) && ["SCHEDULED", "LIVE"].includes(match.status) && Date.now() >= (match.endTime ?? match.startTime).getTime(),
+    canConfirmResult: match.type === "CLUB_VS_CLUB" && match.status === "RESULT_PENDING" && Boolean(match.resultSubmittedByClubId) && (home || away) && !manageableClubIds.has(match.resultSubmittedByClubId!),
+    canDisputeResult: match.type === "CLUB_VS_CLUB" && match.status === "RESULT_PENDING" && Boolean(match.resultSubmittedByClubId) && (home || away) && !manageableClubIds.has(match.resultSubmittedByClubId!),
+    canAddMatchVideo: (match.type === "INTERNAL" ? creator : home || away) && match.status !== "COMPLETED",
+    canManagePlayers,
+    canCancelMatch: match.type === "CLUB_VS_CLUB" && (home || away) && home !== away && ["PENDING", "ACCEPTED", "SCHEDULED"].includes(match.status)
   };
 }
 
@@ -317,5 +382,5 @@ async function getManageableClubIds(userId?: string) {
 }
 
 function emptyPermissions(): MatchPermissions {
-  return { canEditMatch: false, canAddPlayers: false, canSubmitResult: false, canConfirmResult: false, canDisputeResult: false, canAddMatchVideo: false, canManagePlayers: false };
+  return { canEditMatch: false, canAddPlayers: false, canSubmitResult: false, canConfirmResult: false, canDisputeResult: false, canAddMatchVideo: false, canManagePlayers: false, canCancelMatch: false };
 }

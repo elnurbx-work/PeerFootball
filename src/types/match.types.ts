@@ -1,4 +1,4 @@
-import type { FootballPosition, MatchCategory, MatchPlayerStatus, MatchSideType, MatchStatus, MatchType, MatchVideoProvider, MatchVideoType } from "@prisma/client";
+import type { FootballPosition, MatchCancellationReason, MatchCategory, MatchFormat, MatchLineupRole, MatchPlayerStatus, MatchSideType, MatchSource, MatchStatus, MatchType, MatchVideoProvider, MatchVideoType } from "@prisma/client";
 
 export type MatchPermissions = {
   canEditMatch: boolean;
@@ -8,6 +8,7 @@ export type MatchPermissions = {
   canDisputeResult: boolean;
   canAddMatchVideo: boolean;
   canManagePlayers: boolean;
+  canCancelMatch: boolean;
 };
 
 export type MatchClubDto = { id: string; name: string; slug: string; logoUrl: string | null };
@@ -23,6 +24,9 @@ export type MatchPlayerDto = {
   position: FootballPosition | null;
   shirtNumber: number | null;
   status: MatchPlayerStatus;
+  lineupRole: MatchLineupRole;
+  isCaptain: boolean;
+  isGoalkeeper: boolean;
   user: MatchUserDto | null;
   clubGuest: { id: string; fullName: string; position: FootballPosition | null } | null;
 };
@@ -77,6 +81,8 @@ export type MatchCommentDto = {
 export type MatchDto = {
   id: string;
   type: MatchType;
+  source: MatchSource;
+  format: MatchFormat | null;
   category: MatchCategory;
   status: MatchStatus;
   creatorClubId: string;
@@ -84,12 +90,21 @@ export type MatchDto = {
   awayClubId: string | null;
   title: string | null;
   venue: string | null;
+  note: string | null;
   startTime: string;
   endTime: string | null;
+  durationMinutes: number | null;
   homeScore: number | null;
   awayScore: number | null;
   resultNote: string | null;
+  resultSubmittedByClubId: string | null;
+  alternativeHomeScore: number | null;
+  alternativeAwayScore: number | null;
+  rejectionReason: string | null;
+  cancellationReason: MatchCancellationReason | null;
+  cancellationNote: string | null;
   disputeReason: string | null;
+  completedAt: string | null;
   creatorClub: MatchClubDto;
   homeClub: MatchClubDto | null;
   awayClub: MatchClubDto | null;
@@ -104,10 +119,11 @@ export type MatchDto = {
 
 export type MatchListItemDto = Pick<
   MatchDto,
-  "id" | "type" | "category" | "status" | "creatorClubId" | "homeClubId" | "awayClubId" | "title" | "venue" | "startTime"
+  "id" | "type" | "source" | "format" | "category" | "status" | "creatorClubId" | "homeClubId" | "awayClubId" | "title" | "venue" | "startTime"
 > & {
   sides: Array<{
     name: string;
+    logoUrl: string | null;
     playerCount: number;
   }>;
 };

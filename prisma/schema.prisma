@@ -61,18 +61,39 @@ enum GuestInvitePolicy {
 
 enum MatchStatus {
   DRAFT
-  PENDING_OPPONENT_APPROVAL
+  PENDING
+  ACCEPTED
+  REJECTED
   SCHEDULED
   LIVE
-  RESULT_PENDING_CONFIRMATION
-  FINISHED
+  RESULT_PENDING
+  COMPLETED
   DISPUTED
   CANCELLED
+  // Legacy values are retained because this project synchronizes with db push.
+  PENDING_OPPONENT_APPROVAL
+  RESULT_PENDING_CONFIRMATION
+  FINISHED
 }
 
 enum MatchType {
   INTERNAL
   CLUB_VS_CLUB
+}
+
+enum MatchSource {
+  MANUAL
+  TOURNAMENT
+  LEAGUE
+}
+
+enum MatchFormat {
+  FIVE_V_FIVE
+  SIX_V_SIX
+  SEVEN_V_SEVEN
+  EIGHT_V_EIGHT
+  NINE_V_NINE
+  ELEVEN_V_ELEVEN
 }
 
 enum MatchCategory {
@@ -93,7 +114,22 @@ enum MatchPlayerStatus {
   INVITED
   ACCEPTED
   DECLINED
+  MAYBE
   REMOVED
+}
+
+enum MatchLineupRole {
+  STARTER
+  SUBSTITUTE
+}
+
+enum MatchCancellationReason {
+  PLAYER_SHORTAGE
+  VENUE_PROBLEM
+  DATE_UNAVAILABLE
+  WEATHER
+  MUTUAL_AGREEMENT
+  OTHER
 }
 
 enum FootballPosition {
@@ -126,6 +162,77 @@ enum MatchVideoType {
   FIRST_HALF
   SECOND_HALF
   OTHER
+}
+
+enum LineupPlanStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum LineupPitchType {
+  FULL
+  HALF
+  SMALL
+}
+
+enum TacticCategory {
+  ATTACK
+  DEFENCE
+  TRANSITION
+  PRESSING
+  BUILD_UP
+  SET_PIECE
+  TRAINING
+  CUSTOM
+}
+
+enum TacticVisibility {
+  PRIVATE
+  COACHING_STAFF
+  TEAM_MEMBERS
+  PUBLIC
+}
+
+enum TacticStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum TacticActionType {
+  MOVE
+  RUN
+  SPRINT
+  DRIBBLE
+  PASS
+  CROSS
+  SHOT
+  PRESS
+  HOLD_POSITION
+  CUSTOM
+}
+
+enum TacticEasing {
+  LINEAR
+  EASE_IN
+  EASE_OUT
+  EASE_IN_OUT
+}
+
+enum TacticBallActionType {
+  MOVE
+  PASS
+  CROSS
+  DRIBBLE
+  SHOT
+  FREE
+}
+
+enum TacticAnnotationType {
+  ARROW
+  TEXT
+  ZONE
+  CIRCLE
 }
 
 enum FriendshipStatus {
@@ -162,6 +269,16 @@ enum NotificationType {
   FRIEND_REQUEST
   FRIEND_ACCEPTED
   MESSAGE
+  MATCH_INVITATION_RECEIVED
+  MATCH_INVITATION_ACCEPTED
+  MATCH_INVITATION_REJECTED
+  MATCH_CANCELLED
+  MATCH_PLAYER_INVITED
+  MATCH_ATTENDANCE_UPDATED
+  MATCH_RESULT_SUBMITTED
+  MATCH_RESULT_CONFIRMED
+  MATCH_RESULT_DISPUTED
+  MATCH_COMPLETED
 }
 
 enum FeedbackStatus {
@@ -228,6 +345,9 @@ model User {
   matchPlayerInvites      MatchPlayer[]          @relation("MatchPlayerInviter")
   matchVideos             MatchVideo[]           @relation("MatchVideoUploader")
   matchComments           MatchComment[]         @relation("MatchCommentAuthor")
+  lineupPlansCreated      LineupPlan[]            @relation("LineupPlanCreator")
+  tacticsCreated          Tactic[]                @relation("TacticCreator")
+  matchTacticsAttached    MatchTactic[]           @relation("MatchTacticAttacher")
   playerStats             PlayerStats?
   accounts                Account[]
   sessions                Session[]
@@ -524,6 +644,7 @@ model Notification {
   conversationId String?
   messageId      String?
   friendshipId   String?
+  matchId        String?
   title          String?
   body           String?
   readAt         DateTime?
@@ -535,6 +656,7 @@ model Notification {
   conversation   Conversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   message        Message?         @relation(fields: [messageId], references: [id], onDelete: SetNull)
   friendship     Friendship?      @relation(fields: [friendshipId], references: [id], onDelete: SetNull)
+  match          Match?           @relation(fields: [matchId], references: [id], onDelete: SetNull)
 
   @@index([recipientId, createdAt])
   @@index([recipientId, readAt])
@@ -542,6 +664,7 @@ model Notification {
   @@index([postId])
   @@index([commentId])
   @@index([conversationId])
+  @@index([matchId])
   @@index([type])
 }
 
@@ -601,7 +724,13 @@ model Club {
   createdMatches    Match[]                @relation("MatchCreatorClub")
   homeMatches       Match[]                @relation("MatchHomeClub")
   awayMatches       Match[]                @relation("MatchAwayClub")
+  submittedResults  Match[]                @relation("MatchResultSubmittedByClub")
+  reviewedResults   Match[]                @relation("MatchResultReviewedByClub")
   matchSides        MatchSide[]
+  stats             ClubStats?
+  lineupPlans       LineupPlan[]
+  tactics           Tactic[]
+  matchTactics      MatchTactic[]
 
   @@index([ownerId])
   @@index([isActive])
@@ -632,6 +761,7 @@ model ClubMember {
   club        Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
   user        User             @relation("ClubMemberUser", fields: [userId], references: [id], onDelete: Cascade)
   invitedBy   User?            @relation("ClubMemberInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+  lineupSlots LineupSlot[]
 
   @@unique([clubId, userId])
   @@index([clubId])
@@ -676,46 +806,64 @@ model ClubMetricDefinition {
 }
 
 model Match {
-  id                  String         @id @default(cuid())
-  type                MatchType
-  category            MatchCategory  @default(FRIENDLY)
-  status              MatchStatus    @default(DRAFT)
-  creatorClubId       String
-  homeClubId          String?
-  awayClubId          String?
-  title               String?
-  venue               String?
-  startTime           DateTime
-  endTime             DateTime?
-  homeScore           Int?
-  awayScore           Int?
-  resultNote          String?
-  resultSubmittedById String?
-  resultSubmittedAt   DateTime?
-  resultConfirmedById String?
-  resultConfirmedAt   DateTime?
-  disputeReason       String?
-  adminDecisionNote   String?
-  createdById         String
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  creatorClub         Club           @relation("MatchCreatorClub", fields: [creatorClubId], references: [id], onDelete: Restrict)
-  homeClub            Club?          @relation("MatchHomeClub", fields: [homeClubId], references: [id], onDelete: Restrict)
-  awayClub            Club?          @relation("MatchAwayClub", fields: [awayClubId], references: [id], onDelete: Restrict)
-  createdBy           User           @relation("MatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  resultSubmittedBy   User?          @relation("MatchResultSubmittedBy", fields: [resultSubmittedById], references: [id], onDelete: SetNull)
-  resultConfirmedBy   User?          @relation("MatchResultConfirmedBy", fields: [resultConfirmedById], references: [id], onDelete: SetNull)
-  sides               MatchSide[]
-  players             MatchPlayer[]
-  videos              MatchVideo[]
-  goals               MatchGoal[]
-  comments            MatchComment[]
+  id                      String                   @id @default(cuid())
+  type                    MatchType
+  source                  MatchSource              @default(MANUAL)
+  format                  MatchFormat?
+  category                MatchCategory            @default(FRIENDLY)
+  status                  MatchStatus              @default(DRAFT)
+  creatorClubId           String
+  homeClubId              String?
+  awayClubId              String?
+  title                   String?
+  venue                   String?
+  note                    String?
+  startTime               DateTime
+  endTime                 DateTime?
+  durationMinutes         Int?
+  homeScore               Int?
+  awayScore               Int?
+  resultNote              String?
+  resultSubmittedById     String?
+  resultSubmittedByClubId String?
+  resultSubmittedAt       DateTime?
+  resultConfirmedById     String?
+  resultReviewedByClubId  String?
+  resultConfirmedAt       DateTime?
+  alternativeHomeScore    Int?
+  alternativeAwayScore    Int?
+  rejectionReason         String?
+  cancellationReason      MatchCancellationReason?
+  cancellationNote        String?
+  disputeReason           String?
+  adminDecisionNote       String?
+  completedAt             DateTime?
+  statsAppliedAt          DateTime?
+  createdById             String
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  creatorClub             Club                     @relation("MatchCreatorClub", fields: [creatorClubId], references: [id], onDelete: Restrict)
+  homeClub                Club?                    @relation("MatchHomeClub", fields: [homeClubId], references: [id], onDelete: Restrict)
+  awayClub                Club?                    @relation("MatchAwayClub", fields: [awayClubId], references: [id], onDelete: Restrict)
+  createdBy               User                     @relation("MatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  resultSubmittedBy       User?                    @relation("MatchResultSubmittedBy", fields: [resultSubmittedById], references: [id], onDelete: SetNull)
+  resultConfirmedBy       User?                    @relation("MatchResultConfirmedBy", fields: [resultConfirmedById], references: [id], onDelete: SetNull)
+  resultSubmittedByClub   Club?                    @relation("MatchResultSubmittedByClub", fields: [resultSubmittedByClubId], references: [id], onDelete: Restrict)
+  resultReviewedByClub    Club?                    @relation("MatchResultReviewedByClub", fields: [resultReviewedByClubId], references: [id], onDelete: Restrict)
+  sides                   MatchSide[]
+  players                 MatchPlayer[]
+  videos                  MatchVideo[]
+  goals                   MatchGoal[]
+  comments                MatchComment[]
+  notifications           Notification[]
+  tactics                 MatchTactic[]
 
   @@index([creatorClubId])
   @@index([homeClubId])
   @@index([awayClubId])
   @@index([status])
   @@index([startTime])
+  @@index([resultSubmittedByClubId])
 }
 
 model MatchSide {
@@ -737,31 +885,50 @@ model MatchSide {
 }
 
 model MatchPlayer {
-  id          String            @id @default(cuid())
-  matchId     String
-  matchSideId String
-  userId      String?
-  clubGuestId String?
-  guestName   String?
-  position    FootballPosition?
-  shirtNumber Int?
-  status      MatchPlayerStatus @default(SELECTED)
-  invitedById String?
-  acceptedAt  DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  match       Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  matchSide   MatchSide         @relation(fields: [matchSideId], references: [id], onDelete: Cascade)
-  user        User?             @relation("MatchPlayerUser", fields: [userId], references: [id], onDelete: Restrict)
-  clubGuest   ClubGuest?        @relation(fields: [clubGuestId], references: [id], onDelete: Restrict)
-  invitedBy   User?             @relation("MatchPlayerInviter", fields: [invitedById], references: [id], onDelete: SetNull)
-  goals       MatchGoal[]
+  id           String            @id @default(cuid())
+  matchId      String
+  matchSideId  String
+  userId       String?
+  clubGuestId  String?
+  guestName    String?
+  position     FootballPosition?
+  shirtNumber  Int?
+  status       MatchPlayerStatus @default(SELECTED)
+  lineupRole   MatchLineupRole   @default(SUBSTITUTE)
+  isCaptain    Boolean           @default(false)
+  isGoalkeeper Boolean           @default(false)
+  invitedById  String?
+  acceptedAt   DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  match        Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchSide    MatchSide         @relation(fields: [matchSideId], references: [id], onDelete: Cascade)
+  user         User?             @relation("MatchPlayerUser", fields: [userId], references: [id], onDelete: Restrict)
+  clubGuest    ClubGuest?        @relation(fields: [clubGuestId], references: [id], onDelete: Restrict)
+  invitedBy    User?             @relation("MatchPlayerInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+  goals        MatchGoal[]
 
   @@unique([matchId, userId])
   @@index([matchId])
   @@index([matchSideId])
   @@index([userId])
   @@index([clubGuestId])
+}
+
+model ClubStats {
+  id             String   @id @default(cuid())
+  clubId         String   @unique
+  matchesPlayed  Int      @default(0)
+  wins           Int      @default(0)
+  draws          Int      @default(0)
+  losses         Int      @default(0)
+  goalsFor       Int      @default(0)
+  goalsAgainst   Int      @default(0)
+  goalDifference Int      @default(0)
+  recentForm     Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  club           Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
 }
 
 model MatchVideo {
@@ -816,6 +983,181 @@ model MatchComment {
 
   @@index([matchId, createdAt])
   @@index([parentId])
+}
+
+model LineupPlan {
+  id            String           @id @default(cuid())
+  clubId        String
+  name          String
+  description   String?
+  playerCount   Int
+  formationCode String
+  pitchType     LineupPitchType  @default(FULL)
+  status        LineupPlanStatus @default(ACTIVE)
+  createdById   String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  club          Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  createdBy     User             @relation("LineupPlanCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  slots         LineupSlot[]
+  tactics       Tactic[]
+
+  @@index([clubId, status, updatedAt])
+  @@unique([clubId, name])
+}
+
+model LineupSlot {
+  id                   String           @id @default(cuid())
+  lineupPlanId         String
+  slotKey              String
+  label                String
+  position             FootballPosition?
+  x                    Float
+  y                    Float
+  assignedClubMemberId String?
+  shirtNumber          Int?
+  isCaptain            Boolean          @default(false)
+  isGoalkeeper         Boolean          @default(false)
+  isSubstitute         Boolean          @default(false)
+  sortOrder            Int
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  lineupPlan           LineupPlan       @relation(fields: [lineupPlanId], references: [id], onDelete: Cascade)
+  assignedClubMember   ClubMember?      @relation(fields: [assignedClubMemberId], references: [id], onDelete: SetNull)
+
+  @@unique([lineupPlanId, slotKey])
+  @@unique([lineupPlanId, assignedClubMemberId])
+  @@index([lineupPlanId, sortOrder])
+  @@index([assignedClubMemberId])
+}
+
+model Tactic {
+  id            String           @id @default(cuid())
+  clubId        String
+  lineupPlanId  String
+  name          String
+  description   String?
+  category      TacticCategory
+  visibility    TacticVisibility @default(COACHING_STAFF)
+  durationMs    Int              @default(10000)
+  status        TacticStatus     @default(DRAFT)
+  snapshotData  Json
+  previewData   Json?
+  createdById   String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  club          Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  lineupPlan    LineupPlan       @relation(fields: [lineupPlanId], references: [id], onDelete: Restrict)
+  createdBy     User             @relation("TacticCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  scenes        TacticScene[]
+  matches       MatchTactic[]
+
+  @@index([clubId, status, updatedAt])
+  @@index([lineupPlanId, status])
+}
+
+model TacticScene {
+  id             String   @id @default(cuid())
+  tacticId       String
+  name           String
+  description    String?
+  sortOrder      Int
+  durationMs     Int      @default(2000)
+  startState     Json
+  endState       Json
+  ballStartState Json?
+  ballEndState   Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tactic         Tactic   @relation(fields: [tacticId], references: [id], onDelete: Cascade)
+  playerActions  TacticPlayerAction[]
+  ballActions    TacticBallAction[]
+  annotations    TacticAnnotation[]
+
+  @@unique([tacticId, sortOrder])
+  @@index([tacticId, sortOrder])
+}
+
+model TacticPlayerAction {
+  id          String           @id @default(cuid())
+  sceneId     String
+  slotKey     String
+  type        TacticActionType
+  targetSlotKey String?
+  startX      Float
+  startY      Float
+  endX        Float
+  endY        Float
+  startTimeMs Int
+  durationMs  Int
+  easing      TacticEasing     @default(LINEAR)
+  label       String?
+  note        String?
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  scene       TacticScene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId, startTimeMs])
+  @@index([sceneId, slotKey])
+}
+
+model TacticBallAction {
+  id            String               @id @default(cuid())
+  sceneId       String
+  type          TacticBallActionType
+  sourceSlotKey String?
+  targetSlotKey String?
+  startX        Float
+  startY        Float
+  endX          Float
+  endY          Float
+  startTimeMs   Int
+  durationMs    Int
+  easing        TacticEasing         @default(LINEAR)
+  metadata      Json?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  scene         TacticScene          @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId, startTimeMs])
+}
+
+model TacticAnnotation {
+  id          String               @id @default(cuid())
+  sceneId     String
+  type        TacticAnnotationType
+  x           Float
+  y           Float
+  width       Float?
+  height      Float?
+  rotation    Float                @default(0)
+  label       String?
+  description String?
+  startTimeMs Int                  @default(0)
+  durationMs  Int?
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  scene       TacticScene          @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@index([sceneId, startTimeMs])
+}
+
+model MatchTactic {
+  id           String   @id @default(cuid())
+  matchId      String
+  tacticId     String
+  clubId       String
+  attachedById String
+  createdAt    DateTime @default(now())
+  match        Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  tactic       Tactic   @relation(fields: [tacticId], references: [id], onDelete: Cascade)
+  club         Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  attachedBy   User     @relation("MatchTacticAttacher", fields: [attachedById], references: [id], onDelete: Restrict)
+
+  @@unique([matchId, tacticId])
+  @@index([clubId, matchId])
 }
 
 model PlayerStats {

@@ -21,6 +21,11 @@ export function MatchCard({ match }: { match: MatchListItemDto }) {
         </div>
       </CardHeader>
       <CardContent className="grid gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-lg bg-secondary/50 p-3">
+          <ClubIdentity side={match.sides[0]} />
+          <span className="text-xs font-bold text-muted-foreground">{t("matches.card.versus")}</span>
+          <ClubIdentity side={match.sides[1]} />
+        </div>
         <div className="grid gap-2 text-sm text-muted-foreground">
           <p className="flex items-start gap-2"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />{formatDate(match.startTime, locale)}</p>
           <p className="flex items-start gap-2 break-words"><MapPin className="mt-0.5 h-4 w-4 shrink-0" />{match.venue ?? t("matches.card.venueNotSet")}</p>
@@ -30,6 +35,18 @@ export function MatchCard({ match }: { match: MatchListItemDto }) {
         <Button asChild variant="outline" className="w-full sm:w-fit"><Link href={`/matches/${match.id}`}>{t("matches.card.open")}</Link></Button>
       </CardContent>
     </Card>
+  );
+}
+
+function ClubIdentity({ side }: { side: MatchListItemDto["sides"][number] | undefined }) {
+  const name = side?.name ?? "?";
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
+      <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border bg-background font-bold">
+        {side?.logoUrl ? <img src={side.logoUrl} alt="" className="h-full w-full object-cover" /> : name.charAt(0).toUpperCase()}
+      </span>
+      <span className="w-full truncate text-xs font-semibold text-foreground">{name}</span>
+    </div>
   );
 }
 

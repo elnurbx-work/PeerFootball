@@ -36,6 +36,7 @@ type CreateNotificationInput = {
   conversationId?: string | null;
   messageId?: string | null;
   friendshipId?: string | null;
+  matchId?: string | null;
   title?: string | null;
   body?: string | null;
 };
@@ -55,6 +56,7 @@ export async function createNotification(input: CreateNotificationInput): Promis
       conversationId: input.conversationId,
       messageId: input.messageId,
       friendshipId: input.friendshipId,
+      matchId: input.matchId,
       title: input.title,
       body: input.body
     },
@@ -338,8 +340,38 @@ export function toAppNotification(notification: NotificationRecord): AppNotifica
     postId: notification.postId,
     commentId: notification.commentId,
     conversationId: notification.conversationId,
-    friendshipId: notification.friendshipId
+    friendshipId: notification.friendshipId,
+    matchId: notification.matchId
   };
+}
+
+export async function createMatchNotifications(input: {
+  recipientIds: string[];
+  actorId: string;
+  matchId: string;
+  type: Extract<NotificationType,
+    | "MATCH_INVITATION_RECEIVED"
+    | "MATCH_INVITATION_ACCEPTED"
+    | "MATCH_INVITATION_REJECTED"
+    | "MATCH_CANCELLED"
+    | "MATCH_PLAYER_INVITED"
+    | "MATCH_ATTENDANCE_UPDATED"
+    | "MATCH_RESULT_SUBMITTED"
+    | "MATCH_RESULT_CONFIRMED"
+    | "MATCH_RESULT_DISPUTED"
+    | "MATCH_COMPLETED">;
+  title?: string;
+  body?: string;
+}) {
+  const recipientIds = [...new Set(input.recipientIds)].filter((recipientId) => recipientId !== input.actorId);
+  return Promise.all(recipientIds.map((recipientId) => createNotification({
+    recipientId,
+    actorId: input.actorId,
+    matchId: input.matchId,
+    type: input.type,
+    title: input.title,
+    body: input.body
+  })));
 }
 
 async function publishNotificationBestEffort(userId: string, notification: AppNotification) {

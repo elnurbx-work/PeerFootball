@@ -24,7 +24,17 @@ const typeIcon: Record<NotificationType, typeof Bell> = {
   POST_REPOST: Repeat2,
   FRIEND_REQUEST: UserPlus,
   FRIEND_ACCEPTED: CheckCircle2,
-  MESSAGE: MessageCircle
+  MESSAGE: MessageCircle,
+  MATCH_INVITATION_RECEIVED: Users,
+  MATCH_INVITATION_ACCEPTED: CheckCircle2,
+  MATCH_INVITATION_REJECTED: Bell,
+  MATCH_CANCELLED: Bell,
+  MATCH_PLAYER_INVITED: Users,
+  MATCH_ATTENDANCE_UPDATED: Users,
+  MATCH_RESULT_SUBMITTED: Bell,
+  MATCH_RESULT_CONFIRMED: CheckCircle2,
+  MATCH_RESULT_DISPUTED: Bell,
+  MATCH_COMPLETED: CheckCircle2
 };
 
 export function NotificationItem({ notification, onNavigate, onRead }: NotificationItemProps) {

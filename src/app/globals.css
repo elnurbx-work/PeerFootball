@@ -169,16 +169,30 @@ a {
 
 @layer components {
   .landing-container {
-    @apply mx-auto w-full max-w-7xl px-5 md:px-8 lg:px-12;
+    @apply mx-auto min-w-0 w-full max-w-7xl px-4 sm:px-5 md:px-8 lg:px-12;
   }
 
   .landing-section {
-    @apply py-20 md:py-24 lg:py-28;
+    @apply py-16 sm:py-20 md:py-24 lg:py-28;
   }
 }
 
 .landing-page {
   color: hsl(var(--foreground));
+}
+
+.landing-page section[id] {
+  scroll-margin-top: 5rem;
+}
+
+.landing-page h1,
+.landing-page h2,
+.landing-page h3,
+.landing-page p,
+.landing-page a,
+.landing-page button,
+.landing-page span {
+  overflow-wrap: anywhere;
 }
 
 .landing-page header nav[aria-label="Language"] a,
@@ -201,6 +215,12 @@ a {
 
 .hero-card {
   transform: rotate(1.5deg);
+}
+
+@media (max-width: 359px) {
+  .hero-card {
+    transform: none;
+  }
 }
 
 .hero-float {

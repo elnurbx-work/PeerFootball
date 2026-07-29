@@ -27,6 +27,7 @@ import type {
   ClubSettingsDto,
   ClubSummary
 } from "@/types/club.types";
+import type { ClubStatsDto } from "@/types/club.types";
 import {
   PAGINATION_LIMITS,
   toNumberedPage,
@@ -241,6 +242,23 @@ export async function getClubMetricDefinitions(clubId: string): Promise<ClubMetr
   });
 
   return metrics.map(toClubMetricDefinitionDto);
+}
+
+export async function getClubStats(clubId: string): Promise<ClubStatsDto> {
+  const stats = await prisma.clubStats.findUnique({ where: { clubId } });
+  const recentForm = Array.isArray(stats?.recentForm)
+    ? stats.recentForm.filter((item): item is "W" | "D" | "L" => item === "W" || item === "D" || item === "L")
+    : [];
+  return {
+    matchesPlayed: stats?.matchesPlayed ?? 0,
+    wins: stats?.wins ?? 0,
+    draws: stats?.draws ?? 0,
+    losses: stats?.losses ?? 0,
+    goalsFor: stats?.goalsFor ?? 0,
+    goalsAgainst: stats?.goalsAgainst ?? 0,
+    goalDifference: stats?.goalDifference ?? 0,
+    recentForm
+  };
 }
 
 export async function getPendingJoinRequests(clubId: string, currentUserId: string): Promise<ClubMemberDto[]> {

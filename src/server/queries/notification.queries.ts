@@ -27,6 +27,7 @@ type NotificationCenterRow = {
   commentId: string | null;
   conversationId: string | null;
   friendshipId: string | null;
+  matchId: string | null;
   actorId: string | null;
   actorName: string | null;
   actorUsername: string | null;
@@ -47,6 +48,7 @@ const getNotificationCenterData = cache(async (userId: string) => {
       notification."commentId",
       notification."conversationId",
       notification."friendshipId",
+      notification."matchId",
       actor."id" AS "actorId",
       actor."name" AS "actorName",
       actor."username" AS "actorUsername",
@@ -77,7 +79,8 @@ const getNotificationCenterData = cache(async (userId: string) => {
       postId: row.postId,
       commentId: row.commentId,
       conversationId: row.conversationId,
-      friendshipId: row.friendshipId
+      friendshipId: row.friendshipId,
+      matchId: row.matchId
     })),
     unreadCount: Number(rows[0]?.unreadCount ?? 0)
   };

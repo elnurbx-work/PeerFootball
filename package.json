@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx src/lib/ads/feed-placement.test.ts",
+    "test:matches": "tsx src/server/services/match-domain.test.ts",
+    "test:tactics": "tsx src/lib/tactics/tactic-domain.test.ts",
     "perf:pages": "node scripts/benchmark-pages.mjs",
     "i18n:check": "node scripts/check-i18n.mjs",
     "postinstall": "prisma generate",

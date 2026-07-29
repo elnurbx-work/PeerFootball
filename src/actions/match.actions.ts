@@ -10,12 +10,16 @@ import {
   addMatchPlayerSchema,
   addMatchGoalSchema,
   addMatchVideoSchema,
+  cancelMatchSchema,
   createClubVsClubMatchProposalSchema,
   createInternalMatchSchema,
   createMatchCommentSchema,
   disputeMatchResultSchema,
   respondToMatchProposalSchema,
   submitMatchResultSchema,
+  respondToMatchAttendanceSchema,
+  reviewMatchResultSchema,
+  updateMatchLineupSchema,
   updateInternalMatchSidesSchema,
   updateMatchPlayerPositionSchema,
   updateMatchVideoSchema
@@ -26,6 +30,17 @@ import { normalizeMatchVideoUrl } from "@/lib/videos/video-url";
 import type { ApiResponse } from "@/types/api.types";
 import { createTranslator } from "@/i18n/dictionary";
 import { getServerTranslator } from "@/i18n/server";
+import {
+  cancelClubMatch,
+  createClubMatchProposal,
+  inviteClubMatchPlayer,
+  respondToClubMatchAttendance,
+  respondToClubMatchProposal,
+  reviewClubMatchResult,
+  submitClubMatchResult,
+  updateClubMatchLineup
+} from "@/server/services/match.service";
+import { MatchDomainError } from "@/server/services/match-domain";
 
 export async function createMatchAction(): Promise<ApiResponse> {
   return { ok: false, message: (await getServerTranslator())("responses.match.activeClubRequired") };
@@ -81,22 +96,13 @@ export async function createClubVsClubMatchProposalAction(input: unknown): Promi
   if (!user) return invalid(t("responses.signInRequired"));
   const parsed = createClubVsClubMatchProposalSchema.safeParse(toObject(input));
   if (!parsed.success) return invalid(t("responses.match.proposalInvalid"), localizedFieldErrors(parsed.error, t));
-  const { homeClubId, awayClubId, ...data } = parsed.data;
-  if (!(await canCreateClubMatches(user.id, homeClubId))) return forbidden(t("responses.match.cannotCreate"));
-  await Promise.all([ensureClubActive(homeClubId), ensureClubActive(awayClubId)]);
-  const clubs = await prisma.club.findMany({ where: { id: { in: [homeClubId, awayClubId] }, isActive: true }, select: { id: true, name: true } });
-  if (clubs.length !== 2) return notFound(t("responses.match.clubNotFound"));
-  const home = clubs.find((club) => club.id === homeClubId)!;
-  const away = clubs.find((club) => club.id === awayClubId)!;
-  const match = await prisma.match.create({
-    data: {
-      ...data, type: "CLUB_VS_CLUB", status: "PENDING_OPPONENT_APPROVAL", creatorClubId: homeClubId,
-      homeClubId, awayClubId, createdById: user.id,
-      sides: { create: [{ side: "HOME", name: home.name, clubId: home.id }, { side: "AWAY", name: away.name, clubId: away.id }] }
-    }, select: { id: true }
-  });
-  revalidateMatchSurfaces(match.id);
-  return { ok: true, message: t("responses.match.proposalSent"), data: { matchId: match.id } };
+  try {
+    const match = await createClubMatchProposal(user.id, parsed.data);
+    revalidateMatchSurfaces(match.id);
+    return { ok: true, message: t("responses.match.proposalSent"), data: { matchId: match.id } };
+  } catch (error) {
+    return matchServiceError(error, t("responses.match.proposalInvalid"));
+  }
 }
 
 export async function respondToClubVsClubMatchProposalAction(input: unknown): Promise<ApiResponse> {
@@ -105,14 +111,28 @@ export async function respondToClubVsClubMatchProposalAction(input: unknown): Pr
   if (!user) return invalid(t("responses.signInRequired"));
   const parsed = respondToMatchProposalSchema.safeParse(toObject(input));
   if (!parsed.success) return invalid(t("responses.match.proposalResponseInvalid"), localizedFieldErrors(parsed.error, t));
-  const match = await getMatchForManagement(parsed.data.matchId);
-  if (!match || match.type !== "CLUB_VS_CLUB" || !match.awayClubId) return notFound(t("responses.match.notFound"));
-  if (match.status !== "PENDING_OPPONENT_APPROVAL") return invalid(t("responses.match.proposalNotPending"));
-  if (!(await canCreateClubMatches(user.id, match.awayClubId))) return forbidden(t("responses.match.awayResponseForbidden"));
-  await ensureClubActive(match.awayClubId);
-  await prisma.match.update({ where: { id: match.id }, data: { status: parsed.data.response === "ACCEPT" ? "SCHEDULED" : "CANCELLED" } });
-  revalidateMatchSurfaces(match.id);
-  return { ok: true, message: parsed.data.response === "ACCEPT" ? t("responses.match.proposalAccepted") : t("responses.match.proposalRejected") };
+  try {
+    await respondToClubMatchProposal(user.id, parsed.data);
+    revalidateMatchSurfaces(parsed.data.matchId);
+    return { ok: true, message: parsed.data.response === "ACCEPT" ? t("responses.match.proposalAccepted") : t("responses.match.proposalRejected") };
+  } catch (error) {
+    return matchServiceError(error, t("responses.match.proposalNotPending"));
+  }
+}
+
+export async function cancelClubMatchAction(input: unknown): Promise<ApiResponse> {
+  const user = await getCurrentUser();
+  const t = await actionTranslator(user);
+  if (!user) return invalid(t("responses.signInRequired"));
+  const parsed = cancelMatchSchema.safeParse(toObject(input));
+  if (!parsed.success) return invalid(t("responses.match.cannotEdit"), localizedFieldErrors(parsed.error, t));
+  try {
+    await cancelClubMatch(user.id, parsed.data);
+    revalidateMatchSurfaces(parsed.data.matchId);
+    return { ok: true, message: t("matches.summary.statusCancelled") };
+  } catch (error) {
+    return matchServiceError(error, t("responses.match.cannotEdit"));
+  }
 }
 
 export async function addMatchPlayerAction(input: unknown): Promise<ApiResponse> {
@@ -125,7 +145,16 @@ export async function addMatchPlayerAction(input: unknown): Promise<ApiResponse>
     where: { id: parsed.data.matchId },
     include: { sides: true }
   });
-  if (!match || ["FINISHED", "CANCELLED"].includes(match.status)) return notFound(t("responses.match.cannotEdit"));
+  if (match?.type === "CLUB_VS_CLUB") {
+    try {
+      await inviteClubMatchPlayer(user.id, parsed.data);
+      revalidateMatchSurfaces(match.id);
+      return { ok: true, message: t("responses.match.playerInvited") };
+    } catch (error) {
+      return matchServiceError(error, t("responses.match.playerInvalid"));
+    }
+  }
+  if (!match || ["COMPLETED", "CANCELLED"].includes(match.status)) return notFound(t("responses.match.cannotEdit"));
   const side = match.sides.find((item) => item.id === parsed.data.matchSideId);
   if (!side) return notFound(t("responses.match.sideNotFound"));
   const managingClubId = match.type === "INTERNAL" ? match.creatorClubId : side.clubId;
@@ -171,6 +200,9 @@ export async function removeMatchPlayerAction(matchPlayerId: string): Promise<Ap
     where: { id: matchPlayerId }, include: { match: true, matchSide: true }
   });
   if (!player) return notFound(t("responses.match.playerNotFound"));
+  if (player.match.type === "CLUB_VS_CLUB" && player.match.status !== "SCHEDULED") {
+    return invalid(t("responses.lineupLocked"));
+  }
   const clubId = player.match.type === "INTERNAL" ? player.match.creatorClubId : player.matchSide.clubId;
   if (!clubId || !(await canCreateClubMatches(user.id, clubId))) return forbidden(t("responses.match.forbidden"));
   await ensureClubActive(clubId);
@@ -214,6 +246,36 @@ export async function declineMatchInviteAction(matchPlayerId: string): Promise<A
   return respondToPlayerInvite(matchPlayerId, "DECLINED");
 }
 
+export async function respondToMatchAttendanceAction(input: unknown): Promise<ApiResponse> {
+  const user = await getCurrentUser();
+  const t = await actionTranslator(user);
+  if (!user) return invalid(t("responses.signInRequired"));
+  const parsed = respondToMatchAttendanceSchema.safeParse(toObject(input));
+  if (!parsed.success) return invalid(t("responses.match.inviteNotFound"), localizedFieldErrors(parsed.error, t));
+  try {
+    await respondToClubMatchAttendance(user.id, parsed.data);
+    revalidatePath("/matches", "layout");
+    return { ok: true, message: t("responses.match.inviteAccepted") };
+  } catch (error) {
+    return matchServiceError(error, t("responses.match.inviteNotFound"));
+  }
+}
+
+export async function updateClubMatchLineupAction(input: unknown): Promise<ApiResponse> {
+  const user = await getCurrentUser();
+  const t = await actionTranslator(user);
+  if (!user) return invalid(t("responses.signInRequired"));
+  const parsed = updateMatchLineupSchema.safeParse(toObject(input));
+  if (!parsed.success) return invalid(t("responses.positionInvalid"), localizedFieldErrors(parsed.error, t));
+  try {
+    await updateClubMatchLineup(user.id, parsed.data);
+    revalidatePath("/matches", "layout");
+    return { ok: true, message: t("responses.positionUpdated", { position: parsed.data.position ?? "" }) };
+  } catch (error) {
+    return matchServiceError(error, t("responses.lineupLocked"));
+  }
+}
+
 export async function submitMatchResultAction(input: unknown): Promise<ApiResponse> {
   const user = await getCurrentUser();
   const t = await actionTranslator(user);
@@ -222,6 +284,15 @@ export async function submitMatchResultAction(input: unknown): Promise<ApiRespon
   if (!parsed.success) return invalid(t("responses.match.resultInvalid"), localizedFieldErrors(parsed.error, t));
   const match = await getMatchForManagement(parsed.data.matchId);
   if (!match || !["SCHEDULED", "LIVE"].includes(match.status)) return invalid(t("responses.match.resultNotReady"));
+  if (match.type === "CLUB_VS_CLUB") {
+    try {
+      await submitClubMatchResult(user.id, parsed.data);
+      revalidateMatchSurfaces(match.id);
+      return { ok: true, message: t("responses.match.resultSubmitted") };
+    } catch (error) {
+      return matchServiceError(error, t("responses.match.resultNotReady"));
+    }
+  }
   const submittingClubId = match.type === "INTERNAL" ? match.creatorClubId : match.homeClubId;
   if (!submittingClubId || !(await canCreateClubMatches(user.id, submittingClubId))) return forbidden(t("responses.match.forbidden"));
   await ensureClubActive(submittingClubId);
@@ -236,7 +307,7 @@ export async function submitMatchResultAction(input: unknown): Promise<ApiRespon
   if (parsed.data.homeScore !== recordedHomeScore || parsed.data.awayScore !== recordedAwayScore) {
     return invalid(t("responses.resultMismatch", { score: `${recordedHomeScore}:${recordedAwayScore}` }));
   }
-  const nextStatus = match.type === "INTERNAL" ? "FINISHED" : "RESULT_PENDING_CONFIRMATION";
+  const nextStatus = "COMPLETED";
   await prisma.match.update({
     where: { id: match.id },
     data: {
@@ -256,14 +327,13 @@ export async function confirmMatchResultAction(matchId: string): Promise<ApiResp
   const user = await getCurrentUser();
   const t = await actionTranslator(user);
   if (!user) return invalid(t("responses.signInRequired"));
-  const match = await getMatchForManagement(matchId);
-  if (!match || match.type !== "CLUB_VS_CLUB" || !match.awayClubId || match.status !== "RESULT_PENDING_CONFIRMATION") return invalid(t("responses.match.resultCannotConfirm"));
-  if (!(await canCreateClubMatches(user.id, match.awayClubId))) return forbidden(t("responses.match.forbidden"));
-  if (match.homeClubId && (await canCreateClubMatches(user.id, match.homeClubId))) return forbidden(t("responses.match.homeCannotConfirm"));
-  await ensureClubActive(match.awayClubId);
-  await prisma.match.update({ where: { id: match.id }, data: { status: "FINISHED", resultConfirmedById: user.id, resultConfirmedAt: new Date() } });
-  revalidateMatchSurfaces(match.id);
-  return { ok: true, message: t("responses.match.resultConfirmed") };
+  try {
+    await reviewClubMatchResult(user.id, { matchId, response: "CONFIRM" });
+    revalidateMatchSurfaces(matchId);
+    return { ok: true, message: t("responses.match.resultConfirmed") };
+  } catch (error) {
+    return matchServiceError(error, t("responses.match.resultCannotConfirm"));
+  }
 }
 
 export async function disputeMatchResultAction(input: unknown): Promise<ApiResponse> {
@@ -272,14 +342,25 @@ export async function disputeMatchResultAction(input: unknown): Promise<ApiRespo
   if (!user) return invalid(t("responses.signInRequired"));
   const parsed = disputeMatchResultSchema.safeParse(toObject(input));
   if (!parsed.success) return invalid(t("responses.match.disputeInvalid"), localizedFieldErrors(parsed.error, t));
-  const match = await getMatchForManagement(parsed.data.matchId);
-  if (!match || match.type !== "CLUB_VS_CLUB" || !match.awayClubId || match.status !== "RESULT_PENDING_CONFIRMATION") return invalid(t("responses.match.resultCannotDispute"));
-  if (!(await canCreateClubMatches(user.id, match.awayClubId))) return forbidden(t("responses.match.forbidden"));
-  if (match.homeClubId && (await canCreateClubMatches(user.id, match.homeClubId))) return forbidden(t("responses.match.homeCannotReview"));
-  await ensureClubActive(match.awayClubId);
-  await prisma.match.update({ where: { id: match.id }, data: { status: "DISPUTED", disputeReason: parsed.data.disputeReason } });
-  revalidateMatchSurfaces(match.id);
-  return { ok: true, message: t("responses.match.resultDisputed") };
+  return invalid(t("responses.match.resultCannotDispute"));
+}
+
+export async function reviewMatchResultAction(input: unknown): Promise<ApiResponse> {
+  const user = await getCurrentUser();
+  const t = await actionTranslator(user);
+  if (!user) return invalid(t("responses.signInRequired"));
+  const parsed = reviewMatchResultSchema.safeParse(toObject(input));
+  if (!parsed.success) return invalid(t("responses.match.disputeInvalid"), localizedFieldErrors(parsed.error, t));
+  try {
+    const status = await reviewClubMatchResult(user.id, parsed.data);
+    revalidateMatchSurfaces(parsed.data.matchId);
+    return {
+      ok: true,
+      message: status === "COMPLETED" ? t("responses.match.resultConfirmed") : t("responses.match.resultDisputed")
+    };
+  } catch (error) {
+    return matchServiceError(error, t("responses.match.resultCannotDispute"));
+  }
 }
 
 export async function addMatchVideoAction(input: unknown): Promise<ApiResponse> {
@@ -293,7 +374,7 @@ export async function addMatchVideoAction(input: unknown): Promise<ApiResponse> 
   const homeClubId = match.type === "INTERNAL" ? match.creatorClubId : match.homeClubId;
   if (!homeClubId || !(await canCreateClubMatches(user.id, homeClubId))) return forbidden(t("responses.match.forbidden"));
   await ensureClubActive(homeClubId);
-  if (match.status === "FINISHED") return invalid(t("responses.match.videoAddLocked"));
+  if (match.status === "COMPLETED") return invalid(t("responses.match.videoAddLocked"));
   const normalized = normalizeMatchVideoUrl(parsed.data.url);
   await prisma.matchVideo.create({
     data: {
@@ -323,7 +404,7 @@ export async function updateMatchVideoAction(input: unknown): Promise<ApiRespons
   const clubId = video.match.type === "INTERNAL" ? video.match.creatorClubId : video.match.homeClubId;
   if (!clubId || !(await canCreateClubMatches(user.id, clubId))) return forbidden(t("responses.match.forbidden"));
   await ensureClubActive(clubId);
-  if (video.match.status === "FINISHED") return invalid(t("responses.match.videoUpdateLocked"));
+  if (video.match.status === "COMPLETED") return invalid(t("responses.match.videoUpdateLocked"));
   const normalized = normalizeMatchVideoUrl(parsed.data.url);
   await prisma.matchVideo.update({
     where: { id: video.id },
@@ -350,7 +431,7 @@ export async function deleteMatchVideoAction(matchVideoId: string): Promise<ApiR
   const clubId = video.match.type === "INTERNAL" ? video.match.creatorClubId : video.match.homeClubId;
   if (!clubId || !(await canCreateClubMatches(user.id, clubId))) return forbidden(t("responses.match.forbidden"));
   await ensureClubActive(clubId);
-  if (video.match.status === "FINISHED") return invalid(t("responses.match.videoDeleteLocked"));
+  if (video.match.status === "COMPLETED") return invalid(t("responses.match.videoDeleteLocked"));
   await prisma.matchVideo.delete({ where: { id: video.id } });
   if (video.publicId) await deleteCloudinaryAsset(video.publicId, "video");
   revalidateMatchSurfaces(video.matchId);
@@ -465,4 +546,9 @@ function invalid(message: string, issues?: Record<string, string[] | undefined>)
 
 async function actionTranslator(user: Awaited<ReturnType<typeof getCurrentUser>>) {
   return user ? createTranslator(user.locale) : getServerTranslator();
+}
+
+function matchServiceError(error: unknown, fallback: string): ApiResponse<never> {
+  if (error instanceof MatchDomainError) return invalid(error.message);
+  throw error;
 }

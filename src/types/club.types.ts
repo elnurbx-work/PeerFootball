@@ -105,3 +105,14 @@ export type ClubMetricDefinitionDto = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type ClubStatsDto = {
+  matchesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  recentForm: Array<"W" | "D" | "L">;
+};

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ClubPermissionPolicy, ClubRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { canRoleManageMatches } from "@/server/services/match-domain";
 
 const policyRoles: Record<ClubPermissionPolicy, ClubRole[]> = {
   OWNER_ONLY: ["OWNER"],
@@ -68,11 +69,25 @@ export async function canCreateClubMatches(userId: string, clubId: string) {
   return canRoleCreateClubMatches(role, settings?.matchCreatePermissionPolicy ?? "OWNER_TD");
 }
 
+export async function getClubMatchManagerIds(clubId: string): Promise<string[]> {
+  const settings = await prisma.clubSettings.findUnique({
+    where: { clubId },
+    select: { matchCreatePermissionPolicy: true }
+  });
+  const allowedRoles = policyRoles[settings?.matchCreatePermissionPolicy ?? "OWNER_TD"];
+  const memberships = await prisma.clubMember.findMany({
+    where: { clubId, status: "ACTIVE", role: { in: allowedRoles } },
+    select: { userId: true }
+  });
+
+  return memberships.map((membership) => membership.userId);
+}
+
 export function canRoleCreateClubMatches(
   role: ClubRole | null | undefined,
   policy: ClubPermissionPolicy
 ) {
-  return Boolean(role && policyRoles[policy].includes(role));
+  return canRoleManageMatches(role, policy);
 }
 
 export async function canManageGuestList(userId: string, clubId: string) {
@@ -90,6 +105,21 @@ export async function canManageClubMetrics(userId: string, clubId: string) {
   const role = await getClubRole(userId, clubId);
 
   return role === "OWNER" || role === "TD";
+}
+
+export function canRoleManageTactics(role: ClubRole | null | undefined) {
+  return role === "OWNER" || role === "TD" || role === "YTD";
+}
+
+export async function canManageClubTactics(userId: string, clubId: string) {
+  return canRoleManageTactics(await getClubRole(userId, clubId));
+}
+
+export async function getActiveClubMembership(userId: string, clubId: string) {
+  return prisma.clubMember.findFirst({
+    where: { userId, clubId, status: "ACTIVE" },
+    select: { id: true, role: true }
+  });
 }
 
 export async function ensureClubActive(clubId: string) {

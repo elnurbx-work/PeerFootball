@@ -6,11 +6,13 @@ export function getMatchTypeLabel(value: string, t: Translate) {
 
 export function getMatchStatusLabel(value: string, t: Translate) {
   if (value === "DRAFT") return t("matches.summary.statusDraft");
-  if (value === "PENDING_OPPONENT_APPROVAL") return t("matches.summary.statusPendingOpponentApproval");
+  if (value === "PENDING") return t("matches.summary.statusPendingOpponentApproval");
+  if (value === "ACCEPTED") return value;
+  if (value === "REJECTED") return value;
   if (value === "SCHEDULED") return t("matches.summary.statusScheduled");
   if (value === "LIVE") return t("matches.summary.statusLive");
-  if (value === "RESULT_PENDING_CONFIRMATION") return t("matches.summary.statusResultPendingConfirmation");
-  if (value === "FINISHED") return t("matches.summary.statusFinished");
+  if (value === "RESULT_PENDING") return t("matches.summary.statusResultPendingConfirmation");
+  if (value === "COMPLETED") return t("matches.summary.statusFinished");
   if (value === "DISPUTED") return t("matches.summary.statusDisputed");
   if (value === "CANCELLED") return t("matches.summary.statusCancelled");
   return value;

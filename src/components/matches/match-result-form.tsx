@@ -43,8 +43,8 @@ export function MatchResultForm({
         </p>
       </div>
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 sm:gap-3">
-        <Input className="min-w-0" name="homeScore" type="number" aria-label={t("matches.resultForm.homeScore")} value={initialHomeScore} readOnly required />
-        <Input className="min-w-0" name="awayScore" type="number" aria-label={t("matches.resultForm.awayScore")} value={initialAwayScore} readOnly required />
+        <Input className="min-w-0" name="homeScore" type="number" min={0} max={99} aria-label={t("matches.resultForm.homeScore")} defaultValue={initialHomeScore} required />
+        <Input className="min-w-0" name="awayScore" type="number" min={0} max={99} aria-label={t("matches.resultForm.awayScore")} defaultValue={initialAwayScore} required />
       </div>
       <Textarea name="resultNote" maxLength={500} placeholder={t("matches.resultForm.notePlaceholder")} />
       {message ? <p className="break-words text-sm text-muted-foreground">{message}</p> : null}

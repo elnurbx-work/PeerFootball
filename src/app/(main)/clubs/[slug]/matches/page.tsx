@@ -15,15 +15,22 @@ export default async function ClubMatchesPage({ params, searchParams }: { params
   const user = await measureAsync("matches.clubPage.currentUser", getCurrentUser, { route: "/clubs/[slug]/matches" }); if (!user) redirect("/auth/login");
   const t = createTranslator(user.locale);
   const tabs = [
-    ["upcoming", t("matches.pages.club.tabs.upcoming")], ["pending", t("matches.pages.club.tabs.pending")], ["finished", t("matches.pages.club.tabs.finished")], ["disputed", t("matches.pages.club.tabs.disputed")]
+    ["upcoming", t("matches.pages.club.tabs.upcoming")],
+    ["incoming", `← ${t("matches.pages.club.tabs.pending")}`],
+    ["outgoing", `→ ${t("matches.pages.club.tabs.pending")}`],
+    ["results", `✓ ${t("matches.pages.club.tabs.pending")}`],
+    ["finished", t("matches.pages.club.tabs.finished")],
+    ["disputed", t("matches.pages.club.tabs.disputed")]
   ] as const;
   const { slug } = await params; const club = await measureAsync("matches.clubPage.access", () => getClubBySlug(decodeURIComponent(slug), user.id), { route: "/clubs/[slug]/matches" }); if (!club) notFound();
   if (club.currentUserMemberStatus !== "ACTIVE") notFound();
   const [matches, canManage] = await Promise.all([getClubMatches(club.id, user.id), canCreateClubMatches(user.id, club.id)]);
   const activeTab = (await searchParams).tab ?? "upcoming";
   const visible = matches.filter((match) => {
-    if (activeTab === "pending") return ["PENDING_OPPONENT_APPROVAL", "RESULT_PENDING_CONFIRMATION"].includes(match.status);
-    if (activeTab === "finished") return ["FINISHED", "CANCELLED"].includes(match.status);
+    if (activeTab === "incoming") return match.status === "PENDING" && match.creatorClubId !== club.id;
+    if (activeTab === "outgoing") return match.status === "PENDING" && match.creatorClubId === club.id;
+    if (activeTab === "results") return match.status === "RESULT_PENDING";
+    if (activeTab === "finished") return ["COMPLETED", "CANCELLED", "REJECTED"].includes(match.status);
     if (activeTab === "disputed") return match.status === "DISPUTED";
     return ["DRAFT", "SCHEDULED", "LIVE"].includes(match.status);
   });

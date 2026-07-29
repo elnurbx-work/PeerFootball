@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BarChart3, ClipboardList, MessageCircle, Shield, Swords, Users } from "lucide-react";
+import { BarChart3, ClipboardList, MessageCircle, Swords } from "lucide-react";
 import { ClubCard } from "@/components/clubs/club-card";
+import { MatchCard } from "@/components/matches/match-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
-import { getClubBySlug } from "@/server/queries/club.queries";
+import { getClubBySlug, getClubStats, getMyClubs } from "@/server/queries/club.queries";
+import { canCreateClubMatches } from "@/server/services/club-permissions.service";
+import { getClubMatches } from "@/server/queries/match.queries";
 import { createTranslator } from "@/i18n/dictionary";
 
 type ClubPageProps = {
@@ -23,9 +26,6 @@ export default async function ClubPage({ params }: ClubPageProps) {
   }
   const t = createTranslator(currentUser.locale);
   const futureModules = [
-    { title: t("clubs.pages.detail.futureInternalTitle"), description: t("clubs.pages.detail.futureInternalDescription"), icon: Users },
-    { title: t("clubs.pages.detail.futureClubVsClubTitle"), description: t("clubs.pages.detail.futureClubVsClubDescription"), icon: Shield },
-    { title: t("clubs.pages.detail.tacticsTitle"), description: t("clubs.pages.detail.tacticsDescription"), icon: ClipboardList },
     { title: t("clubs.pages.detail.statisticsTitle"), description: t("clubs.pages.detail.statisticsDescription"), icon: BarChart3 },
     { title: t("clubs.pages.detail.analysisTitle"), description: t("clubs.pages.detail.analysisDescription"), icon: ClipboardList },
     { title: t("clubs.pages.detail.chatTitle"), description: t("clubs.pages.detail.chatDescription"), icon: MessageCircle }
@@ -39,6 +39,22 @@ export default async function ClubPage({ params }: ClubPageProps) {
   }
 
   const location = [club.city, club.country].filter(Boolean).join(", ");
+  const [myClubs, clubMatches, canManageTargetClub, clubStats] = await Promise.all([
+    getMyClubs(currentUser.id),
+    getClubMatches(club.id),
+    canCreateClubMatches(currentUser.id, club.id),
+    getClubStats(club.id)
+  ]);
+  const manageableChecks = await Promise.all(myClubs.map(async (item) => ({
+    club: item,
+    canManage: item.id !== club.id && await canCreateClubMatches(currentUser.id, item.id)
+  })));
+  const invitingClub = manageableChecks.find((item) => item.canManage)?.club;
+  const upcomingMatches = clubMatches.filter((match) => ["SCHEDULED", "LIVE"].includes(match.status)).slice(0, 4);
+  const pastMatches = clubMatches.filter((match) => match.status === "COMPLETED").slice(0, 4);
+  const pendingMatches = canManageTargetClub
+    ? clubMatches.filter((match) => ["PENDING", "RESULT_PENDING"].includes(match.status)).slice(0, 4)
+    : [];
 
   return (
     <section className="mx-auto grid max-w-6xl gap-6 px-4 py-10">
@@ -74,6 +90,11 @@ export default async function ClubPage({ params }: ClubPageProps) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 md:justify-end">
+            {invitingClub && club.isActive ? (
+              <Button asChild>
+                <Link href={`/clubs/${invitingClub.slug}/matches/new/club-vs-club?opponent=${club.id}`}>{t("matches.createClubVsClub.submit")}</Link>
+              </Button>
+            ) : null}
             <Button asChild variant="outline">
               <Link href={`/clubs/${club.slug}/members`}>{t("clubs.pages.detail.members")}</Link>
             </Button>
@@ -83,6 +104,11 @@ export default async function ClubPage({ params }: ClubPageProps) {
             <Button asChild variant="outline">
               <Link href={`/clubs/${club.slug}/metrics`}>{t("clubs.pages.detail.metrics")}</Link>
             </Button>
+            {club.currentUserMemberStatus === "ACTIVE" ? (
+              <Button asChild variant="outline">
+                <Link href={`/clubs/${club.slug}/lineups`}>Heyət və taktikalar</Link>
+              </Button>
+            ) : null}
             {club.currentUserRole === "OWNER" ? (
               <Button asChild>
                 <Link href={`/clubs/${club.slug}/settings`}>{t("clubs.pages.detail.settings")}</Link>
@@ -123,6 +149,20 @@ export default async function ClubPage({ params }: ClubPageProps) {
         </Card>
       ) : null}
 
+      <MatchCollection title={t("matches.pages.club.tabs.upcoming")} matches={upcomingMatches} />
+      <MatchCollection title={t("matches.pages.club.tabs.finished")} matches={pastMatches} />
+      {canManageTargetClub ? <MatchCollection title={t("matches.pages.club.tabs.pending")} matches={pendingMatches} /> : null}
+
+      <Card>
+        <CardHeader><CardTitle>{t("clubs.pages.detail.statisticsTitle")}</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+          {[clubStats.matchesPlayed, clubStats.wins, clubStats.draws, clubStats.losses, clubStats.goalsFor, clubStats.goalDifference].map((value, index) => (
+            <div key={index} className="rounded-md bg-secondary p-3 text-center"><strong className="text-xl">{value}</strong></div>
+          ))}
+          {clubStats.recentForm.length ? <div className="col-span-3 flex gap-2 sm:col-span-6">{clubStats.recentForm.map((item, index) => <Badge key={`${item}-${index}`} variant="secondary">{item}</Badge>)}</div> : null}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {futureModules.map((module) => (
           <Card key={module.title}>
@@ -137,4 +177,13 @@ export default async function ClubPage({ params }: ClubPageProps) {
       </div>
     </section>
   );
+}
+
+function MatchCollection({ title, matches }: { title: string; matches: Awaited<ReturnType<typeof getClubMatches>> }) {
+  return <section className="grid gap-3">
+    <h2 className="text-xl font-semibold">{title}</h2>
+    {matches.length
+      ? <div className="grid gap-4 md:grid-cols-2">{matches.map((match) => <MatchCard key={match.id} match={match} />)}</div>
+      : <p className="rounded-md border bg-card p-5 text-sm text-muted-foreground">—</p>}
+  </section>;
 }
