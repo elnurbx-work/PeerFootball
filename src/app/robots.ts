@@ -8,22 +8,22 @@ const privatePaths = [
   "/clubs",
   "/create",
   "/direct",
+  "/feed",
   "/feedback",
   "/friends",
-  "/matches",
   "/notifications",
   "/offline",
   "/profile",
   "/search",
   "/settings",
-  "/teams"
+  "/tactics"
 ];
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/", "/install"],
+      allow: ["/"],
       disallow: privatePaths
     },
     sitemap: `${siteConfig.url}/sitemap.xml`,

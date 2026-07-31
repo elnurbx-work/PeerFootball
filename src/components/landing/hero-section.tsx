@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, MapPin, UsersRound } from "lucide-react";
+import { ArrowRight, ShieldCheck, UsersRound } from "lucide-react";
 import type { LandingCopy } from "./landing-data";
 
 export function HeroSection({ copy }: { copy: LandingCopy }) {
@@ -48,11 +48,11 @@ export function HeroSection({ copy }: { copy: LandingCopy }) {
           </div>
           <div className="hero-float absolute left-0 top-[18%] flex max-w-[82%] items-center gap-2.5 rounded-2xl border border-white/10 bg-brand/95 p-3 shadow-xl backdrop-blur sm:-left-2 sm:gap-3 sm:p-3.5 md:-left-8">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-accent-foreground"><UsersRound className="h-5 w-5" /></span>
-            <span><strong className="block text-sm">{copy.hero.players}</strong><span className="text-xs text-white/50">{copy.hero.teams}</span></span>
+            <span><strong className="block text-sm">İctimai profillər</strong><span className="text-xs text-white/50">Məxfilik seçiminə hörmət</span></span>
           </div>
           <div className="hero-float-delay absolute -bottom-5 right-1 flex max-w-[82%] items-center gap-2.5 rounded-2xl border border-white/10 bg-card p-3 text-foreground shadow-xl sm:right-2 sm:gap-3 sm:p-3.5 md:-right-5 md:bottom-8">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary"><MapPin className="h-5 w-5" /></span>
-            <span><strong className="block text-sm">{copy.hero.matches}</strong><span className="text-xs text-muted-foreground">Within 5 km</span></span>
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary"><ShieldCheck className="h-5 w-5" /></span>
+            <span><strong className="block text-sm">Real klub oyunları</strong><span className="text-xs text-muted-foreground">Yalnız qəbuldan sonra görünür</span></span>
           </div>
         </div>
       </div>

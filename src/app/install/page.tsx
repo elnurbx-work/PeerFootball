@@ -34,7 +34,7 @@ export default async function InstallPage() {
           <Button asChild variant="ghost" className="w-fit px-0 hover:bg-transparent">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              FanPitch
+              PeerFootball
             </Link>
           </Button>
 

@@ -2,20 +2,35 @@ import type { Metadata } from "next";
 import { MarketingHome } from "@/components/marketing/marketing-home";
 import { getRequestLocale } from "@/i18n/server";
 import { localizedAlternates } from "@/lib/seo";
+import { getPublicPlatformStats } from "@/server/queries/public.queries";
+import { siteConfig } from "@/config/site";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
-  const title = "PeerFootball — Find Players, Teams and Matches Near You";
-  const description = "Create your football profile, discover nearby players, build teams, organize matches and find local football pitches with PeerFootball.";
+  const title = "PeerFootball — Yerli futbolçuları, komandaları və oyunları kəşf et";
+  const description = "Futbol profilini yarat, açıq komandaları və təsdiqlənmiş oyunları kəşf et, təhlükəsiz şəkildə yerli futbol icmasına qoşul.";
   return {
     title: { absolute: title },
     description,
-    alternates: { canonical: `/${locale}`, languages: localizedAlternates() },
-    openGraph: { title, description, url: `/${locale}`, locale },
+    alternates: { canonical: "/", languages: localizedAlternates() },
+    openGraph: { title, description, url: "/", locale },
     twitter: { title, description }
   };
 }
 
 export default async function HomePage() {
-  return <MarketingHome locale={await getRequestLocale()} />;
+  const [locale, stats] = await Promise.all([getRequestLocale(), getPublicPlatformStats()]);
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "Organization", name: siteConfig.name, url: siteConfig.url },
+      { "@type": "WebSite", name: siteConfig.name, url: siteConfig.url, inLanguage: ["az", "en", "ru"] }
+    ]
+  };
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      <MarketingHome locale={locale} stats={stats} />
+    </>
+  );
 }

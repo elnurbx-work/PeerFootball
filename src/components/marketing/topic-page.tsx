@@ -106,7 +106,7 @@ export function TopicPage({ locale, topic }: { locale: Locale; topic: SeoTopicSl
         </div>
       </section>
 
-      <nav aria-label="Related FanPitch features" className="mt-14 border-t pt-8">
+      <nav aria-label="Related PeerFootball features" className="mt-14 border-t pt-8">
         <h2 className="text-2xl font-bold">{generalCopy.learnMore}</h2>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {seoTopicSlugs.filter((slug) => slug !== topic).map((slug) => (

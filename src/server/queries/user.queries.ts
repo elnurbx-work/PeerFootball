@@ -39,7 +39,7 @@ export async function getSessionUserById(userId: string): Promise<SessionUser | 
 
   return {
     id: user.id,
-    name: user.name ?? "FanPitch Player",
+    name: user.name ?? "PeerFootball Player",
     email: user.email,
     image: user.image,
     username: user.username,

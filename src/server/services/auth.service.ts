@@ -91,9 +91,9 @@ export async function sendVerificationEmail(email: string, verificationUrl: stri
     body: JSON.stringify({
       from,
       to: email,
-      subject: "Verify your FanPitch email",
-      html: `<p>Welcome to FanPitch.</p><p><a href="${verificationUrl}">Verify your email</a></p><p>This link expires in 24 hours.</p>`,
-      text: `Welcome to FanPitch. Verify your email: ${verificationUrl}`
+      subject: "Verify your PeerFootball email",
+      html: `<p>Welcome to PeerFootball.</p><p><a href="${verificationUrl}">Verify your email</a></p><p>This link expires in 24 hours.</p>`,
+      text: `Welcome to PeerFootball. Verify your email: ${verificationUrl}`
     })
   });
 

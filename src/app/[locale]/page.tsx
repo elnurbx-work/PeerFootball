@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MarketingHome } from "@/components/marketing/marketing-home";
+import { getPublicPlatformStats } from "@/server/queries/public.queries";
 import { isLocale } from "@/i18n/config";
 import { localizedAlternates } from "@/lib/seo";
 
@@ -23,5 +24,5 @@ export async function generateMetadata({ params }: LocalePageProps): Promise<Met
 export default async function LocaleHomePage({ params }: LocalePageProps) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
-  return <MarketingHome locale={locale} />;
+  return <MarketingHome locale={locale} stats={await getPublicPlatformStats()} />;
 }

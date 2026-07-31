@@ -1,10 +1,10 @@
-# FanPitch
+# PeerFootball
 
-FanPitch is a football social network for amateur players and fans. Phase 2 wires Google and email/password authentication, Auth.js sessions, protected app routes, email verification, and persisted user profile editing.
+PeerFootball is a football social network for amateur players and fans. Phase 2 wires Google and email/password authentication, Auth.js sessions, protected app routes, email verification, and persisted user profile editing.
 
 ## Privacy Architecture
 
-FanPitch is moving toward a privacy-first data model. The database keeps operational metadata in plaintext where the server needs it for routing, access control, abuse prevention, and product workflows. Examples include user IDs, email, username, profile image URL, relationship rows, conversation membership, timestamps, visibility settings, and delivery/read metadata.
+PeerFootball is moving toward a privacy-first data model. The database keeps operational metadata in plaintext where the server needs it for routing, access control, abuse prevention, and product workflows. Examples include user IDs, email, username, profile image URL, relationship rows, conversation membership, timestamps, visibility settings, and delivery/read metadata.
 
 Sensitive user-authored content is designed to be encrypted before it reaches the server. The schema now includes encrypted profile storage, encrypted post content fields, and encrypted direct-message content fields. Direct messages must be stored as ciphertext only; the server should never persist direct-message plaintext.
 
@@ -40,7 +40,7 @@ AUTH_URL="http://localhost:3000"
 AUTH_GOOGLE_ID=""
 AUTH_GOOGLE_SECRET=""
 RESEND_API_KEY=""
-EMAIL_FROM="FanPitch <no-reply@example.com>"
+EMAIL_FROM="PeerFootball <no-reply@example.com>"
 ABLY_API_KEY=""
 MESSAGE_ENCRYPTION_KEY=""
 ```
@@ -57,11 +57,11 @@ CLOUDINARY_API_KEY=""
 CLOUDINARY_API_SECRET=""
 ```
 
-When these variables are not configured, FanPitch stores the original TheSportsDB image URL for the selected team.
+When these variables are not configured, PeerFootball stores the original TheSportsDB image URL for the selected team.
 
 ## Favorite Teams
 
-Favorite teams are stored per user in PostgreSQL. FanPitch does not keep a global football club database, seed every club, or maintain a shared team catalog.
+Favorite teams are stored per user in PostgreSQL. PeerFootball does not keep a global football club database, seed every club, or maintain a shared team catalog.
 
 Team search runs through the server route at `/api/profile/team-search`, which calls TheSportsDB server-side and returns a small normalized result list. Client components never call TheSportsDB directly.
 
@@ -96,9 +96,9 @@ https://your-vercel-domain.vercel.app/api/auth/callback/google
 
 5. Put the client ID in `AUTH_GOOGLE_ID` and client secret in `AUTH_GOOGLE_SECRET`.
 
-## Google AdSense
+## Google AdSense and consent
 
-AdSense is disabled by default and fails closed when the client ID, feed slot, or in-feed layout key is missing or invalid. Configure these public build-time variables locally in `.env.local` and, for deployment, in Vercel under Project Settings -> Environment Variables for each intended environment:
+AdSense is disabled by default and fails closed when its public build-time variables are missing or invalid. Configure them locally in `.env.local` and in the production deployment environment:
 
 ```bash
 NEXT_PUBLIC_ADSENSE_ENABLED=false
@@ -109,15 +109,24 @@ NEXT_PUBLIC_ADSENSE_FEED_INTERVAL=2
 NEXT_PUBLIC_ADSENSE_MAX_FEED_ADS=5
 ```
 
-In AdSense, create an In-feed ad unit, copy the account client ID (`ca-pub-...`) into `NEXT_PUBLIC_ADSENSE_CLIENT_ID`, the numeric ad-slot into `NEXT_PUBLIC_ADSENSE_FEED_SLOT`, and its non-empty layout key into `NEXT_PUBLIC_ADSENSE_FEED_LAYOUT_KEY`. Set `NEXT_PUBLIC_ADSENSE_ENABLED=true` only after all required values are configured, then redeploy because `NEXT_PUBLIC_*` values are embedded at build time. Configure the variables for Vercel Production (not only Preview) and create a new deployment after every change.
-
-The main `/feed` inserts one manual ad after every two real posts by default, using the complete rendered post array rather than resetting at page boundaries. Change `NEXT_PUBLIC_ADSENSE_FEED_INTERVAL` to adjust that interval and `NEXT_PUBLIC_ADSENSE_MAX_FEED_ADS` to cap ads in a long feed (default: five). Empty feeds and all other routes—including authentication, direct messages, settings, admin, post creation, account-management, payment, loading, and error screens—do not render ad units. The AdSense script is mounted once from the root layout but only loads on `/feed` when configuration is valid.
+Copy the account client ID (`ca-pub-...`) and ad-unit values from AdSense. Set `NEXT_PUBLIC_ADSENSE_ENABLED=true` only after the production domain and ad unit are approved, then redeploy because `NEXT_PUBLIC_*` values are embedded at build time. The script is consent-gated and route-gated to substantial guide detail pages. Private routes, empty states, authentication screens, settings, messaging, admin and the private feed are not monetized.
 
 The committed `public/ads.txt` contains the publisher declaration using the required `pub-...` form (not `ca-pub-...`). After deployment, verify that `https://YOUR_DOMAIN/ads.txt` returns that declaration as plain text.
 
-Google and advertising partners may use cookies or similar technologies for advertising measurement and may show personalized or non-personalized ads depending on consent and region. The project owner must reflect this in the published privacy and cookie information. For users in the EEA, United Kingdom, or Switzerland, configure a Google-certified consent management platform through AdSense Privacy & Messaging or another certified CMP before enabling ads; this repository does not claim GDPR compliance and does not include a CMP. If consent support is added, gate the AdSense script on advertising consent.
+Google and advertising partners may use cookies or similar technologies. The built-in banner separates necessary, preference, analytics and advertising choices and blocks AdSense until advertising consent is granted. For regions where Google requires a certified CMP, configure one through AdSense Privacy & Messaging before enabling ads; the repository does not claim legal compliance by itself.
 
 The site and ad unit must be approved by AdSense before real ads can display. Test serving on the approved production domain: localhost and Vercel Preview may remain unfilled. Also verify that the production domain registered in AdSense matches the deployed canonical domain. Configure Auto Ads so it does not inject excessive additional units into the manually monetized feed. Do not click your own ads or use real ad clicks for testing.
+
+## Public content and SEO checks
+
+Public pages expose only privacy-safe DTOs. Private profiles, closed clubs, pending match proposals, internal matches, direct messages and account routes are excluded from public queries, robots and sitemap output.
+
+```bash
+npm run content:audit
+npm run audit:public -- https://your-production-domain.example
+```
+
+`content:audit` is dry-run only. A candidate can be hidden reversibly only when both `--apply` and `ALLOW_CONTENT_MODERATION_APPLY=true` are supplied through `npm run content:moderate`; the script never deletes posts.
 
 ## Local Development
 

@@ -19,20 +19,20 @@ type MarketingCopy = {
 
 export const marketingCopy: Record<Locale, MarketingCopy> = {
   az: {
-    homeTitle: "FanPitch — Futbol sosial şəbəkəsi və yerli oyun təşkilatçısı",
+    homeTitle: "PeerFootball — Futbol sosial şəbəkəsi və yerli oyun təşkilatçısı",
     homeDescription:
-      "FanPitch oyunçular, azarkeşlər, klublar və yerli oyun təşkilatçıları üçün futbol sosial şəbəkəsidir.",
-    learnMore: "FanPitch necə işləyir?",
+      "PeerFootball oyunçular, azarkeşlər, klublar və yerli oyun təşkilatçıları üçün futbol sosial şəbəkəsidir.",
+    learnMore: "PeerFootball necə işləyir?",
     aboutTitle: "Futbol sosial şəbəkəsi və yerli oyun təşkilatçısı",
     aboutDescription:
-      "FanPitch ilə futbolçu tapın, klub yaradın, yerli oyunları təşkil edin və futbol icmanızla paylaşın.",
-    eyebrow: "FanPitch haqqında",
+      "PeerFootball ilə futbolçu tapın, klub yaradın, yerli oyunları təşkil edin və futbol icmanızla paylaşın.",
+    eyebrow: "PeerFootball haqqında",
     answer:
-      "FanPitch futbolçuları, azarkeşləri və yerli klubları birləşdirən futbol sosial şəbəkəsi və oyun təşkilatçısıdır. Bir hesabla oyunçu profili yarada, futbolçular tapa, klub qura, oyun planlaşdıra və futbol paylaşımları edə bilərsiniz.",
+      "PeerFootball futbolçuları, azarkeşləri və yerli klubları birləşdirən futbol sosial şəbəkəsi və oyun təşkilatçısıdır. Bir hesabla oyunçu profili yarada, futbolçular tapa, klub qura, oyun planlaşdıra və futbol paylaşımları edə bilərsiniz.",
     sections: [
       {
         title: "Yerli futbol oyunlarını necə təşkil etmək olar?",
-        body: "Klub yaradın və ya mövcud kluba qoşulun, oyun vaxtını və məkanını təyin edin, tərəfləri qurun və nəticəni, qolları və oyun videolarını eyni yerdə saxlayın. FanPitch daxili klub oyunlarını və klublararası görüşləri dəstəkləyir."
+        body: "Klub yaradın və ya mövcud kluba qoşulun, oyun vaxtını və məkanını təyin edin, tərəfləri qurun və nəticəni, qolları və oyun videolarını eyni yerdə saxlayın. PeerFootball daxili klub oyunlarını və klublararası görüşləri dəstəkləyir."
       },
       {
         title: "Yaxınlıqdakı futbolçuları necə tapmaq olar?",
@@ -47,32 +47,32 @@ export const marketingCopy: Record<Locale, MarketingCopy> = {
         body: "Lentdə mətn, foto və video paylaşın; şərh, bəyənmə və təkrar paylaşma ilə söhbətə qoşulun. Dostluqlar, bildirişlər və birbaşa mesajlar futbol icmasını oyundan əvvəl və sonra əlaqədə saxlayır."
       }
     ],
-    whoTitle: "FanPitch kimlər üçündür?",
+    whoTitle: "PeerFootball kimlər üçündür?",
     who: ["Yerli oyun axtaran futbolçular", "Komanda yoldaşı tapmaq istəyən təşkilatçılar", "Heyət və oyunları idarə edən klublar", "Futbol icması ilə paylaşmaq istəyən azarkeşlər"],
     faqTitle: "Tez-tez verilən suallar",
     faqs: [
-      { question: "FanPitch nədir?", answer: "FanPitch oyunçu profilləri, sosial paylaşımlar, klublar, yerli oyunlar və mesajlaşmanı birləşdirən futbol platformasıdır." },
-      { question: "FanPitch-də yerli futbol oyunu yaratmaq olar?", answer: "Bəli. Aktiv klub üzvləri daxili və ya klublararası oyun yarada, vaxtı, məkanı, tərəfləri və oyun nəticələrini idarə edə bilərlər." },
-      { question: "FanPitch futbolçu tapmağa kömək edirmi?", answer: "Bəli. Oyunçu axtarışı, profillər, dostluqlar və birbaşa mesajlar vasitəsilə futbolçuları tapmaq və əlaqə saxlamaq mümkündür." }
+      { question: "PeerFootball nədir?", answer: "PeerFootball oyunçu profilləri, sosial paylaşımlar, klublar, yerli oyunlar və mesajlaşmanı birləşdirən futbol platformasıdır." },
+      { question: "PeerFootball-də yerli futbol oyunu yaratmaq olar?", answer: "Bəli. Aktiv klub üzvləri daxili və ya klublararası oyun yarada, vaxtı, məkanı, tərəfləri və oyun nəticələrini idarə edə bilərlər." },
+      { question: "PeerFootball futbolçu tapmağa kömək edirmi?", answer: "Bəli. Oyunçu axtarışı, profillər, dostluqlar və birbaşa mesajlar vasitəsilə futbolçuları tapmaq və əlaqə saxlamaq mümkündür." }
     ],
-    join: "FanPitch-ə qoşul",
+    join: "PeerFootball-ə qoşul",
     back: "Ana səhifə"
   },
   en: {
-    homeTitle: "FanPitch — Football Social Network & Local Match Organizer",
+    homeTitle: "PeerFootball — Football Social Network & Local Match Organizer",
     homeDescription:
-      "FanPitch is a football social network for players, fans, clubs, and local match organizers.",
-    learnMore: "How FanPitch works",
+      "PeerFootball is a football social network for players, fans, clubs, and local match organizers.",
+    learnMore: "How PeerFootball works",
     aboutTitle: "Football social network and local match organizer",
     aboutDescription:
-      "Find football players, create a club, organize local matches, and share with your football community on FanPitch.",
-    eyebrow: "About FanPitch",
+      "Find football players, create a club, organize local matches, and share with your football community on PeerFootball.",
+    eyebrow: "About PeerFootball",
     answer:
-      "FanPitch is a football social network and match organizer that connects players, fans, and local clubs. With one account, you can build a player profile, find footballers, create a club, plan matches, and share football posts.",
+      "PeerFootball is a football social network and match organizer that connects players, fans, and local clubs. With one account, you can build a player profile, find footballers, create a club, plan matches, and share football posts.",
     sections: [
       {
         title: "How can you organize local football matches?",
-        body: "Create or join a club, set the match time and venue, build the sides, and keep the result, goals, and match videos together. FanPitch supports both internal club matches and club-versus-club fixtures."
+        body: "Create or join a club, set the match time and venue, build the sides, and keep the result, goals, and match videos together. PeerFootball supports both internal club matches and club-versus-club fixtures."
       },
       {
         title: "How can you find football players nearby?",
@@ -87,32 +87,32 @@ export const marketingCopy: Record<Locale, MarketingCopy> = {
         body: "Share text, photos, and videos in the feed, then join the conversation through comments, likes, and reposts. Friendships, notifications, and direct messages keep the football community connected before and after games."
       }
     ],
-    whoTitle: "Who is FanPitch for?",
+    whoTitle: "Who is PeerFootball for?",
     who: ["Players looking for local games", "Organizers who need teammates", "Clubs managing squads and matches", "Fans who want a football-focused community"],
     faqTitle: "Frequently asked questions",
     faqs: [
-      { question: "What is FanPitch?", answer: "FanPitch is a football platform combining player profiles, social posts, clubs, local matches, and messaging." },
-      { question: "Can I create a local football match on FanPitch?", answer: "Yes. Active club members can create internal or club-versus-club matches and manage the time, venue, sides, and results." },
-      { question: "Does FanPitch help me find football players?", answer: "Yes. Player search, profiles, friendships, and direct messages help people discover and connect with footballers." }
+      { question: "What is PeerFootball?", answer: "PeerFootball is a football platform combining player profiles, social posts, clubs, local matches, and messaging." },
+      { question: "Can I create a local football match on PeerFootball?", answer: "Yes. Active club members can create internal or club-versus-club matches and manage the time, venue, sides, and results." },
+      { question: "Does PeerFootball help me find football players?", answer: "Yes. Player search, profiles, friendships, and direct messages help people discover and connect with footballers." }
     ],
-    join: "Join FanPitch",
+    join: "Join PeerFootball",
     back: "Home"
   },
   ru: {
-    homeTitle: "FanPitch — футбольная социальная сеть и организатор матчей",
+    homeTitle: "PeerFootball — футбольная социальная сеть и организатор матчей",
     homeDescription:
-      "FanPitch — футбольная социальная сеть для игроков, болельщиков, клубов и организаторов местных матчей.",
-    learnMore: "Как работает FanPitch",
+      "PeerFootball — футбольная социальная сеть для игроков, болельщиков, клубов и организаторов местных матчей.",
+    learnMore: "Как работает PeerFootball",
     aboutTitle: "Футбольная социальная сеть и организатор местных матчей",
     aboutDescription:
-      "Находите футболистов, создавайте клуб, организуйте местные матчи и общайтесь с футбольным сообществом в FanPitch.",
-    eyebrow: "О FanPitch",
+      "Находите футболистов, создавайте клуб, организуйте местные матчи и общайтесь с футбольным сообществом в PeerFootball.",
+    eyebrow: "О PeerFootball",
     answer:
-      "FanPitch — футбольная социальная сеть и организатор матчей, который объединяет игроков, болельщиков и местные клубы. В одном аккаунте можно создать профиль игрока, найти футболистов, открыть клуб, запланировать матчи и публиковать футбольный контент.",
+      "PeerFootball — футбольная социальная сеть и организатор матчей, который объединяет игроков, болельщиков и местные клубы. В одном аккаунте можно создать профиль игрока, найти футболистов, открыть клуб, запланировать матчи и публиковать футбольный контент.",
     sections: [
       {
         title: "Как организовать местный футбольный матч?",
-        body: "Создайте клуб или вступите в него, укажите время и место матча, сформируйте составы и храните результат, голы и видео матча в одном месте. FanPitch поддерживает внутренние и межклубные встречи."
+        body: "Создайте клуб или вступите в него, укажите время и место матча, сформируйте составы и храните результат, голы и видео матча в одном месте. PeerFootball поддерживает внутренние и межклубные встречи."
       },
       {
         title: "Как найти футболистов поблизости?",
@@ -127,15 +127,15 @@ export const marketingCopy: Record<Locale, MarketingCopy> = {
         body: "Публикуйте текст, фотографии и видео, участвуйте в обсуждениях через комментарии, отметки и репосты. Друзья, уведомления и личные сообщения поддерживают связь до и после матчей."
       }
     ],
-    whoTitle: "Для кого FanPitch?",
+    whoTitle: "Для кого PeerFootball?",
     who: ["Для игроков, которые ищут местные матчи", "Для организаторов, которым нужны участники", "Для клубов, управляющих составами и матчами", "Для болельщиков, которым нужно футбольное сообщество"],
     faqTitle: "Частые вопросы",
     faqs: [
-      { question: "Что такое FanPitch?", answer: "FanPitch — футбольная платформа, объединяющая профили игроков, социальные публикации, клубы, местные матчи и сообщения." },
-      { question: "Можно ли создать местный футбольный матч в FanPitch?", answer: "Да. Активные участники клуба могут создавать внутренние и межклубные матчи и управлять временем, местом, составами и результатами." },
-      { question: "Помогает ли FanPitch найти футболистов?", answer: "Да. Поиск игроков, профили, друзья и личные сообщения помогают находить футболистов и связываться с ними." }
+      { question: "Что такое PeerFootball?", answer: "PeerFootball — футбольная платформа, объединяющая профили игроков, социальные публикации, клубы, местные матчи и сообщения." },
+      { question: "Можно ли создать местный футбольный матч в PeerFootball?", answer: "Да. Активные участники клуба могут создавать внутренние и межклубные матчи и управлять временем, местом, составами и результатами." },
+      { question: "Помогает ли PeerFootball найти футболистов?", answer: "Да. Поиск игроков, профили, друзья и личные сообщения помогают находить футболистов и связываться с ними." }
     ],
-    join: "Присоединиться к FanPitch",
+    join: "Присоединиться к PeerFootball",
     back: "Главная"
   }
 };

@@ -8,7 +8,7 @@ import {
 } from "@/lib/security/headers";
 
 const productionHost = "peerfootball.vercel.app";
-const authenticatedRoute = /^\/(?:clubs(?:\/|$)|create\/?$|direct\/?$|feedback\/?$|friends\/?$|matches(?:\/|$)|notifications\/?$|profile(?:\/|$)|search\/?$|settings\/?$|teams\/?$)/;
+const authenticatedRoute = /^\/(?:clubs(?:\/|$)|create\/?$|direct\/?$|feed\/?$|feedback\/?$|friends\/?$|notifications\/?$|profile(?:\/|$)|search\/?$|settings\/?$|tactics(?:\/|$))/;
 const personalizedRoute = /^\/(?:admin(?:\/|$)|api(?:\/|$)|auth(?:\/|$)|clubs(?:\/|$)|create\/?$|direct\/?$|feed\/?$|feedback\/?$|friends\/?$|matches(?:\/|$)|notifications\/?$|profile(?:\/|$)|search\/?$|settings\/?$|tactics(?:\/|$)|teams\/?$)/;
 const sessionCookieNames = ["fanpitch.session-token", "__Secure-fanpitch.session-token"];
 const feedRoute = /^\/feed\/?$/;

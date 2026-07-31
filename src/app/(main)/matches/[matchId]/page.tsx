@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { MatchInviteActions, MatchProposalActions } from "@/components/matches/match-proposal-actions";
 import { MatchResultConfirmation } from "@/components/matches/match-result-confirmation";
 import { MatchResultForm } from "@/components/matches/match-result-form";
@@ -15,15 +16,53 @@ import { getMatchById } from "@/server/queries/match.queries";
 import { getClubTactics, getMatchTactics } from "@/server/queries/tactic.queries";
 import { createTranslator } from "@/i18n/dictionary";
 import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
+import { getPublicMatchById } from "@/server/queries/public.queries";
+import { Breadcrumbs, PublicShell } from "@/components/public/public-shell";
+import { ClientDateTime } from "@/components/i18n/client-date-time";
+import { siteConfig } from "@/config/site";
+
+export async function generateMetadata({ params }: { params: Promise<{ matchId: string }> }): Promise<Metadata> {
+  const match = await getPublicMatchById((await params).matchId);
+  if (!match) return { title: "Oyun tapılmadı", robots: { index: false, follow: false } };
+  const teams = match.sides.map((side) => side.name).join(" — ");
+  return {
+    title: `${teams} — PeerFootball`,
+    description: `${teams} futbol oyununun vaxtı, məkanı, statusu və ictimai nəticəsi.`,
+    robots: { index: true, follow: true },
+    alternates: { canonical: `/matches/${match.id}` }
+  };
+}
 
 export default async function MatchDetailsPage({ params }: { params: Promise<{ matchId: string }> }) {
+  const { matchId } = await params;
   const totalStartedAt = performanceNow();
   const user = await measureAsync("matches.detailPage.currentUser", getCurrentUser, {
     route: "/matches/[matchId]"
   });
-  if (!user) redirect("/auth/login");
+  if (!user) {
+    const publicMatch = await getPublicMatchById(matchId);
+    if (!publicMatch) notFound();
+    const [home, away] = publicMatch.sides;
+    const content = (
+      <article className="mx-auto max-w-5xl px-4 py-10">
+        <Breadcrumbs items={[{ label: "Ana səhifə", href: "/" }, { label: "Oyunlar", href: "/matches" }, { label: `${home?.name || "Ev"} — ${away?.name || "Qonaq"}` }]} />
+        <header className="rounded-2xl border bg-card p-6 text-center">
+          <p className="text-sm font-bold uppercase tracking-wider text-primary">{publicMatch.status}</p>
+          <h1 className="mt-4 text-3xl font-black sm:text-5xl">{home?.name || "Ev komandası"} — {away?.name || "Qonaq komandası"}</h1>
+          {publicMatch.status === "COMPLETED" ? <p className="mt-5 text-5xl font-black">{publicMatch.homeScore ?? home?.score ?? 0} : {publicMatch.awayScore ?? away?.score ?? 0}</p> : null}
+          <p className="mt-5 text-muted-foreground"><ClientDateTime value={publicMatch.startTime} />{publicMatch.venue ? ` · ${publicMatch.venue}` : ""}</p>
+        </header>
+        <section className="mt-7 rounded-2xl border bg-card p-6">
+          <h2 className="text-2xl font-bold">Oyun məlumatı</h2>
+          <dl className="mt-5 grid gap-4 sm:grid-cols-2"><div><dt className="text-sm text-muted-foreground">Format</dt><dd className="font-semibold">{publicMatch.format || "Qeyd edilməyib"}</dd></div><div><dt className="text-sm text-muted-foreground">Kateqoriya</dt><dd className="font-semibold">{publicMatch.category}</dd></div></dl>
+        </section>
+        {publicMatch.goals.length ? <section className="mt-7 rounded-2xl border bg-card p-6"><h2 className="text-2xl font-bold">Qollar</h2><ul className="mt-4 grid gap-2">{publicMatch.goals.map((goal) => <li key={goal.id} className="rounded-lg bg-secondary p-3"><strong>{goal.minute === null ? "Dəqiqə qeyd edilməyib" : `${goal.minute}${goal.extraMinute ? `+${goal.extraMinute}` : ""}'`}</strong> · {goal.playerName || "Oyunçu adı qeyd edilməyib"}</li>)}</ul></section> : null}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "SportsEvent", name: `${home?.name} — ${away?.name}`, startDate: publicMatch.startTime, eventStatus: publicMatch.status, location: publicMatch.venue ? { "@type": "Place", name: publicMatch.venue } : undefined, url: `${siteConfig.url}/matches/${publicMatch.id}` }).replaceAll("<", "\\u003c") }} />
+      </article>
+    );
+    return <PublicShell>{content}</PublicShell>;
+  }
   const t = createTranslator(user.locale);
-  const { matchId } = await params;
   const match = await getMatchById(matchId, user.id);
   if (!match) notFound();
 

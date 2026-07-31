@@ -1,5 +1,5 @@
-const feedRoute = /^\/feed\/?$/;
+const editorialRoute = /^\/guides\/[^/]+\/?$/;
 
 export function isAdSenseRoute(pathname: string) {
-  return feedRoute.test(pathname);
+  return editorialRoute.test(pathname);
 }

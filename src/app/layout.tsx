@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
@@ -11,6 +9,8 @@ import { getServerTranslator } from "@/i18n/server";
 import { adsenseConfig } from "@/config/adsense";
 import { siteConfig } from "@/config/site";
 import { AdConsentBanner } from "@/components/ads/ad-consent-banner";
+import { ConsentAwareAnalytics } from "@/components/ads/consent-aware-analytics";
+import { AdSenseScript } from "@/components/ads/adsense-script";
 import {
   ThemeProvider,
   themeInitializationScript
@@ -56,7 +56,7 @@ export async function generateMetadata(): Promise<Metadata> {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "FanPitch"
+    title: "PeerFootball"
   },
   formatDetection: {
     telephone: false
@@ -98,10 +98,10 @@ export default async function RootLayout({
             <ServiceWorkerRegistration />
             {children}
             <AdConsentBanner />
+            <AdSenseScript />
           </I18nProvider>
         </ThemeProvider>
-        <Analytics />
-        <SpeedInsights />
+        <ConsentAwareAnalytics />
       </body>
     </html>
   );

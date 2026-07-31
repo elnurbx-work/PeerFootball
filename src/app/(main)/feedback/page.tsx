@@ -13,7 +13,7 @@ export default async function FeedbackPage() {
         <CardHeader>
           <MessageSquareText className="mb-2 h-7 w-7 text-primary" />
           <CardTitle>Feedback</CardTitle>
-          <CardDescription>FanPitch-i yaxşılaşdırmaq üçün problem və təkliflərinizi bizə göndərin.</CardDescription>
+          <CardDescription>PeerFootball-i yaxşılaşdırmaq üçün problem və təkliflərinizi bizə göndərin.</CardDescription>
         </CardHeader>
         <CardContent><FeedbackForm /></CardContent>
       </Card>

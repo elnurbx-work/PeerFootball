@@ -4,7 +4,7 @@
     "save": "Save",
     "saving": "Saving...",
     "metadataDescription": "A football social network for players and fans.",
-    "feedShortcutDescription": "Open your FanPitch feed.",
+    "feedShortcutDescription": "Open your PeerFootball feed.",
     "matchesShortcutDescription": "Find and organize local football matches.",
     "membersCount": "{count} members"
   },
@@ -38,7 +38,7 @@
   },
   "settings": {
     "title": "Settings",
-    "subtitle": "Manage your FanPitch account.",
+    "subtitle": "Manage your PeerFootball account.",
     "profile": "Profile",
     "profileDescription": "Name, bio and position",
     "account": "Account",
@@ -48,18 +48,18 @@
     "appearance": "Appearance",
     "appearanceDescription": "Language and display options",
     "theme": "Theme", "themeDescription": "Choose how PeerFootball looks on this device.", "themeLight": "Light", "themeLightDescription": "Always use the light theme.", "themeDark": "Dark", "themeDarkDescription": "Always use the dark theme.", "themeSystem": "System", "themeSystemDescription": "Match your device appearance.", "themeSelected": "Selected", "themeHint": "This preference is stored in this browser.", "language": "Language",
-    "languageDescription": "Choose the language used in the FanPitch interface.",
+    "languageDescription": "Choose the language used in the PeerFootball interface.",
     "languageHint": "Your choice is saved to your account and applies across devices.",
     "azerbaijani": "Azərbaycan dili",
     "english": "English",
     "russian": "Русский",
     "signOutTitle": "Sign out",
-    "signOutDescription": "Securely end your FanPitch session on this device.",
+    "signOutDescription": "Securely end your PeerFootball session on this device.",
     "signOutButton": "Sign out"
   },
   "auth": {
     "login": {
-      "title": "Sign in to FanPitch",
+      "title": "Sign in to PeerFootball",
       "description": "Use your email and password, or continue with Google.",
       "email": "Email",
       "password": "Password",
@@ -70,7 +70,7 @@
       "createAccount": "Create account"
     },
     "register": {
-      "title": "Create your FanPitch account",
+      "title": "Create your PeerFootball account",
       "description": "Register with email, then verify your inbox before signing in.",
       "name": "Name",
       "email": "Email",
@@ -89,7 +89,7 @@
       "sending": "Sending...",
       "successTitle": "Email verified",
       "failedTitle": "Verification failed",
-      "successDescription": "Your FanPitch account is ready. You can sign in now.",
+      "successDescription": "Your PeerFootball account is ready. You can sign in now.",
       "failedDescription": "This verification link is invalid or expired.",
       "signIn": "Sign in"
     }
@@ -360,9 +360,9 @@
   },
   "home": {
     "eyebrow": "Football starts with your people",
-    "title": "FanPitch brings players, fans, clubs, and local matches into one place.",
+    "title": "PeerFootball brings players, fans, clubs, and local matches into one place.",
     "description": "Create your profile, share football posts, find players nearby, build clubs, and organize the next match without losing the thread.",
-    "join": "Join FanPitch",
+    "join": "Join PeerFootball",
     "viewHome": "View Home",
     "createMatch": "Create Match",
     "install": "Install",
@@ -389,27 +389,27 @@
       "browserAppMenu": "browser app menu",
       "addressBar": "browser address bar",
       "browserMenu": "browser menu",
-      "installed": "FanPitch is installed on this device.",
-      "ready": "FanPitch can be installed from this browser.",
+      "installed": "PeerFootball is installed on this device.",
+      "ready": "PeerFootball can be installed from this browser.",
       "dismissed": "Install was dismissed. You can try again from the browser menu.",
-      "useHint": "Use the {hint} to install FanPitch.",
-      "title": "Install FanPitch",
+      "useHint": "Use the {hint} to install PeerFootball.",
+      "title": "Install PeerFootball",
       "button": "Install app"
     },
     "page": {
-      "metadataTitle": "Install FanPitch",
-      "metadataDescription": "Install FanPitch as a fast app on your device.",
+      "metadataTitle": "Install PeerFootball",
+      "metadataDescription": "Install PeerFootball as a fast app on your device.",
       "faster": "Faster launch",
       "homeScreen": "Home screen access",
       "offlineFallback": "Offline fallback",
       "eyebrow": "PWA ready",
-      "title": "FanPitch belongs on your home screen.",
-      "description": "Open matches, posts, friends, and teams in a focused app window with the same FanPitch account."
+      "title": "PeerFootball belongs on your home screen.",
+      "description": "Open matches, posts, friends, and teams in a focused app window with the same PeerFootball account."
     }
   },
   "offline": {
     "eyebrow": "Offline mode",
-    "title": "FanPitch is waiting for a connection.",
+    "title": "PeerFootball is waiting for a connection.",
     "description": "Some cached parts of the app may still open, but live football posts, teams, friends, and matches need internet access.",
     "home": "Home",
     "retry": "Retry"
@@ -578,7 +578,7 @@
       "teamFallback": "Football team"
     },
     "summary": {
-      "playerFallback": "FanPitch Player",
+      "playerFallback": "PeerFootball Player",
       "profileFallback": "profile",
       "settings": "Settings",
       "private": "Private",
@@ -675,7 +675,7 @@
       "title": "Invite player",
       "searchPlaceholder": "Search by name or username",
       "search": "Search",
-      "playerFallback": "FanPitch player",
+      "playerFallback": "PeerFootball player",
       "profileFallback": "profile",
       "invite": "Invite"
     },
@@ -690,7 +690,7 @@
     },
     "members": {
       "title": "Members",
-      "playerFallback": "FanPitch player",
+      "playerFallback": "PeerFootball player",
       "approve": "Approve",
       "reject": "Reject",
       "acceptInvite": "Accept invite",

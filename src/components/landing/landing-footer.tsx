@@ -4,13 +4,13 @@ import type { LandingCopy } from "./landing-data";
 import type { Locale } from "@/i18n/config";
 import { BrandMark } from "./brand-mark";
 import { LanguageLinks } from "@/components/marketing/language-links";
+import { CookieSettingsButton } from "@/components/ads/cookie-settings-button";
 
 export function LandingFooter({ copy, locale }: { copy: LandingCopy; locale: Locale }) {
   const groups = [
-    { title: copy.footer.explore, links: [[copy.nav.players, "/search"], [copy.nav.teams, "/teams"], [copy.nav.matches, "/matches"], [copy.nav.pitches, "#pitches"]] },
-    // Missing informational/legal routes stay as text until real pages are added.
-    { title: copy.footer.platform, links: [[copy.footer.about, `/${locale}/about`], [copy.footer.rules], [copy.footer.help], [copy.footer.contact]] },
-    { title: copy.footer.legal, links: [[copy.footer.privacy], [copy.footer.terms], [copy.footer.cookies]] }
+    { title: copy.footer.explore, links: [[copy.nav.players, "/players"], [copy.nav.teams, "/teams"], [copy.nav.matches, "/matches"], [copy.nav.pitches, "/pitches"], ["Bələdçilər", "/guides"]] },
+    { title: copy.footer.platform, links: [[copy.footer.about, "/about"], [copy.footer.rules, "/community-guidelines"], [copy.footer.help, "/help"], [copy.footer.contact, "/contact"]] },
+    { title: copy.footer.legal, links: [[copy.footer.privacy, "/privacy"], [copy.footer.terms, "/terms"], [copy.footer.cookies, "/cookie-policy"]] }
   ] as const;
   return (
     <footer className="bg-brand text-white">
@@ -26,6 +26,7 @@ export function LandingFooter({ copy, locale }: { copy: LandingCopy; locale: Loc
           <div className="flex gap-2" aria-label="Social media">
             {[["Instagram", Instagram], ["Facebook", Facebook], ["YouTube", Youtube]].map(([label, Icon]) => <span key={label as string} title={`${label} coming soon`} aria-label={`${label} coming soon`} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10"><Icon className="h-4 w-4" /></span>)}
           </div>
+          <CookieSettingsButton className="text-white/60 hover:text-white" />
         </div>
       </div>
     </footer>

@@ -57,14 +57,16 @@ export default async function MainLayout({
   return (
     <I18nProvider locale={locale}>
       <LocaleCookieSync locale={locale} />
-      <AppShell
-      currentUser={currentUser}
-      initialNotifications={notifications}
-      initialUnreadDirectConversationCounts={unreadDirectConversationCounts}
-      initialUnreadNotificationCount={unreadNotificationCount}
-      >
-        {children}
-      </AppShell>
+      {currentUser ? (
+        <AppShell
+          currentUser={currentUser}
+          initialNotifications={notifications}
+          initialUnreadDirectConversationCounts={unreadDirectConversationCounts}
+          initialUnreadNotificationCount={unreadNotificationCount}
+        >
+          {children}
+        </AppShell>
+      ) : children}
     </I18nProvider>
   );
 }

@@ -21,8 +21,8 @@ const featureIcons = ["profile", "teams", "matches", "performance", "community",
 
 const en: LandingCopy = {
   nav: { features: "Features", players: "Players", teams: "Teams", matches: "Matches", pitches: "Pitches", login: "Log in", join: "Join now", menu: "Open navigation" },
-  hero: { eyebrow: "Built for local football communities", line1: "YOUR GAME.", line2: "YOUR TEAM.", line3: "YOUR COMMUNITY.", body: "Find players, build your team, organize matches and discover football pitches around you.", primary: "Join PeerFootball", secondary: "Explore matches", matches: "24 matches today", players: "128 players nearby", teams: "12 active teams" },
-  stats: [{ value: "12K+", label: "Active Players" }, { value: "850+", label: "Teams Created" }, { value: "4.9K+", label: "Matches Played" }, { value: "340+", label: "Football Pitches" }],
+  hero: { eyebrow: "Built for local football communities", line1: "YOUR GAME.", line2: "YOUR TEAM.", line3: "YOUR COMMUNITY.", body: "Find players, build your team, organize matches and discover football pitches around you.", primary: "Join PeerFootball", secondary: "Explore matches", matches: "Accepted matches", players: "Public players", teams: "Open teams" },
+  stats: [],
   features: { eyebrow: "One platform. Every match.", title: "Everything your football life needs", body: "PeerFootball brings players, teams, matches and local football activity together in one platform." },
   featureItems: [
     { title: "Player Profiles", description: "Build your football identity and showcase your preferred positions, match history and performance.", icon: featureIcons[0], tone: "dark", wide: true },
@@ -44,8 +44,8 @@ const en: LandingCopy = {
 const localized: Record<Exclude<Locale, "en">, Partial<LandingCopy>> = {
   az: {
     nav: { features: "İmkanlar", players: "Oyunçular", teams: "Komandalar", matches: "Oyunlar", pitches: "Meydançalar", login: "Daxil ol", join: "Qoşul", menu: "Naviqasiyanı aç" },
-    hero: { eyebrow: "Yerli futbol icmaları üçün yaradılıb", line1: "SƏNİN OYUNUN.", line2: "SƏNİN KOMANDAN.", line3: "SƏNİN İCMAN.", body: "Oyunçular tap, komandanı qur, oyunlar təşkil et və yaxınlıqdakı futbol meydançalarını kəşf et.", primary: "PeerFootball-a qoşul", secondary: "Oyunları kəşf et", matches: "Bu gün 24 oyun", players: "Yaxınlıqda 128 oyunçu", teams: "12 aktiv komanda" },
-    stats: [{ value: "12K+", label: "Aktiv oyunçu" }, { value: "850+", label: "Yaradılmış komanda" }, { value: "4.9K+", label: "Oynanılmış oyun" }, { value: "340+", label: "Futbol meydançası" }],
+    hero: { eyebrow: "Yerli futbol icmaları üçün yaradılıb", line1: "SƏNİN OYUNUN.", line2: "SƏNİN KOMANDAN.", line3: "SƏNİN İCMAN.", body: "Oyunçular tap, komandanı qur, oyunlar təşkil et və yaxınlıqdakı futbol meydançalarını kəşf et.", primary: "PeerFootball-a qoşul", secondary: "Oyunları kəşf et", matches: "Qəbul edilmiş oyunlar", players: "İctimai oyunçular", teams: "Açıq komandalar" },
+    stats: [],
     features: { eyebrow: "Bir platforma. Hər oyun.", title: "Futbol həyatın üçün lazım olan hər şey", body: "PeerFootball oyunçuları, komandaları, oyunları və yerli futbol fəaliyyətini bir platformada birləşdirir." },
     featureItems: [
       { title: "Oyunçu profilləri", description: "Futbol kimliyini qur, mövqelərini, oyun tarixçəni və performansını göstər.", icon: featureIcons[0], tone: "dark", wide: true },
@@ -65,8 +65,8 @@ const localized: Record<Exclude<Locale, "en">, Partial<LandingCopy>> = {
   },
   ru: {
     nav: { features: "Возможности", players: "Игроки", teams: "Команды", matches: "Матчи", pitches: "Площадки", login: "Войти", join: "Регистрация", menu: "Открыть навигацию" },
-    hero: { eyebrow: "Создано для местных футбольных сообществ", line1: "ТВОЯ ИГРА.", line2: "ТВОЯ КОМАНДА.", line3: "ТВОЁ СООБЩЕСТВО.", body: "Находи игроков, собирай команду, организуй матчи и открывай футбольные площадки рядом.", primary: "Присоединиться", secondary: "Найти матчи", matches: "24 матча сегодня", players: "128 игроков рядом", teams: "12 активных команд" },
-    stats: [{ value: "12K+", label: "Активных игроков" }, { value: "850+", label: "Созданных команд" }, { value: "4.9K+", label: "Сыгранных матчей" }, { value: "340+", label: "Футбольных полей" }],
+    hero: { eyebrow: "Создано для местных футбольных сообществ", line1: "ТВОЯ ИГРА.", line2: "ТВОЯ КОМАНДА.", line3: "ТВОЁ СООБЩЕСТВО.", body: "Находи игроков, собирай команду, организуй матчи и открывай футбольные площадки рядом.", primary: "Присоединиться", secondary: "Найти матчи", matches: "Подтвержденные матчи", players: "Открытые профили", teams: "Открытые команды" },
+    stats: [],
     features: { eyebrow: "Одна платформа. Каждый матч.", title: "Всё, что нужно для твоей футбольной жизни", body: "PeerFootball объединяет игроков, команды, матчи и местный футбол на одной платформе." },
     featureItems: [
       { title: "Профили игроков", description: "Создай футбольный профиль и покажи позиции, историю матчей и результаты.", icon: featureIcons[0], tone: "dark", wide: true },
@@ -106,18 +106,3 @@ export const landingCopy: Record<Locale, LandingCopy> = {
   az: mergeCopy("az"),
   ru: mergeCopy("ru")
 };
-
-// Marketing demo values. Replace these arrays with backend responses when public APIs are available.
-export const nearbyMatches = [
-  { teams: "Harbor XI vs City Rovers", time: "Tomorrow · 19:00", format: "5v5", spots: "2 spots" },
-  { teams: "Park United vs Atlas FC", time: "Wed · 20:30", format: "7v7", spots: "4 spots" },
-  { teams: "Old Town Social", time: "Fri · 21:00", format: "6v6", spots: "1 spot" }
-] as const;
-
-export const pitchMarkers = [
-  { id: 1, name: "Arena Football Center", type: "pitch", left: "68%", top: "45%", active: true },
-  { id: 2, name: "Riverside game", type: "live", left: "28%", top: "32%", active: false },
-  { id: 3, name: "Northside Arena", type: "indoor", left: "46%", top: "70%", active: false },
-  { id: 4, name: "Friday match", type: "match", left: "81%", top: "72%", active: false },
-  { id: 5, name: "Central pitch", type: "pitch", left: "17%", top: "74%", active: false }
-] as const;

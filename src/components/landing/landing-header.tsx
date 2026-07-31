@@ -23,10 +23,11 @@ export function LandingHeader({ copy, locale }: { copy: LandingCopy; locale: Loc
 
   const links = [
     [copy.nav.features, "#features"],
-    [copy.nav.players, "/search"],
+    [copy.nav.players, "/players"],
     [copy.nav.teams, "/teams"],
     [copy.nav.matches, "/matches"],
-    [copy.nav.pitches, "#pitches"]
+    [copy.nav.pitches, "/pitches"],
+    ["Bələdçilər", "/guides"]
   ] as const;
 
   return (

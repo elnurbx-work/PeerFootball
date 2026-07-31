@@ -62,9 +62,9 @@ export async function sendAdminLoginCode(email: string, secret: string) {
     body: JSON.stringify({
       from,
       to: email,
-      subject: "FanPitch admin giriş kodu",
-      html: `<p>FanPitch admin giriş kodunuz:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dəqiqə ərzində etibarlıdır. Bu girişi siz başlatmamısınızsa, mesajı nəzərə almayın.</p>`,
-      text: `FanPitch admin giriş kodunuz: ${code}. Kod 10 dəqiqə ərzində etibarlıdır.`
+      subject: "PeerFootball admin giriş kodu",
+      html: `<p>PeerFootball admin giriş kodunuz:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dəqiqə ərzində etibarlıdır. Bu girişi siz başlatmamısınızsa, mesajı nəzərə almayın.</p>`,
+      text: `PeerFootball admin giriş kodunuz: ${code}. Kod 10 dəqiqə ərzində etibarlıdır.`
     })
   });
 

@@ -7,7 +7,7 @@ export function AdminNav() {
   return (
     <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <p className="text-sm font-medium text-success">FanPitch idarəetməsi</p>
+        <p className="text-sm font-medium text-success">PeerFootball idarəetməsi</p>
         <nav className="mt-3 flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline" className="border-border-strong bg-card hover:bg-muted">
             <Link href="/admin"><LayoutDashboard className="h-4 w-4" />Panel</Link>
