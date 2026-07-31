@@ -1,85 +1,34 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { DirectInbox } from "@/components/direct/direct-inbox";
+import { ClubInbox } from "@/components/direct/club-inbox";
 import { getFriendsForUser } from "@/server/queries/friendship.queries";
-import { getConversationMessages, getConversationSummaries } from "@/server/queries/message.queries";
+import {
+  getClubChatSummaries,
+  getConversationMessages,
+  getConversationSummaries,
+  getMessagingUnreadCounts
+} from "@/server/queries/message.queries";
 import type { DirectFriend } from "@/types/message.types";
-import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
+import { cn } from "@/lib/utils";
+import { resolveMessagingTab, sumUnreadCounts } from "@/lib/messaging/navigation";
 
 type DirectPageProps = {
   searchParams: Promise<{
+    tab?: string;
     conversationId?: string;
+    clubId?: string;
   }>;
 };
 
 export default async function DirectPage({ searchParams }: DirectPageProps) {
-  const totalStartedAt = performanceNow();
   const currentUser = await getCurrentUser();
-
-  if (!currentUser) {
-    redirect("/auth/login");
-  }
+  if (!currentUser) redirect("/auth/login");
 
   const params = await searchParams;
-  const friendsMetadata = { route: "/direct", friendCount: 0 };
-  const conversationsMetadata = { route: "/direct", conversationCount: 0 };
-  const [friends, conversations] = await Promise.all([
-    measureAsync("direct.friends", async () => {
-      const result = await getFriendsForUser(currentUser.id);
-      friendsMetadata.friendCount = result.length;
-      return result;
-    }, friendsMetadata),
-    measureAsync("direct.conversations", async () => {
-      const result = await measureAsync(
-        "direct.conversationsPage",
-        () => getConversationSummaries(currentUser.id),
-        { route: "/direct" }
-      );
-      conversationsMetadata.conversationCount = result.length;
-      return result;
-    }, conversationsMetadata)
-  ]);
-  const directFriends = friends.map((friendship): DirectFriend => {
-    const conversation = conversations.find(
-      (item) => item.type === "DIRECT" && item.members.some((member) => member.id === friendship.user.id)
-    );
-
-    return {
-      ...friendship.user,
-      conversationId: conversation?.id ?? null,
-      lastMessage: conversation?.lastMessage ?? null,
-      unreadCount: conversation?.unreadCount ?? 0
-    };
-  });
-  const initialFriend = directFriends.find((friend) => friend.conversationId === params.conversationId) ?? directFriends[0];
-  const initialConversationId = initialFriend?.conversationId ?? null;
-  const initialMessagesMetadata = {
-    route: "/direct",
-    initialMessageCount: 0,
-    hasInitialConversation: Boolean(initialConversationId)
-  };
-  const messagesByConversationId = initialConversationId
-    ? { [initialConversationId]: await measureAsync("direct.initialMessages", async () => {
-        const result = await measureAsync(
-          "direct.messagesPage",
-          () => getConversationMessages(initialConversationId, currentUser.id),
-          { route: "/direct" }
-        );
-        initialMessagesMetadata.initialMessageCount = result.length;
-        return result;
-      }, initialMessagesMetadata) }
-    : {};
-  if (!initialConversationId) {
-    logPerformance("direct.initialMessages", 0, "success", initialMessagesMetadata);
-  }
-  const initialMessageCount = initialConversationId ? messagesByConversationId[initialConversationId]?.length ?? 0 : 0;
-  logPerformance("direct.totalData", performanceNow() - totalStartedAt, "success", {
-    route: "/direct",
-    friendCount: friends.length,
-    conversationCount: conversations.length,
-    initialMessageCount,
-    hasInitialConversation: Boolean(initialConversationId)
-  });
+  const activeTab = resolveMessagingTab(params.tab);
+  const unreadCountsPromise = getMessagingUnreadCounts(currentUser.id);
   const currentMessageUser = {
     id: currentUser.id,
     name: currentUser.name,
@@ -87,14 +36,90 @@ export default async function DirectPage({ searchParams }: DirectPageProps) {
     image: currentUser.image ?? null
   };
 
-  return (
-    <section className="grid h-[calc(100dvh-5rem)] overflow-hidden md:h-screen">
+  let content;
+  if (activeTab === "clubs") {
+    const clubs = await getClubChatSummaries(currentUser.id);
+    const initialClub = clubs.find((club) =>
+      params.clubId ? club.clubId === params.clubId : club.conversationId === params.conversationId
+    ) ?? null;
+    const initialConversationId = initialClub?.conversationId ?? null;
+    const messagesByConversationId = initialConversationId
+      ? { [initialConversationId]: await getConversationMessages(initialConversationId, currentUser.id) }
+      : {};
+    content = (
+      <ClubInbox
+        currentUser={currentMessageUser}
+        clubs={clubs}
+        initialClubId={initialClub?.clubId ?? null}
+        messagesByConversationId={messagesByConversationId}
+      />
+    );
+  } else {
+    const [friends, conversations] = await Promise.all([
+      getFriendsForUser(currentUser.id),
+      getConversationSummaries(currentUser.id)
+    ]);
+    const directFriends = friends.map((friendship): DirectFriend => {
+      const conversation = conversations.find(
+        (item) => item.members.some((member) => member.id === friendship.user.id)
+      );
+      return {
+        ...friendship.user,
+        conversationId: conversation?.id ?? null,
+        lastMessage: conversation?.lastMessage ?? null,
+        unreadCount: conversation?.unreadCount ?? 0
+      };
+    });
+    const initialFriend = directFriends.find((friend) => friend.conversationId === params.conversationId)
+      ?? directFriends[0];
+    const initialConversationId = initialFriend?.conversationId ?? null;
+    const messagesByConversationId = initialConversationId
+      ? { [initialConversationId]: await getConversationMessages(initialConversationId, currentUser.id) }
+      : {};
+    content = (
       <DirectInbox
         currentUser={currentMessageUser}
         friends={directFriends}
         initialConversationId={initialConversationId}
         messagesByConversationId={messagesByConversationId}
       />
+    );
+  }
+
+  const unreadCounts = await unreadCountsPromise;
+  const directUnreadCount = sumUnreadCounts(unreadCounts.direct);
+  const clubUnreadCount = sumUnreadCounts(unreadCounts.clubs);
+
+  return (
+    <section className="grid h-[calc(100dvh-5rem)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:h-screen">
+      <nav className="flex items-center gap-2 border-b bg-card px-3 py-2 sm:px-4" aria-label="Mesaj növü">
+        <MessagingTab href="/direct?tab=messages" active={activeTab === "messages"} label="Şəxsi mesajlar" count={directUnreadCount} />
+        <MessagingTab href="/direct?tab=clubs" active={activeTab === "clubs"} label="Klublar" count={clubUnreadCount} />
+      </nav>
+      <div className="min-h-0">{content}</div>
     </section>
+  );
+}
+
+function MessagingTab({ href, active, label, count }: { href: string; active: boolean; label: string; count: number }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition sm:flex-none",
+        active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-secondary"
+      )}
+    >
+      <span className="truncate">{label}</span>
+      {count ? (
+        <span className={cn(
+          "rounded-full px-1.5 py-0.5 text-[11px]",
+          active ? "bg-primary-foreground/20" : "bg-accent text-accent-foreground"
+        )}>
+          {count > 99 ? "99+" : count}
+        </span>
+      ) : null}
+    </Link>
   );
 }

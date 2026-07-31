@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Realtime, type InboundMessage, type PresenceMessage } from "ably";
 import { ArrowLeft, MessageCircle, Send, Trash2, Users } from "lucide-react";
@@ -11,6 +12,7 @@ import { Toast } from "@/components/ui/toast";
 import { getRoomChannelName, getUserInboxChannelName, INBOX_EVENTS, ROOM_EVENTS } from "@/lib/ably-channels";
 import { MESSAGE_CONTENT_MAX_LENGTH } from "@/lib/validations/message";
 import { cn } from "@/lib/utils";
+import { directMessagingHref } from "@/lib/messaging/navigation";
 import type {
   ChatMessage,
   ConversationUpdatePayload,
@@ -42,11 +44,12 @@ export function DirectInbox({
   messagesByConversationId
 }: DirectInboxProps) {
   const { locale, t } = useI18n();
+  const router = useRouter();
   const [friendsState, setFriendsState] = useState(friends);
   const [messagesByConversationIdState, setMessagesByConversationIdState] = useState(messagesByConversationId);
   const initialFriend = friends.find((friend) => friend.conversationId === initialConversationId) ?? friends[0];
   const [selectedFriendId, setSelectedFriendId] = useState(initialFriend?.id ?? "");
-  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(Boolean(initialConversationId));
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -335,6 +338,7 @@ export function DirectInbox({
       const data = result.data;
 
       setContent("");
+      router.replace(directMessagingHref(data.conversationId));
       shouldStickToBottomRef.current = true;
       upsertMessage(data.message);
       setFriendsState((currentFriends) =>
@@ -527,6 +531,7 @@ export function DirectInbox({
                 onClick={() => {
                   setSelectedFriendId(friend.id);
                   setIsMobileChatOpen(true);
+                  router.push(directMessagingHref(friend.conversationId));
                   setError(null);
                   setFriendsState((currentFriends) =>
                     currentFriends.map((currentFriend) =>
@@ -572,7 +577,10 @@ export function DirectInbox({
                   variant="outline"
                   type="button"
                   aria-label={t("direct.backToMessages")}
-                  onClick={() => setIsMobileChatOpen(false)}
+                  onClick={() => {
+                    setIsMobileChatOpen(false);
+                    router.push(directMessagingHref());
+                  }}
                 >
                   <ArrowLeft className="h-5 w-5" />
                   {t("direct.chats")}

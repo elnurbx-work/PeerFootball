@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MatchGoalsList } from "@/components/matches/match-goals-list";
 import type { MatchDto } from "@/types/match.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { ClientDateTime } from "@/components/i18n/client-date-time";
 import { getMatchCategoryLabel, getMatchStatusLabel, getMatchTypeLabel } from "@/components/matches/match-labels";
 
 export function MatchSummaryCard({ match, manageableSideIds, actions, onGoalMinuteClick }: {
@@ -14,7 +15,7 @@ export function MatchSummaryCard({ match, manageableSideIds, actions, onGoalMinu
   actions?: React.ReactNode;
   onGoalMinuteClick?: (minute: number, extraMinute?: number) => void;
 }) {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const [first, second] = match.sides;
   const homeScore = match.homeScore ?? match.goals.filter((goal) => goal.matchSideId === first?.id).length;
   const awayScore = match.awayScore ?? match.goals.filter((goal) => goal.matchSideId === second?.id).length;
@@ -35,7 +36,7 @@ export function MatchSummaryCard({ match, manageableSideIds, actions, onGoalMinu
           <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
             <p className="flex items-start gap-2">
               <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />
-              {new Intl.DateTimeFormat(locale, { dateStyle: "full", timeStyle: "short" }).format(new Date(match.startTime))}
+              <ClientDateTime value={match.startTime} dateStyle="full" />
               {match.durationMinutes ? ` · ${match.durationMinutes} min` : ""}
             </p>
             <p className="flex items-start gap-2 break-words">

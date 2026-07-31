@@ -4,11 +4,12 @@ import { CalendarDays, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { ClientDateTime } from "@/components/i18n/client-date-time";
 import { getMatchCategoryLabel, getMatchStatusLabel } from "@/components/matches/match-labels";
 import type { MatchDto, MatchSideDto } from "@/types/match.types";
 
 export function MatchProposalCard({ match, actions }: { match: MatchDto; actions?: React.ReactNode }) {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const [home, away] = match.sides;
 
   return (
@@ -30,7 +31,7 @@ export function MatchProposalCard({ match, actions }: { match: MatchDto; actions
           {match.title ? <h1 className="text-xl font-bold text-foreground sm:text-2xl">{match.title}</h1> : null}
           <p className="flex items-start gap-2">
             <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />
-            {new Intl.DateTimeFormat(locale, { dateStyle: "full", timeStyle: "short" }).format(new Date(match.startTime))}
+            <ClientDateTime value={match.startTime} dateStyle="full" />
           </p>
           <p className="flex items-start gap-2">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0" />

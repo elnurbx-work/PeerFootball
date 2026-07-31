@@ -269,6 +269,11 @@ enum NotificationType {
   FRIEND_REQUEST
   FRIEND_ACCEPTED
   MESSAGE
+  DIRECT_MESSAGE
+  CLUB_CHAT_MENTION
+  CLUB_CHAT_REPLY
+  CLUB_CHAT_MESSAGE_PINNED
+  CLUB_CHAT_ANNOUNCEMENT
   MATCH_INVITATION_RECEIVED
   MATCH_INVITATION_ACCEPTED
   MATCH_INVITATION_REJECTED
@@ -327,6 +332,7 @@ model User {
   encryptedProfile        UserEncryptedProfile?
   conversationMemberships ConversationMember[]
   sentMessages            Message[]              @relation("MessageSender")
+  pinnedConversations     Conversation[]         @relation("ConversationPinnedBy")
   receivedNotifications   Notification[]         @relation("NotificationRecipient")
   actedNotifications      Notification[]         @relation("NotificationActor")
   favoriteTeams           UserFavoriteTeam[]
@@ -345,9 +351,9 @@ model User {
   matchPlayerInvites      MatchPlayer[]          @relation("MatchPlayerInviter")
   matchVideos             MatchVideo[]           @relation("MatchVideoUploader")
   matchComments           MatchComment[]         @relation("MatchCommentAuthor")
-  lineupPlansCreated      LineupPlan[]            @relation("LineupPlanCreator")
-  tacticsCreated          Tactic[]                @relation("TacticCreator")
-  matchTacticsAttached    MatchTactic[]           @relation("MatchTacticAttacher")
+  lineupPlansCreated      LineupPlan[]           @relation("LineupPlanCreator")
+  tacticsCreated          Tactic[]               @relation("TacticCreator")
+  matchTacticsAttached    MatchTactic[]          @relation("MatchTacticAttacher")
   playerStats             PlayerStats?
   accounts                Account[]
   sessions                Session[]
@@ -587,15 +593,22 @@ model Block {
 }
 
 model Conversation {
-  id            String               @id @default(cuid())
-  type          ConversationType
-  clubId        String?              @unique
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  members       ConversationMember[]
-  messages      Message[]
-  notifications Notification[]
-  club          Club?                @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  id              String               @id @default(cuid())
+  type            ConversationType
+  clubId          String?              @unique
+  pinnedMessageId String?              @unique
+  pinnedById      String?
+  pinnedAt        DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  members         ConversationMember[]
+  messages        Message[]
+  notifications   Notification[]
+  club            Club?                @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  pinnedMessage   Message?             @relation("ConversationPinnedMessage", fields: [pinnedMessageId], references: [id], onDelete: SetNull)
+  pinnedBy        User?                @relation("ConversationPinnedBy", fields: [pinnedById], references: [id], onDelete: SetNull)
+
+  @@index([pinnedById])
 }
 
 model ConversationMember {
@@ -606,6 +619,8 @@ model ConversationMember {
   keyVersion               Int          @default(1)
   joinedAt                 DateTime     @default(now())
   lastReadAt               DateTime?
+  isMuted                  Boolean      @default(false)
+  mutedAt                  DateTime?
   conversation             Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user                     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -615,20 +630,21 @@ model ConversationMember {
 }
 
 model Message {
-  id             String         @id @default(cuid())
-  conversationId String
-  senderId       String
-  ciphertext     String
-  iv             String
-  authTag        String
-  algorithm      String         @default("aes-256-gcm")
-  keyVersion     Int            @default(1)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  deletedAt      DateTime?
-  conversation   Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User           @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  notifications  Notification[]
+  id                   String         @id @default(cuid())
+  conversationId       String
+  senderId             String
+  ciphertext           String
+  iv                   String
+  authTag              String
+  algorithm            String         @default("aes-256-gcm")
+  keyVersion           Int            @default(1)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  deletedAt            DateTime?
+  conversation         Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender               User           @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  notifications        Notification[]
+  pinnedInConversation Conversation?  @relation("ConversationPinnedMessage")
 
   @@index([conversationId, createdAt])
   @@index([senderId])
@@ -1002,12 +1018,12 @@ model LineupPlan {
   slots         LineupSlot[]
   tactics       Tactic[]
 
-  @@index([clubId, status, updatedAt])
   @@unique([clubId, name])
+  @@index([clubId, status, updatedAt])
 }
 
 model LineupSlot {
-  id                   String           @id @default(cuid())
+  id                   String            @id @default(cuid())
   lineupPlanId         String
   slotKey              String
   label                String
@@ -1016,14 +1032,14 @@ model LineupSlot {
   y                    Float
   assignedClubMemberId String?
   shirtNumber          Int?
-  isCaptain            Boolean          @default(false)
-  isGoalkeeper         Boolean          @default(false)
-  isSubstitute         Boolean          @default(false)
+  isCaptain            Boolean           @default(false)
+  isGoalkeeper         Boolean           @default(false)
+  isSubstitute         Boolean           @default(false)
   sortOrder            Int
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  lineupPlan           LineupPlan       @relation(fields: [lineupPlanId], references: [id], onDelete: Cascade)
-  assignedClubMember   ClubMember?      @relation(fields: [assignedClubMemberId], references: [id], onDelete: SetNull)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  lineupPlan           LineupPlan        @relation(fields: [lineupPlanId], references: [id], onDelete: Cascade)
+  assignedClubMember   ClubMember?       @relation(fields: [assignedClubMemberId], references: [id], onDelete: SetNull)
 
   @@unique([lineupPlanId, slotKey])
   @@unique([lineupPlanId, assignedClubMemberId])
@@ -1032,44 +1048,44 @@ model LineupSlot {
 }
 
 model Tactic {
-  id            String           @id @default(cuid())
-  clubId        String
-  lineupPlanId  String
-  name          String
-  description   String?
-  category      TacticCategory
-  visibility    TacticVisibility @default(COACHING_STAFF)
-  durationMs    Int              @default(10000)
-  status        TacticStatus     @default(DRAFT)
-  snapshotData  Json
-  previewData   Json?
-  createdById   String
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  club          Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  lineupPlan    LineupPlan       @relation(fields: [lineupPlanId], references: [id], onDelete: Restrict)
-  createdBy     User             @relation("TacticCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  scenes        TacticScene[]
-  matches       MatchTactic[]
+  id           String           @id @default(cuid())
+  clubId       String
+  lineupPlanId String
+  name         String
+  description  String?
+  category     TacticCategory
+  visibility   TacticVisibility @default(COACHING_STAFF)
+  durationMs   Int              @default(10000)
+  status       TacticStatus     @default(DRAFT)
+  snapshotData Json
+  previewData  Json?
+  createdById  String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  club         Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  lineupPlan   LineupPlan       @relation(fields: [lineupPlanId], references: [id], onDelete: Restrict)
+  createdBy    User             @relation("TacticCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  scenes       TacticScene[]
+  matches      MatchTactic[]
 
   @@index([clubId, status, updatedAt])
   @@index([lineupPlanId, status])
 }
 
 model TacticScene {
-  id             String   @id @default(cuid())
+  id             String               @id @default(cuid())
   tacticId       String
   name           String
   description    String?
   sortOrder      Int
-  durationMs     Int      @default(2000)
+  durationMs     Int                  @default(2000)
   startState     Json
   endState       Json
   ballStartState Json?
   ballEndState   Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  tactic         Tactic   @relation(fields: [tacticId], references: [id], onDelete: Cascade)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  tactic         Tactic               @relation(fields: [tacticId], references: [id], onDelete: Cascade)
   playerActions  TacticPlayerAction[]
   ballActions    TacticBallAction[]
   annotations    TacticAnnotation[]
@@ -1079,24 +1095,24 @@ model TacticScene {
 }
 
 model TacticPlayerAction {
-  id          String           @id @default(cuid())
-  sceneId     String
-  slotKey     String
-  type        TacticActionType
+  id            String           @id @default(cuid())
+  sceneId       String
+  slotKey       String
+  type          TacticActionType
   targetSlotKey String?
-  startX      Float
-  startY      Float
-  endX        Float
-  endY        Float
-  startTimeMs Int
-  durationMs  Int
-  easing      TacticEasing     @default(LINEAR)
-  label       String?
-  note        String?
-  metadata    Json?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  scene       TacticScene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  startX        Float
+  startY        Float
+  endX          Float
+  endY          Float
+  startTimeMs   Int
+  durationMs    Int
+  easing        TacticEasing     @default(LINEAR)
+  label         String?
+  note          String?
+  metadata      Json?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  scene         TacticScene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
 
   @@index([sceneId, startTimeMs])
   @@index([sceneId, slotKey])

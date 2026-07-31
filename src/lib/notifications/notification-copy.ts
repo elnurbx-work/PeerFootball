@@ -9,6 +9,8 @@ export function getNotificationText(notification: Pick<AppNotification, "actor" 
   if (notification.type === "POST_REPOST") return t("notifications.copy.postRepost", { actor });
   if (notification.type === "FRIEND_REQUEST") return t("notifications.copy.friendRequest", { actor });
   if (notification.type === "FRIEND_ACCEPTED") return t("notifications.copy.friendAccepted", { actor });
+  if (notification.type === "CLUB_CHAT_MESSAGE_PINNED") return notification.body ?? `${actor} klub mesajını sabitlədi`;
+  if (notification.type.startsWith("CLUB_CHAT_")) return notification.body ?? notification.title ?? `${actor} klub söhbətində sizi qeyd etdi`;
   if (notification.type.startsWith("MATCH_")) return notification.body ?? notification.title ?? notification.type.replaceAll("_", " ");
   return t("notifications.copy.message", { actor });
 }
@@ -29,7 +31,17 @@ export function getNotificationHref(notification: Pick<AppNotification, "actor" 
     case "FRIEND_ACCEPTED":
       return notification.actor ? `/profile/${notification.actor.username ?? notification.actor.id}` : "/friends";
     case "MESSAGE":
-      return notification.conversationId ? `/direct?conversationId=${notification.conversationId}` : "/direct";
+    case "DIRECT_MESSAGE":
+      return notification.conversationId
+        ? `/direct?tab=messages&conversationId=${notification.conversationId}`
+        : "/direct?tab=messages";
+    case "CLUB_CHAT_MENTION":
+    case "CLUB_CHAT_REPLY":
+    case "CLUB_CHAT_MESSAGE_PINNED":
+    case "CLUB_CHAT_ANNOUNCEMENT":
+      return notification.conversationId
+        ? `/direct?tab=clubs&conversationId=${notification.conversationId}`
+        : "/direct?tab=clubs";
     case "MATCH_INVITATION_RECEIVED":
     case "MATCH_INVITATION_ACCEPTED":
     case "MATCH_INVITATION_REJECTED":

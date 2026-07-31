@@ -3,7 +3,14 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { decryptMessage } from "@/server/services/message-encryption.service";
-import type { ChatMessage, ConversationSummary, EncryptedMessagePayload, RealtimeChatMessage } from "@/types/message.types";
+import type {
+  ChatMessage,
+  ClubChatSummary,
+  ConversationSummary,
+  EncryptedMessagePayload,
+  MessagingUnreadCounts,
+  RealtimeChatMessage
+} from "@/types/message.types";
 import { PAGINATION_LIMITS } from "@/lib/pagination";
 
 const messageSenderSelect = {
@@ -34,7 +41,7 @@ export async function isConversationMember(conversationId: string, userId: strin
     select: {
       id: true,
       conversation: {
-        select: { clubId: true }
+        select: { type: true, clubId: true }
       }
     }
   });
@@ -43,9 +50,11 @@ export async function isConversationMember(conversationId: string, userId: strin
     return false;
   }
 
-  if (!membership.conversation.clubId) {
-    return true;
+  if (membership.conversation.type === "DIRECT") {
+    return membership.conversation.clubId === null;
   }
+
+  if (membership.conversation.type !== "CLUB" || !membership.conversation.clubId) return false;
 
   const activeClubMembership = await prisma.clubMember.findFirst({
     where: {
@@ -96,6 +105,7 @@ export async function getConversationSummaries(currentUserId: string): Promise<C
   const [conversations, unreadCounts] = await Promise.all([
     prisma.conversation.findMany({
       where: {
+        type: "DIRECT",
         members: {
           some: {
             userId: currentUserId
@@ -139,16 +149,37 @@ export async function getConversationSummaries(currentUserId: string): Promise<C
 }
 
 export async function getUnreadDirectConversationCounts(currentUserId: string): Promise<Record<string, number>> {
-  return Object.fromEntries(await getUnreadConversationCountEntries(currentUserId, true));
+  return Object.fromEntries(await getUnreadConversationCountEntries(currentUserId, "DIRECT"));
 }
 
 async function getUnreadConversationCounts(currentUserId: string) {
-  return new Map(await getUnreadConversationCountEntries(currentUserId, false));
+  return new Map(await getUnreadConversationCountEntries(currentUserId, "DIRECT"));
 }
 
-async function getUnreadConversationCountEntries(currentUserId: string, directOnly: boolean) {
-  const conversationTypeFilter = directOnly
-    ? Prisma.sql`AND conversation."type" = 'DIRECT'`
+export async function getMessagingUnreadCounts(currentUserId: string): Promise<MessagingUnreadCounts> {
+  const [direct, clubs] = await Promise.all([
+    getUnreadConversationCountEntries(currentUserId, "DIRECT"),
+    getUnreadConversationCountEntries(currentUserId, "CLUB")
+  ]);
+  return {
+    direct: Object.fromEntries(direct),
+    clubs: Object.fromEntries(clubs)
+  };
+}
+
+async function getUnreadConversationCountEntries(currentUserId: string, type: "DIRECT" | "CLUB") {
+  const activeClubMembershipFilter = type === "CLUB"
+    ? Prisma.sql`
+        AND EXISTS (
+          SELECT 1
+          FROM "ClubMember" AS club_membership
+          INNER JOIN "Club" AS club ON club."id" = club_membership."clubId"
+          WHERE club_membership."clubId" = conversation."clubId"
+            AND club_membership."userId" = ${currentUserId}
+            AND club_membership."status" = 'ACTIVE'
+            AND club."isActive" = true
+        )
+      `
     : Prisma.empty;
   const rows = await prisma.$queryRaw<Array<{ conversationId: string; unreadCount: number | bigint }>>(Prisma.sql`
     SELECT
@@ -163,13 +194,88 @@ async function getUnreadConversationCountEntries(currentUserId: string, directOn
       AND message."senderId" <> ${currentUserId}
       AND (membership."lastReadAt" IS NULL OR message."createdAt" > membership."lastReadAt")
     WHERE membership."userId" = ${currentUserId}
-      ${conversationTypeFilter}
+      AND conversation."type" = ${type}::"ConversationType"
+      ${activeClubMembershipFilter}
     GROUP BY membership."conversationId"
   `);
 
   return rows
     .map((row) => [row.conversationId, Number(row.unreadCount)] as const)
     .filter(([, unreadCount]) => unreadCount > 0);
+}
+
+export async function getClubChatSummaries(currentUserId: string): Promise<ClubChatSummary[]> {
+  const memberships = await prisma.clubMember.findMany({
+    where: {
+      userId: currentUserId,
+      status: "ACTIVE",
+      club: { isActive: true }
+    },
+    relationLoadStrategy: "join",
+    select: {
+      role: true,
+      club: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+          members: {
+            where: { status: "ACTIVE" },
+            select: { id: true }
+          },
+          conversation: {
+            where: { type: "CLUB" },
+            select: {
+              id: true,
+              updatedAt: true,
+              pinnedMessage: {
+                include: messageInclude
+              },
+              members: {
+                where: { userId: currentUserId },
+                select: { isMuted: true }
+              },
+              messages: {
+                include: messageInclude,
+                orderBy: { createdAt: "desc" },
+                take: 1
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+  const unreadCounts = new Map(await getUnreadConversationCountEntries(currentUserId, "CLUB"));
+
+  return memberships
+    .map(({ club, role }): ClubChatSummary => {
+      const conversation = club.conversation;
+      return {
+        clubId: club.id,
+        clubName: club.name,
+        clubSlug: club.slug,
+        clubLogoUrl: club.logoUrl,
+        conversationId: conversation?.id ?? null,
+        lastMessage: conversation?.messages[0]
+          ? toChatMessage(conversation.messages[0], currentUserId)
+          : null,
+        pinnedMessage: conversation?.pinnedMessage
+          ? toChatMessage(conversation.pinnedMessage, currentUserId)
+          : null,
+        unreadCount: conversation ? unreadCounts.get(conversation.id) ?? 0 : 0,
+        activeMemberCount: club.members.length,
+        isMuted: conversation?.members[0]?.isMuted ?? false,
+        hasPinnedMessage: Boolean(conversation?.pinnedMessage),
+        canModerate: role === "OWNER" || role === "TD" || role === "YTD"
+      };
+    })
+    .sort((a, b) => {
+      const aTime = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+      const bTime = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+      return bTime - aTime || a.clubName.localeCompare(b.clubName);
+    });
 }
 
 export async function findDirectConversationForUsers(userAId: string, userBId: string) {

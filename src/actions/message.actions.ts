@@ -14,6 +14,7 @@ import {
 } from "@/server/queries/message.queries";
 import { canSendDirectMessage } from "@/server/services/privacy.service";
 import { encryptMessage } from "@/server/services/message-encryption.service";
+import { addUserToClubChat } from "@/server/services/club-chat.service";
 import {
   publishConversationRead,
   publishConversationUpdated,
@@ -25,6 +26,126 @@ import type { ChatMessage, ConversationUpdatePayload, RealtimeChatMessage, SendM
 import { getServerTranslator } from "@/i18n/server";
 
 type ActionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
+
+export async function openClubConversationAction(clubId: string): Promise<ApiResponse<{ conversationId: string }>> {
+  const t = await getServerTranslator();
+  const user = await requireUser();
+  if (!user) return { ok: false, message: t("responses.signInRequired") };
+
+  const membership = await prisma.clubMember.findFirst({
+    where: {
+      clubId,
+      userId: user.id,
+      status: "ACTIVE",
+      club: { isActive: true }
+    },
+    select: { id: true }
+  });
+  if (!membership) {
+    return { ok: false, message: t("responses.message.conversationNotFound") };
+  }
+
+  const conversationId = await prisma.$transaction((tx) => addUserToClubChat(tx, clubId, user.id));
+  revalidatePath("/direct");
+  return { ok: true, message: "", data: { conversationId } };
+}
+
+export async function toggleClubConversationMuteAction(
+  conversationId: string
+): Promise<ApiResponse<{ isMuted: boolean }>> {
+  const t = await getServerTranslator();
+  const user = await requireUser();
+  if (!user) return { ok: false, message: t("responses.signInRequired") };
+  if (!(await isConversationMember(conversationId, user.id))) {
+    return { ok: false, message: t("responses.message.conversationNotFound") };
+  }
+
+  const membership = await prisma.conversationMember.findUnique({
+    where: { conversationId_userId: { conversationId, userId: user.id } },
+    select: { isMuted: true }
+  });
+  if (!membership) return { ok: false, message: t("responses.message.conversationNotFound") };
+
+  const isMuted = !membership.isMuted;
+  await prisma.conversationMember.update({
+    where: { conversationId_userId: { conversationId, userId: user.id } },
+    data: { isMuted, mutedAt: isMuted ? new Date() : null }
+  });
+  revalidatePath("/direct");
+  return { ok: true, message: "", data: { isMuted } };
+}
+
+export async function pinClubMessageAction(
+  conversationId: string,
+  messageId: string | null
+): Promise<ApiResponse<{ pinnedMessageId: string | null }>> {
+  const t = await getServerTranslator();
+  const user = await requireUser();
+  if (!user) return { ok: false, message: t("responses.signInRequired") };
+
+  const membership = await prisma.clubMember.findFirst({
+    where: {
+      userId: user.id,
+      status: "ACTIVE",
+      role: { in: ["OWNER", "TD", "YTD"] },
+      club: {
+        isActive: true,
+        conversation: { is: { id: conversationId, type: "CLUB" } }
+      }
+    },
+    select: { clubId: true }
+  });
+  if (!membership) return { ok: false, message: t("responses.message.conversationNotFound") };
+
+  if (messageId) {
+    const message = await prisma.message.findFirst({
+      where: { id: messageId, conversationId, deletedAt: null },
+      select: { id: true }
+    });
+    if (!message) return { ok: false, message: t("responses.message.notFound") };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.conversation.update({
+      where: { id: conversationId },
+      data: {
+        pinnedMessageId: messageId,
+        pinnedById: messageId ? user.id : null,
+        pinnedAt: messageId ? new Date() : null
+      }
+    });
+    if (!messageId) return;
+
+    const recipients = await tx.clubMember.findMany({
+      where: {
+        clubId: membership.clubId,
+        status: "ACTIVE",
+        userId: { not: user.id },
+        user: {
+          conversationMemberships: {
+            some: { conversationId, isMuted: false }
+          }
+        }
+      },
+      select: { userId: true }
+    });
+    if (recipients.length) {
+      await tx.notification.createMany({
+        data: recipients.map((recipient) => ({
+          recipientId: recipient.userId,
+          actorId: user.id,
+          type: "CLUB_CHAT_MESSAGE_PINNED" as const,
+          conversationId,
+          messageId,
+          title: "Klub söhbətində mesaj sabitləndi",
+          body: `${user.name ?? user.username ?? "Klub üzvü"} klub söhbətində mesaj sabitlədi.`
+        }))
+      });
+    }
+  });
+  revalidatePath("/direct");
+  return { ok: true, message: "", data: { pinnedMessageId: messageId } };
+}
 
 export async function getConversationMessagesAction(conversationId: string): Promise<ApiResponse<{ messages: ChatMessage[] }>> {
   const t = await getServerTranslator();

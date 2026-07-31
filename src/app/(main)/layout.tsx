@@ -6,7 +6,7 @@ import {
   getNotifications,
   getUnreadNotificationCount
 } from "@/server/queries/notification.queries";
-import { getUnreadDirectConversationCounts } from "@/server/queries/message.queries";
+import { getMessagingUnreadCounts } from "@/server/queries/message.queries";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LocaleCookieSync } from "@/components/i18n/locale-cookie-sync";
 import { getRequestLocale } from "@/i18n/server";
@@ -40,9 +40,10 @@ export default async function MainLayout({
           return result;
         }, unreadNotificationsMetadata),
         measureAsync("mainLayout.unreadDirect", async () => {
-          const result = await getUnreadDirectConversationCounts(currentUser.id);
-          unreadDirectMetadata.unreadConversationCount = Object.keys(result).length;
-          return result;
+          const result = await getMessagingUnreadCounts(currentUser.id);
+          const combined = { ...result.direct, ...result.clubs };
+          unreadDirectMetadata.unreadConversationCount = Object.keys(combined).length;
+          return combined;
         }, unreadDirectMetadata)
       ])
     : [[], 0, {}];

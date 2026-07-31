@@ -61,6 +61,26 @@ export type DirectFriend = MessageSender & {
   unreadCount: number;
 };
 
+export type ClubChatSummary = {
+  clubId: string;
+  clubName: string;
+  clubSlug: string;
+  clubLogoUrl: string | null;
+  conversationId: string | null;
+  lastMessage: ChatMessage | null;
+  pinnedMessage: ChatMessage | null;
+  unreadCount: number;
+  activeMemberCount: number;
+  isMuted: boolean;
+  hasPinnedMessage: boolean;
+  canModerate: boolean;
+};
+
+export type MessagingUnreadCounts = {
+  direct: Record<string, number>;
+  clubs: Record<string, number>;
+};
+
 export type SendMessageInput = {
   conversationId?: string;
   recipientId?: string;
