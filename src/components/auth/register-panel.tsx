@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { Chrome, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { registerWithEmailAction, signInWithGoogleAction, type AuthActionState } from "@/actions/auth.actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { GoogleLogo } from "@/components/auth/google-logo";
 
 const initialState: AuthActionState = {
   ok: true,
@@ -63,8 +64,13 @@ export function RegisterPanel() {
         </div>
 
         <form action={signInWithGoogleAction}>
-          <Button className="w-full" type="submit" size="lg">
-            <Chrome className="h-4 w-4" />
+          <Button
+            className="w-full border-border !bg-[#fff] !text-[#202124] hover:!bg-[#f8f9fa]"
+            type="submit"
+            size="lg"
+            variant="outline"
+          >
+            <GoogleLogo />
             {t("auth.register.google")}
           </Button>
         </form>

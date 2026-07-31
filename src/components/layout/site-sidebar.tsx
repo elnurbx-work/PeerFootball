@@ -15,6 +15,7 @@ import {
   SiteSidebarRailNav
 } from "@/components/layout/site-sidebar-nav";
 import { getUserInboxChannelName, INBOX_EVENTS } from "@/lib/ably-channels";
+import { closeRealtimeClient } from "@/lib/ably-client";
 import type { SessionUser } from "@/types/auth.types";
 import type { ConversationUpdatePayload } from "@/types/message.types";
 import type { AppNotification } from "@/types/notification.types";
@@ -177,7 +178,7 @@ function useUnreadDirectConversationCounts(
     return () => {
       channel.unsubscribe(INBOX_EVENTS.conversationUpdate, handleConversationUpdate);
       ably.connection.off("connected", handleConnected);
-      ably.close();
+      closeRealtimeClient(ably);
       if (process.env.NODE_ENV === "development") {
         developmentSidebarAblyInstances = Math.max(0, developmentSidebarAblyInstances - 1);
       }

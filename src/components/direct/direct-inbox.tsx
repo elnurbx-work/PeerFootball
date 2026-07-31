@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Toast } from "@/components/ui/toast";
 import { getRoomChannelName, getUserInboxChannelName, INBOX_EVENTS, ROOM_EVENTS } from "@/lib/ably-channels";
+import { closeRealtimeClient } from "@/lib/ably-client";
 import { MESSAGE_CONTENT_MAX_LENGTH } from "@/lib/validations/message";
 import { cn } from "@/lib/utils";
 import { directMessagingHref } from "@/lib/messaging/navigation";
@@ -207,7 +208,7 @@ export function DirectInbox({
 
     return () => {
       channel.unsubscribe(INBOX_EVENTS.conversationUpdate, handleConversationUpdate);
-      ably.close();
+      closeRealtimeClient(ably);
     };
   }, [currentUserId]);
 
@@ -304,7 +305,7 @@ export function DirectInbox({
       channel.unsubscribe(ROOM_EVENTS.typingStop);
       channel.presence.unsubscribe(["enter", "update", "leave", "present"], handlePresenceChange);
       channel.presence.leave().catch((leaveError) => debugRealtime("presence leave error", leaveError));
-      ably.close();
+      closeRealtimeClient(ably);
     };
   }, [currentUser.image, currentUser.name, currentUserId, selectedFriend?.conversationId]);
 

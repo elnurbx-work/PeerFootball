@@ -29,7 +29,7 @@ function databaseUnavailableResponse(t: Translate): AuthActionState {
 }
 
 export async function signInWithGoogleAction(_formData: FormData): Promise<void> {
-  await signIn("google", { redirectTo: "/profile" });
+  await signIn("google", { redirectTo: "/feed" });
 }
 
 export async function signInWithEmailAction(
@@ -67,7 +67,7 @@ export async function signInWithEmailAction(
     await signIn("credentials", {
       email,
       password: result.data.password,
-      redirectTo: "/profile"
+      redirectTo: "/feed"
     });
     return { ok: true, message: t("responses.auth.signedIn") };
   } catch (error) {

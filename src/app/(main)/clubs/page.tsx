@@ -10,6 +10,7 @@ import { getMyClubs, getMyPendingClubs, searchClubsPage } from "@/server/queries
 import { createTranslator } from "@/i18n/dictionary";
 import { normalizePage } from "@/lib/pagination";
 import { NumberedPagination } from "@/components/pagination/numbered-pagination";
+import { MatchClubSwitcher } from "@/components/matches/match-club-switcher";
 
 type ClubsPageProps = {
   searchParams: Promise<{
@@ -47,6 +48,7 @@ export default async function ClubsPage({ searchParams }: ClubsPageProps) {
 
   return (
     <section className="mx-auto grid max-w-6xl gap-8 px-4 py-10">
+      <MatchClubSwitcher active="clubs" t={t} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold">{t("clubs.pages.index.title")}</h1>

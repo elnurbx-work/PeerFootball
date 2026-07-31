@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { MarketingHome } from "@/components/marketing/marketing-home";
+import { getCurrentUser } from "@/lib/auth";
 import { getRequestLocale } from "@/i18n/server";
 import { localizedAlternates } from "@/lib/seo";
 import { getPublicPlatformStats } from "@/server/queries/public.queries";
@@ -19,6 +21,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
+  const currentUser = await getCurrentUser();
+  if (currentUser) redirect("/feed");
   const [locale, stats] = await Promise.all([getRequestLocale(), getPublicPlatformStats()]);
   const structuredData = {
     "@context": "https://schema.org",

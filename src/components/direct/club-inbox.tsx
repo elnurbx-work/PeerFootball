@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { getRoomChannelName, getUserInboxChannelName, INBOX_EVENTS, ROOM_EVENTS } from "@/lib/ably-channels";
+import { closeRealtimeClient } from "@/lib/ably-client";
 import { MESSAGE_CONTENT_MAX_LENGTH } from "@/lib/validations/message";
 import { cn } from "@/lib/utils";
 import { clubMessagingHref } from "@/lib/messaging/navigation";
@@ -103,10 +104,10 @@ export function ClubInbox({ currentUser, clubs, initialClubId, messagesByConvers
         };
       }));
     };
-    channel.subscribe(INBOX_EVENTS.conversationUpdate, onUpdate);
+    channel.subscribe(INBOX_EVENTS.conversationUpdate, onUpdate).catch(() => undefined);
     return () => {
       channel.unsubscribe(INBOX_EVENTS.conversationUpdate, onUpdate);
-      ably.close();
+      closeRealtimeClient(ably);
     };
   }, [currentUser.id, selectedClubId]);
 
@@ -153,7 +154,7 @@ export function ClubInbox({ currentUser, clubs, initialClubId, messagesByConvers
       channel.unsubscribe(ROOM_EVENTS.messageNew, onMessage);
       channel.presence.unsubscribe(["enter", "leave", "update", "present"], refreshPresence);
       channel.presence.leave().catch(() => undefined);
-      ably.close();
+      closeRealtimeClient(ably);
     };
   }, [currentUser.id, selectedConversationId]);
 
@@ -167,10 +168,6 @@ export function ClubInbox({ currentUser, clubs, initialClubId, messagesByConvers
       setIsMobileChatOpen(true);
       router.push(clubMessagingHref(club.clubId));
     };
-    if (club.conversationId) {
-      finish(club.conversationId);
-      return;
-    }
     startTransition(async () => {
       const result = await openClubConversationAction(club.clubId);
       if (!result.ok || !result.data) {
@@ -247,6 +244,9 @@ export function ClubInbox({ currentUser, clubs, initialClubId, messagesByConvers
           <Users className="mx-auto h-10 w-10 text-muted-foreground" />
           <h2 className="mt-3 font-semibold">Aktiv klub söhbəti yoxdur</h2>
           <p className="mt-1 text-sm text-muted-foreground">Yalnız aktiv üzv olduğunuz klublar burada görünür.</p>
+          <Button asChild className="mt-4">
+            <Link href="/clubs">Klublara keç</Link>
+          </Button>
         </div>
       </div>
     );
