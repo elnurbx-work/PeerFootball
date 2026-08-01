@@ -40,7 +40,7 @@ export function LandingHeader({ copy, locale }: { copy: LandingCopy; locale: Loc
           {links.map(([label, href]) => <Link key={href} href={href} className="text-sm font-medium text-white/70 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{label}</Link>)}
         </nav>
         <div className="hidden items-center gap-2 lg:flex">
-          <CompactThemeControl />
+          <CompactThemeControl variant="inverse" />
           <LanguageLinks currentLocale={locale} />
           <Link href="/auth/login" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-card/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{copy.nav.login}</Link>
           <Link href="/auth/register" className="rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-accent-foreground transition hover:bg-accent/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">{copy.nav.join}</Link>
@@ -52,7 +52,7 @@ export function LandingHeader({ copy, locale }: { copy: LandingCopy; locale: Loc
       <div id="mobile-navigation" className={cn("border-t border-white/10 bg-brand px-5 lg:hidden", open ? "block" : "hidden")}>
         <nav aria-label="Mobile navigation" className="mx-auto flex max-w-7xl flex-col py-4">
           {links.map(([label, href]) => <Link key={href} href={href} onClick={() => setOpen(false)} className="rounded-xl px-3 py-3 text-base font-semibold text-white/80 hover:bg-card/10 hover:text-white">{label}</Link>)}
-          <CompactThemeControl className="mt-3 border-t border-white/10 px-3 pt-4" showLabel />
+          <CompactThemeControl className="mt-3 border-t border-white/10 px-3 pt-4" showLabel variant="inverse" />
           <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-4"><LanguageLinks currentLocale={locale} /><Link href="/auth/login" className="text-sm font-semibold text-white">{copy.nav.login}</Link></div>
           <Link href="/auth/register" className="mt-4 rounded-xl bg-accent px-5 py-3 text-center font-bold text-accent-foreground">{copy.nav.join}</Link>
         </nav>

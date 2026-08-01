@@ -794,11 +794,11 @@
         "tacticsTitle": "Tactics",
         "tacticsDescription": "Future formations and tactical notes.",
         "statisticsTitle": "Statistics",
-        "statisticsDescription": "Future player and club stats.",
+        "statisticsDescription": "The club's match results and overall statistics.",
         "analysisTitle": "Analysis",
         "analysisDescription": "Future match and training analysis.",
         "chatTitle": "Club chat",
-        "chatDescription": "Future club conversation space."
+        "chatDescription": "A shared conversation space for club members."
       }
     }
   },

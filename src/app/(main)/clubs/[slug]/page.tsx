@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BarChart3, ClipboardList, MessageCircle, Swords } from "lucide-react";
+import { BarChart3, MessageCircle, Swords } from "lucide-react";
 import { ClubCard } from "@/components/clubs/club-card";
 import { MatchCard } from "@/components/matches/match-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
+import { clubMessagingHref } from "@/lib/messaging/navigation";
 import { getClubBySlug, getClubStats, getMyClubs } from "@/server/queries/club.queries";
 import { canCreateClubMatches } from "@/server/services/club-permissions.service";
 import { getClubMatches } from "@/server/queries/match.queries";
@@ -25,12 +26,6 @@ export default async function ClubPage({ params }: ClubPageProps) {
     redirect("/auth/login");
   }
   const t = createTranslator(currentUser.locale);
-  const futureModules = [
-    { title: t("clubs.pages.detail.statisticsTitle"), description: t("clubs.pages.detail.statisticsDescription"), icon: BarChart3 },
-    { title: t("clubs.pages.detail.analysisTitle"), description: t("clubs.pages.detail.analysisDescription"), icon: ClipboardList },
-    { title: t("clubs.pages.detail.chatTitle"), description: t("clubs.pages.detail.chatDescription"), icon: MessageCircle }
-  ];
-
   const { slug } = await params;
   const club = await getClubBySlug(decodeURIComponent(slug), currentUser.id);
 
@@ -153,7 +148,7 @@ export default async function ClubPage({ params }: ClubPageProps) {
       <MatchCollection title={t("matches.pages.club.tabs.finished")} matches={pastMatches} />
       {canManageTargetClub ? <MatchCollection title={t("matches.pages.club.tabs.pending")} matches={pendingMatches} /> : null}
 
-      <Card>
+      <Card id="statistics" className="scroll-mt-6">
         <CardHeader><CardTitle>{t("clubs.pages.detail.statisticsTitle")}</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-3 gap-3 sm:grid-cols-6">
           {[clubStats.matchesPlayed, clubStats.wins, clubStats.draws, clubStats.losses, clubStats.goalsFor, clubStats.goalDifference].map((value, index) => (
@@ -163,17 +158,30 @@ export default async function ClubPage({ params }: ClubPageProps) {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {futureModules.map((module) => (
-          <Card key={module.title}>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardContent className="p-5">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            <h2 className="mt-3 font-semibold">{t("clubs.pages.detail.statisticsTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("clubs.pages.detail.statisticsDescription")}</p>
+            <Button asChild variant="secondary" size="sm" className="mt-4">
+              <Link href="#statistics">{t("clubs.pages.detail.statisticsTitle")}</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        {club.currentUserMemberStatus === "ACTIVE" ? (
+          <Card>
             <CardContent className="p-5">
-              <module.icon className="h-5 w-5 text-primary" />
-              <h2 className="mt-3 font-semibold">{module.title}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>
-              <Badge variant="secondary" className="mt-4">{t("clubs.pages.detail.futurePhase")}</Badge>
+              <MessageCircle className="h-5 w-5 text-primary" />
+              <h2 className="mt-3 font-semibold">{t("clubs.pages.detail.chatTitle")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("clubs.pages.detail.chatDescription")}</p>
+              <Button asChild size="sm" className="mt-4">
+                <Link href={clubMessagingHref(club.id)}>{t("clubs.pages.detail.chatTitle")}</Link>
+              </Button>
             </CardContent>
           </Card>
-        ))}
+        ) : null}
       </div>
     </section>
   );

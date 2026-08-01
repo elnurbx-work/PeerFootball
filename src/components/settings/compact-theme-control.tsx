@@ -17,10 +17,12 @@ const themeOptions = [
 
 export function CompactThemeControl({
   className,
-  showLabel = false
+  showLabel = false,
+  variant = "default"
 }: {
   className?: string;
   showLabel?: boolean;
+  variant?: "default" | "inverse";
 }) {
   const { t } = useI18n();
   const { theme, setTheme } = useTheme();
@@ -31,13 +33,21 @@ export function CompactThemeControl({
   return (
     <div className={cn("flex items-center justify-between gap-3", className)}>
       {showLabel ? (
-        <span className="text-sm font-semibold text-brand-foreground/70">
+        <span className={cn(
+          "text-sm font-semibold",
+          variant === "inverse" ? "text-white/75" : "text-muted-foreground"
+        )}>
           {t("settings.theme")}
         </span>
       ) : null}
       <div
         aria-label={t("settings.theme")}
-        className="inline-flex rounded-xl border border-white/15 bg-brand-foreground/[0.06] p-1"
+        className={cn(
+          "inline-flex rounded-xl border p-1",
+          variant === "inverse"
+            ? "border-white/20 bg-white/10"
+            : "border-border bg-secondary/70"
+        )}
         role="radiogroup"
       >
         {themeOptions.map(({ value, labelKey, icon: Icon }) => {
@@ -47,8 +57,11 @@ export function CompactThemeControl({
               aria-checked={selected}
               aria-label={t(labelKey)}
               className={cn(
-                "grid h-8 w-8 place-items-center rounded-lg text-brand-foreground/60 transition-colors hover:bg-brand-foreground/10 hover:text-brand-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                selected && "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
+                "grid h-8 w-8 place-items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                variant === "inverse"
+                  ? "text-white/75 hover:bg-white/15 hover:text-white"
+                  : "text-foreground/70 hover:bg-background hover:text-foreground",
+                selected && "bg-accent text-accent-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
               )}
               disabled={!mounted}
               key={value}
