@@ -67,7 +67,13 @@ async function main() {
   if (missing.length) {
     throw new Error(`Push schema is incomplete. Missing: ${missing.join(", ")}`);
   }
+  const countRows = await sql.query(
+    `SELECT COUNT(*)::int AS count FROM "PushSubscription"`,
+    []
+  ) as Array<{ count: number }>;
+
   console.log("Push schema columns, enum, indexes and foreign key are present.");
+  console.log(`Stored push subscriptions: ${countRows[0]?.count ?? 0}`);
 }
 
 function getDatabaseUrl() {

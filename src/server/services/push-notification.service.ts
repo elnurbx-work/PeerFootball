@@ -27,6 +27,15 @@ type DeliveryResult = {
   statusCode?: number;
 };
 
+type PushDeliverySummary = {
+  found: number;
+  attempted: number;
+  sent: number;
+  failed: number;
+  stale: number;
+  results: Array<{ success: boolean; statusCode?: number }>;
+};
+
 type SendPushToUserInput = {
   userId: string;
   notificationType?: NotificationType;
@@ -57,12 +66,12 @@ export async function sendPushForNotification(recipientId: string, notification:
 
 export async function sendPushToUser(input: SendPushToUserInput) {
   if (!isWebPushEnabled() || !input.userId) {
-    return { found: 0, sent: 0, failed: 0, stale: 0 };
+    return emptyDeliverySummary();
   }
 
   try {
     if (!configureWebPush()) {
-      return { found: 0, sent: 0, failed: 0, stale: 0 };
+      return emptyDeliverySummary();
     }
 
     const user = await prisma.user.findUnique({
@@ -79,11 +88,11 @@ export async function sendPushToUser(input: SendPushToUserInput) {
     });
 
     if (!user?.pushNotificationsEnabled) {
-      return { found: user?.pushSubscriptions.length ?? 0, sent: 0, failed: 0, stale: 0 };
+      return emptyDeliverySummary(user?.pushSubscriptions.length ?? 0);
     }
 
     if (input.notificationType && !user[getPushPreferenceKey(input.notificationType)]) {
-      return { found: user.pushSubscriptions.length, sent: 0, failed: 0, stale: 0 };
+      return emptyDeliverySummary(user.pushSubscriptions.length);
     }
 
     const payload = typeof input.payload === "function" ? input.payload(user.locale.toLowerCase() as Locale) : input.payload;
@@ -91,7 +100,7 @@ export async function sendPushToUser(input: SendPushToUserInput) {
       user.pushSubscriptions.map((subscription) =>
         sendPushToSubscription(subscription, payload, {
           userId: input.userId,
-          notificationType: input.notificationType ?? payload.type ?? "TEST"
+          notificationType: input.notificationType ?? payload.type ?? "PUSH_TEST"
         })
       )
     );
@@ -117,31 +126,41 @@ export async function sendPushToUser(input: SendPushToUserInput) {
     const failed = results.length - sent;
     console.info("[web-push] delivery summary", {
       userId: input.userId,
-      notificationType: input.notificationType ?? payload.type ?? "TEST",
+      notificationType: input.notificationType ?? payload.type ?? "PUSH_TEST",
       subscriptions: results.length,
       sent,
       failed,
       stale: results.filter((result) => result.stale).map((result) => maskEndpoint(result.endpoint))
     });
 
-    return { found: results.length, sent, failed, stale: staleIds.length };
+    return {
+      found: results.length,
+      attempted: results.length,
+      sent,
+      failed,
+      stale: staleIds.length,
+      results: results.map((result) => ({
+        success: result.ok,
+        ...(typeof result.statusCode === "number" ? { statusCode: result.statusCode } : {})
+      }))
+    } satisfies PushDeliverySummary;
   } catch (error) {
     console.error("[web-push] user delivery failed", {
       userId: input.userId,
-      notificationType: input.notificationType ?? "TEST",
+      notificationType: input.notificationType ?? "PUSH_TEST",
       error: toSafeErrorMessage(error)
     });
-    return { found: 0, sent: 0, failed: 1, stale: 0 };
+    return { ...emptyDeliverySummary(), failed: 1 };
   }
 }
 
 export async function sendPushToSubscription(
   subscription: Pick<PushSubscription, "id" | "endpoint" | "p256dh" | "auth">,
   payload: PushNotificationPayload,
-  context: { userId: string; notificationType: NotificationType | "TEST" }
+  context: { userId: string; notificationType: NotificationType | "PUSH_TEST" }
 ): Promise<DeliveryResult> {
   try {
-    await webPush.sendNotification(
+    const response = await webPush.sendNotification(
       {
         endpoint: subscription.endpoint,
         keys: { p256dh: subscription.p256dh, auth: subscription.auth }
@@ -149,7 +168,13 @@ export async function sendPushToSubscription(
       JSON.stringify(payload),
       { TTL: 60 * 60 * 24, urgency: context.notificationType === "MESSAGE" || context.notificationType === "DIRECT_MESSAGE" ? "high" : "normal" }
     );
-    return { subscriptionId: subscription.id, endpoint: subscription.endpoint, ok: true, stale: false };
+    return {
+      subscriptionId: subscription.id,
+      endpoint: subscription.endpoint,
+      ok: true,
+      stale: false,
+      statusCode: response.statusCode
+    };
   } catch (error) {
     const statusCode = getStatusCode(error);
     const stale = shouldDeletePushSubscription(statusCode);
@@ -163,6 +188,10 @@ export async function sendPushToSubscription(
     });
     return { subscriptionId: subscription.id, endpoint: subscription.endpoint, ok: false, stale, statusCode };
   }
+}
+
+function emptyDeliverySummary(found = 0): PushDeliverySummary {
+  return { found, attempted: 0, sent: 0, failed: 0, stale: 0, results: [] };
 }
 
 function configureWebPush() {

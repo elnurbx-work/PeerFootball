@@ -14,6 +14,8 @@ import { logPerformance, measureAsync, performanceNow } from "@/lib/performance"
 import { PostListSkeleton } from "@/components/skeletons";
 import type { Translate } from "@/i18n/dictionary";
 import { AdSenseScript } from "@/components/ads/adsense-script";
+import { FeedPushTestButton } from "@/components/push/feed-push-test-button";
+import { isPushTestAllowed } from "@/lib/push-api";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = createTranslator(await getRequestLocale());
@@ -41,6 +43,11 @@ export default async function FeedPage() {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const currentUser = await measureAsync("feed.currentUser", getCurrentUser, { route: "/feed" });
   const t = createTranslator(currentUser?.locale ?? await getRequestLocale());
+  const showPushTest = Boolean(currentUser && isPushTestAllowed(
+    process.env.NODE_ENV,
+    currentUser.email,
+    process.env.ADMIN_EMAIL
+  ));
 
   return (
     <>
@@ -53,6 +60,7 @@ export default async function FeedPage() {
             {t("posts.pages.feed.signedIn", { name: currentUser.name ?? t("profile.summary.playerFallback"), username: currentUser.username ?? t("profile.summary.profileFallback") })}
           </p>
         ) : null}
+        {showPushTest ? <FeedPushTestButton /> : null}
       </div>
       <Suspense fallback={<PostListSkeleton count={3} />}>
         <FeedContent

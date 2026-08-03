@@ -25,16 +25,19 @@ export async function getCurrentPushSubscription() {
   return registration.pushManager.getSubscription();
 }
 
-export async function subscribeToPush() {
+export async function subscribeToPush(callbacks: {
+  onPermissionRequest?: () => void;
+  onSubscribing?: () => void;
+} = {}) {
   if (!webPushFeatureEnabled) throw new Error("disabled");
   if (!isPushSupported()) throw new Error("unsupported");
   if (Notification.permission === "denied") throw new Error("permission-denied");
 
-  const permission = Notification.permission === "granted"
-    ? "granted"
-    : await Notification.requestPermission();
+  if (Notification.permission === "default") callbacks.onPermissionRequest?.();
+  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (permission !== "granted") throw new Error(permission === "denied" ? "permission-denied" : "permission-dismissed");
 
+  callbacks.onSubscribing?.();
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   if (!publicKey) throw new Error("vapid-public-key-missing");
 

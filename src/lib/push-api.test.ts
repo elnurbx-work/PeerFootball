@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildOwnedSubscriptionWhere, buildPushSubscriptionUpsert, getPushRequestAuthError } from "@/lib/push-api";
+import { buildOwnedSubscriptionWhere, buildPushSubscriptionUpsert, getPushRequestAuthError, isPushTestAllowed } from "@/lib/push-api";
 import { pushSubscriptionSchema } from "@/lib/validations/push";
 
 const sameOriginRequest = new Request("https://peerfootball.app/api/push/subscribe", {
@@ -27,5 +27,10 @@ assert.deepEqual(buildOwnedSubscriptionWhere("user-1", valid.endpoint), {
   userId: "user-1",
   endpoint: valid.endpoint
 }, "unsubscribe must always be scoped to the authenticated owner");
+
+assert.equal(isPushTestAllowed("development", "player@example.com", "admin@example.com"), true);
+assert.equal(isPushTestAllowed("production", "ADMIN@example.com", "admin@example.com"), true);
+assert.equal(isPushTestAllowed("production", "player@example.com", "admin@example.com"), false);
+assert.equal(isPushTestAllowed("production", "admin@example.com", undefined), false);
 
 console.log("Push API auth, validation, upsert and owner-scoped delete tests passed.");

@@ -301,72 +301,72 @@ enum ReportStatus {
 }
 
 model User {
-  id                      String                 @id @default(cuid())
-  name                    String?
-  email                   String?                @unique
-  emailVerified           DateTime?
-  passwordHash            String?
-  image                   String?
-  coverImage              String?
-  username                String?                @unique
-  bio                     String?
-  favoriteClub            String?
-  preferredPosition       String?
-  avoidedPosition         String?
-  location                String?
-  locale                  AppLocale              @default(AZ)
-  profileVisibility       ProfileVisibility      @default(PUBLIC)
-  createdAt               DateTime               @default(now())
-  updatedAt               DateTime               @updatedAt
-  isBanned                Boolean                @default(false)
-  bannedAt                DateTime?
-  banReason               String?
-  pushNotificationsEnabled Boolean               @default(true)
-  pushDirectMessages       Boolean               @default(true)
-  pushFriendRequests       Boolean               @default(true)
-  pushClubNotifications    Boolean               @default(true)
-  pushMatchNotifications   Boolean               @default(true)
-  posts                   Post[]
-  comments                Comment[]
-  likes                   PostLike[]
-  following               Follow[]               @relation("Following")
-  followers               Follow[]               @relation("Followers")
-  sentFriendRequests      Friendship[]           @relation("FriendshipRequester")
-  receivedFriendRequests  Friendship[]           @relation("FriendshipAddressee")
-  blockedUsers            Block[]                @relation("Blocker")
-  blockedByUsers          Block[]                @relation("Blocked")
-  encryptedProfile        UserEncryptedProfile?
-  conversationMemberships ConversationMember[]
-  sentMessages            Message[]              @relation("MessageSender")
-  pinnedConversations     Conversation[]         @relation("ConversationPinnedBy")
-  receivedNotifications   Notification[]         @relation("NotificationRecipient")
-  actedNotifications      Notification[]         @relation("NotificationActor")
-  favoriteTeams           UserFavoriteTeam[]
-  ownedTeams              Team[]
-  teamMemberships         TeamMember[]
-  ownedClubs              Club[]                 @relation("ClubOwner")
-  deactivatedClubs        Club[]                 @relation("ClubDeactivatedBy")
-  clubMemberships         ClubMember[]           @relation("ClubMemberUser")
-  clubInvitesSent         ClubMember[]           @relation("ClubMemberInviter")
-  clubGuestsCreated       ClubGuest[]            @relation("ClubGuestCreator")
-  clubMetricDefinitions   ClubMetricDefinition[] @relation("ClubMetricCreator")
-  createdMatches          Match[]                @relation("MatchCreatedBy")
-  submittedMatchResults   Match[]                @relation("MatchResultSubmittedBy")
-  confirmedMatchResults   Match[]                @relation("MatchResultConfirmedBy")
-  matchPlayers            MatchPlayer[]          @relation("MatchPlayerUser")
-  matchPlayerInvites      MatchPlayer[]          @relation("MatchPlayerInviter")
-  matchVideos             MatchVideo[]           @relation("MatchVideoUploader")
-  matchComments           MatchComment[]         @relation("MatchCommentAuthor")
-  lineupPlansCreated      LineupPlan[]           @relation("LineupPlanCreator")
-  tacticsCreated          Tactic[]               @relation("TacticCreator")
-  matchTacticsAttached    MatchTactic[]          @relation("MatchTacticAttacher")
-  playerStats             PlayerStats?
-  accounts                Account[]
-  sessions                Session[]
-  feedbacks               Feedback[]
-  submittedPostReports    PostReport[]           @relation("PostReportReporter")
-  receivedPostReports     PostReport[]           @relation("PostReportAuthor")
-  pushSubscriptions       PushSubscription[]
+  id                       String                 @id @default(cuid())
+  name                     String?
+  email                    String?                @unique
+  emailVerified            DateTime?
+  passwordHash             String?
+  image                    String?
+  coverImage               String?
+  username                 String?                @unique
+  bio                      String?
+  favoriteClub             String?
+  preferredPosition        String?
+  avoidedPosition          String?
+  location                 String?
+  locale                   AppLocale              @default(AZ)
+  profileVisibility        ProfileVisibility      @default(PUBLIC)
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+  isBanned                 Boolean                @default(false)
+  bannedAt                 DateTime?
+  banReason                String?
+  pushNotificationsEnabled Boolean                @default(true)
+  pushDirectMessages       Boolean                @default(true)
+  pushFriendRequests       Boolean                @default(true)
+  pushClubNotifications    Boolean                @default(true)
+  pushMatchNotifications   Boolean                @default(true)
+  posts                    Post[]
+  comments                 Comment[]
+  likes                    PostLike[]
+  following                Follow[]               @relation("Following")
+  followers                Follow[]               @relation("Followers")
+  sentFriendRequests       Friendship[]           @relation("FriendshipRequester")
+  receivedFriendRequests   Friendship[]           @relation("FriendshipAddressee")
+  blockedUsers             Block[]                @relation("Blocker")
+  blockedByUsers           Block[]                @relation("Blocked")
+  encryptedProfile         UserEncryptedProfile?
+  conversationMemberships  ConversationMember[]
+  sentMessages             Message[]              @relation("MessageSender")
+  pinnedConversations      Conversation[]         @relation("ConversationPinnedBy")
+  receivedNotifications    Notification[]         @relation("NotificationRecipient")
+  actedNotifications       Notification[]         @relation("NotificationActor")
+  favoriteTeams            UserFavoriteTeam[]
+  ownedTeams               Team[]
+  teamMemberships          TeamMember[]
+  ownedClubs               Club[]                 @relation("ClubOwner")
+  deactivatedClubs         Club[]                 @relation("ClubDeactivatedBy")
+  clubMemberships          ClubMember[]           @relation("ClubMemberUser")
+  clubInvitesSent          ClubMember[]           @relation("ClubMemberInviter")
+  clubGuestsCreated        ClubGuest[]            @relation("ClubGuestCreator")
+  clubMetricDefinitions    ClubMetricDefinition[] @relation("ClubMetricCreator")
+  createdMatches           Match[]                @relation("MatchCreatedBy")
+  submittedMatchResults    Match[]                @relation("MatchResultSubmittedBy")
+  confirmedMatchResults    Match[]                @relation("MatchResultConfirmedBy")
+  matchPlayers             MatchPlayer[]          @relation("MatchPlayerUser")
+  matchPlayerInvites       MatchPlayer[]          @relation("MatchPlayerInviter")
+  matchVideos              MatchVideo[]           @relation("MatchVideoUploader")
+  matchComments            MatchComment[]         @relation("MatchCommentAuthor")
+  lineupPlansCreated       LineupPlan[]           @relation("LineupPlanCreator")
+  tacticsCreated           Tactic[]               @relation("TacticCreator")
+  matchTacticsAttached     MatchTactic[]          @relation("MatchTacticAttacher")
+  playerStats              PlayerStats?
+  accounts                 Account[]
+  sessions                 Session[]
+  feedbacks                Feedback[]
+  submittedPostReports     PostReport[]           @relation("PostReportReporter")
+  receivedPostReports      PostReport[]           @relation("PostReportAuthor")
+  pushSubscriptions        PushSubscription[]
 }
 
 model PushSubscription {
