@@ -22,7 +22,9 @@
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:sync-push": "tsx scripts/sync-push-schema.ts",
+    "verify:push-schema": "tsx scripts/verify-push-schema.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

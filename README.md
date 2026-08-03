@@ -220,18 +220,25 @@ VAPID_PRIVATE_KEY="..."
 VAPID_SUBJECT="mailto:admin@peerfootball.app"
 ```
 
-Apply and generate the database schema:
+Apply and generate the database schema using this repository's schema-push workflow:
 
 ```bash
-npx prisma migrate deploy
+npm run prisma:push
 npx prisma generate
 ```
 
-For a new local migration workflow use `npx prisma migrate dev`. In development, `/sw.js` is registered only when `NEXT_PUBLIC_WEB_PUSH_ENABLED=true`; otherwise old PeerFootball service workers and `fanpitch-pwa-*` caches are removed to avoid stale debugging state. Chrome DevTools → Application → Service Workers can also unregister a stale worker manually.
+`prisma db push` creates the `PushSubscription` table and preference columns. The seed command only inserts sample data and does not replace schema synchronization. In development, `/sw.js` is registered only when `NEXT_PUBLIC_WEB_PUSH_ENABLED=true`; otherwise old PeerFootball service workers and `fanpitch-pwa-*` caches are removed to avoid stale debugging state. Chrome DevTools → Application → Service Workers can also unregister a stale worker manually.
+
+If Prisma's schema engine cannot reach Neon from the current network, use the idempotent HTTP fallback and verify the result:
+
+```bash
+npm run prisma:sync-push
+npm run verify:push-schema
+```
 
 Manual verification checklist:
 
-1. Install dependencies, generate VAPID keys, configure the four environment variables, and apply the Prisma migration.
+1. Install dependencies, generate VAPID keys, configure the four environment variables, and run `npm run prisma:push`.
 2. Sign in on Android Chrome and open Settings → Notifications.
 3. Press “Enable push notifications”; confirm permission is requested only after this click.
 4. In development, press “Send test notification”.

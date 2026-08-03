@@ -34,8 +34,16 @@ function getDirectDatabaseUrl() {
     return env("DIRECT_URL");
   }
 
-  // Prisma 5.10+ supports Neon's pooled connection for schema operations.
-  return cleanDatabaseUrl(databaseUrl);
+  // Schema operations are more reliable over Neon's direct endpoint. A pooled
+  // hostname differs only by the `-pooler` suffix, so derive the direct URL
+  // when DIRECT_URL is still the example placeholder.
+  return toDirectDatabaseUrl(databaseUrl);
+}
+
+function toDirectDatabaseUrl(databaseUrl: string) {
+  const url = new URL(cleanDatabaseUrl(databaseUrl));
+  url.hostname = url.hostname.replace("-pooler.", ".");
+  return url.toString();
 }
 
 function cleanDatabaseUrl(databaseUrl: string) {
