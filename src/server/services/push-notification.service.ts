@@ -27,15 +27,6 @@ type DeliveryResult = {
   statusCode?: number;
 };
 
-type PushDeliverySummary = {
-  found: number;
-  attempted: number;
-  sent: number;
-  failed: number;
-  stale: number;
-  results: Array<{ success: boolean; statusCode?: number }>;
-};
-
 type SendPushToUserInput = {
   userId: string;
   notificationType?: NotificationType;
@@ -100,7 +91,7 @@ export async function sendPushToUser(input: SendPushToUserInput) {
       user.pushSubscriptions.map((subscription) =>
         sendPushToSubscription(subscription, payload, {
           userId: input.userId,
-          notificationType: input.notificationType ?? payload.type ?? "PUSH_TEST"
+          notificationType: input.notificationType ?? payload.type ?? "SYSTEM"
         })
       )
     );
@@ -126,28 +117,18 @@ export async function sendPushToUser(input: SendPushToUserInput) {
     const failed = results.length - sent;
     console.info("[web-push] delivery summary", {
       userId: input.userId,
-      notificationType: input.notificationType ?? payload.type ?? "PUSH_TEST",
+      notificationType: input.notificationType ?? payload.type ?? "SYSTEM",
       subscriptions: results.length,
       sent,
       failed,
       stale: results.filter((result) => result.stale).map((result) => maskEndpoint(result.endpoint))
     });
 
-    return {
-      found: results.length,
-      attempted: results.length,
-      sent,
-      failed,
-      stale: staleIds.length,
-      results: results.map((result) => ({
-        success: result.ok,
-        ...(typeof result.statusCode === "number" ? { statusCode: result.statusCode } : {})
-      }))
-    } satisfies PushDeliverySummary;
+    return { found: results.length, sent, failed, stale: staleIds.length };
   } catch (error) {
     console.error("[web-push] user delivery failed", {
       userId: input.userId,
-      notificationType: input.notificationType ?? "PUSH_TEST",
+      notificationType: input.notificationType ?? "SYSTEM",
       error: toSafeErrorMessage(error)
     });
     return { ...emptyDeliverySummary(), failed: 1 };
@@ -157,10 +138,10 @@ export async function sendPushToUser(input: SendPushToUserInput) {
 export async function sendPushToSubscription(
   subscription: Pick<PushSubscription, "id" | "endpoint" | "p256dh" | "auth">,
   payload: PushNotificationPayload,
-  context: { userId: string; notificationType: NotificationType | "PUSH_TEST" }
+  context: { userId: string; notificationType: NotificationType | "SYSTEM" }
 ): Promise<DeliveryResult> {
   try {
-    const response = await webPush.sendNotification(
+    await webPush.sendNotification(
       {
         endpoint: subscription.endpoint,
         keys: { p256dh: subscription.p256dh, auth: subscription.auth }
@@ -172,8 +153,7 @@ export async function sendPushToSubscription(
       subscriptionId: subscription.id,
       endpoint: subscription.endpoint,
       ok: true,
-      stale: false,
-      statusCode: response.statusCode
+      stale: false
     };
   } catch (error) {
     const statusCode = getStatusCode(error);
@@ -190,8 +170,8 @@ export async function sendPushToSubscription(
   }
 }
 
-function emptyDeliverySummary(found = 0): PushDeliverySummary {
-  return { found, attempted: 0, sent: 0, failed: 0, stale: 0, results: [] };
+function emptyDeliverySummary(found = 0) {
+  return { found, sent: 0, failed: 0, stale: 0 };
 }
 
 function configureWebPush() {

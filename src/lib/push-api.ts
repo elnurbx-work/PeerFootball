@@ -38,9 +38,3 @@ export function buildPushSubscriptionUpsert(input: {
 export function buildOwnedSubscriptionWhere(userId: string, endpoint: string) {
   return { endpoint, userId };
 }
-
-export function isPushTestAllowed(nodeEnv: string | undefined, userEmail: string | null | undefined, adminEmail: string | undefined) {
-  if (nodeEnv !== "production") return true;
-  if (!userEmail || !adminEmail) return false;
-  return userEmail.trim().toLowerCase() === adminEmail.trim().toLowerCase();
-}

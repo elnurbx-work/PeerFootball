@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { buildOwnedSubscriptionWhere, buildPushSubscriptionUpsert, getPushRequestAuthError, isPushTestAllowed } from "@/lib/push-api";
+import { buildOwnedSubscriptionWhere, buildPushSubscriptionUpsert, getPushRequestAuthError } from "@/lib/push-api";
 import { pushSubscriptionSchema } from "@/lib/validations/push";
+import { shouldAttemptSilentPushSync } from "@/lib/push-notifications";
 
 const sameOriginRequest = new Request("https://peerfootball.app/api/push/subscribe", {
   method: "POST",
@@ -28,9 +29,32 @@ assert.deepEqual(buildOwnedSubscriptionWhere("user-1", valid.endpoint), {
   endpoint: valid.endpoint
 }, "unsubscribe must always be scoped to the authenticated owner");
 
-assert.equal(isPushTestAllowed("development", "player@example.com", "admin@example.com"), true);
-assert.equal(isPushTestAllowed("production", "ADMIN@example.com", "admin@example.com"), true);
-assert.equal(isPushTestAllowed("production", "player@example.com", "admin@example.com"), false);
-assert.equal(isPushTestAllowed("production", "admin@example.com", undefined), false);
+const reassigned = buildPushSubscriptionUpsert({
+  userId: "user-2",
+  subscription: valid,
+  userAgent: "Same browser, new account",
+  platform: "Android",
+  now
+});
+assert.equal(reassigned.where.endpoint, upsert.where.endpoint, "account switching must target the same unique endpoint");
+assert.equal(reassigned.update.userId, "user-2", "account switching must reassign the endpoint to the current session user");
 
-console.log("Push API auth, validation, upsert and owner-scoped delete tests passed.");
+const secondDevice = pushSubscriptionSchema.parse({
+  endpoint: "https://push.example/subscriptions/device-2",
+  keys: { p256dh: "secondP256dhKey_123456", auth: "secondAuthKey_123" }
+});
+const secondDeviceUpsert = buildPushSubscriptionUpsert({
+  userId: "user-1",
+  subscription: secondDevice,
+  userAgent: "Desktop Browser",
+  platform: "Windows",
+  now
+});
+assert.notEqual(secondDeviceUpsert.where.endpoint, upsert.where.endpoint, "one user may own multiple device endpoints");
+assert.equal(secondDeviceUpsert.create.userId, "user-1");
+
+assert.equal(shouldAttemptSilentPushSync(true, true, "default"), false, "login must not request notification permission");
+assert.equal(shouldAttemptSilentPushSync(true, true, "denied"), false);
+assert.equal(shouldAttemptSilentPushSync(true, true, "granted"), true, "an existing granted subscription may be synced silently");
+
+console.log("Push API auth, account reassignment, multi-device, silent-sync and owner-scoped delete tests passed.");

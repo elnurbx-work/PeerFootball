@@ -9,7 +9,7 @@ export type PushNotificationPayload = {
   tag?: string;
   url: string;
   notificationId?: string;
-  type?: NotificationType | "PUSH_TEST";
+  type?: NotificationType;
   data?: Record<string, string>;
 };
 
@@ -26,18 +26,4 @@ export type PushClientStatus = {
   supported: boolean;
   permission: NotificationPermission;
   subscribed: boolean;
-};
-
-export type PushTestDeliveryResult = {
-  success: boolean;
-  statusCode?: number;
-};
-
-export type PushTestResponseData = {
-  subscriptionCount: number;
-  attempted: number;
-  sent: number;
-  failed: number;
-  expiredRemoved: number;
-  results: PushTestDeliveryResult[];
 };

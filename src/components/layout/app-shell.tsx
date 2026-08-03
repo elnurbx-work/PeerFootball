@@ -6,6 +6,7 @@ import { SiteSidebar } from "@/components/layout/site-sidebar";
 import { useSecondaryPanel } from "@/components/layout/site-sidebar-nav";
 import { cn } from "@/lib/utils";
 import type { AppNotification } from "@/types/notification.types";
+import { PushSubscriptionSessionSync } from "@/components/push/push-subscription-session-sync";
 
 type AppShellProps = {
   children: ReactNode;
@@ -26,6 +27,7 @@ export function AppShell({
 
   return (
     <>
+      {currentUser ? <PushSubscriptionSessionSync userId={currentUser.id} /> : null}
       <SiteSidebar
         currentUser={currentUser}
         initialNotifications={initialNotifications}

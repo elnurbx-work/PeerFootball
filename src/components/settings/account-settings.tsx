@@ -1,9 +1,8 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { signOutAction } from "@/actions/auth.actions";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 import { useI18n } from "@/components/i18n/i18n-provider";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function AccountSettings() {
@@ -23,12 +22,10 @@ export function AccountSettings() {
         </div>
       </CardHeader>
       <CardContent>
-        <form action={signOutAction}>
-          <Button type="submit" variant="outline" className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 sm:w-auto">
-            <LogOut className="h-4 w-4" aria-hidden="true" />
-            {t("settings.signOutButton")}
-          </Button>
-        </form>
+        <SignOutButton
+          label={t("settings.signOutButton")}
+          className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 sm:w-auto"
+        />
       </CardContent>
     </Card>
   );

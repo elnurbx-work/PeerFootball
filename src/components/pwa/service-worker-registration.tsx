@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { registerPeerFootballServiceWorker } from "@/lib/service-worker";
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
@@ -17,10 +18,7 @@ export function ServiceWorkerRegistration() {
     }
 
     const registerServiceWorker = () => {
-      navigator.serviceWorker
-        .register("/sw.js", { updateViaCache: "none" })
-        .then((registration) => registration.update())
-        .catch(() => undefined);
+      void registerPeerFootballServiceWorker().catch(() => undefined);
     };
 
     if (document.readyState === "complete") {

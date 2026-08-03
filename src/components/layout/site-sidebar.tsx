@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Realtime, type InboundMessage } from "ably";
-import { LogIn, LogOut } from "lucide-react";
-import { signOutAction } from "@/actions/auth.actions";
+import { LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import {
@@ -21,6 +20,7 @@ import type { ConversationUpdatePayload } from "@/types/message.types";
 import type { AppNotification } from "@/types/notification.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { logPerformance, performanceNow } from "@/lib/performance";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 let developmentSidebarAblyInstances = 0;
 
@@ -69,17 +69,12 @@ export function SiteSidebar({
 
           <div className="mt-auto grid gap-2">
             {currentUser ? (
-              <form action={signOutAction}>
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  className="h-11 w-11 px-0 text-muted-foreground hover:text-foreground"
-                  title={t("nav.logout")}
-                  aria-label={t("nav.logout")}
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </form>
+              <SignOutButton
+                iconOnly
+                label={t("nav.logout")}
+                variant="ghost"
+                className="text-muted-foreground hover:text-foreground"
+              />
             ) : (
               <Button asChild className="h-11 w-11 px-0" title={t("nav.login")}>
                 <Link href="/auth/login" aria-label={t("nav.login")}>

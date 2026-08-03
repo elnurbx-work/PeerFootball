@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BellOff, BellRing, Loader2, Send, Smartphone } from "lucide-react";
+import { BellOff, BellRing, Loader2, Smartphone } from "lucide-react";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,6 @@ export function PushNotificationSettings() {
   const [isIos, setIsIos] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [toast, setToast] = useState("");
-  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     setIsIos(/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
@@ -27,19 +26,6 @@ export function PushNotificationSettings() {
 
   async function disable() {
     if (await push.disableNotifications()) setToast(t("settings.pushDisabledSuccess"));
-  }
-
-  async function sendTest() {
-    setTesting(true);
-    try {
-      const response = await fetch("/api/push/test", { method: "POST", credentials: "same-origin" });
-      const result = await response.json() as { ok: boolean; message?: string };
-      setToast(result.message || (result.ok ? t("settings.pushTestSent") : t("settings.pushError")));
-    } catch {
-      setToast(t("settings.pushError"));
-    } finally {
-      setTesting(false);
-    }
   }
 
   const status = getStatusText(push, t);
@@ -86,12 +72,6 @@ export function PushNotificationSettings() {
                 {t("settings.pushEnable")}
               </Button>
             )}
-            {process.env.NODE_ENV !== "production" && push.subscribed ? (
-              <Button disabled={testing} onClick={sendTest} type="button" variant="outline">
-                {testing ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Send aria-hidden="true" className="h-4 w-4" />}
-                {t("settings.pushTest")}
-              </Button>
-            ) : null}
           </div>
         </CardContent>
       </Card>
