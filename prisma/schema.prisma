@@ -274,6 +274,7 @@ enum NotificationType {
   CLUB_CHAT_REPLY
   CLUB_CHAT_MESSAGE_PINNED
   CLUB_CHAT_ANNOUNCEMENT
+  CLUB_INVITATION
   MATCH_INVITATION_RECEIVED
   MATCH_INVITATION_ACCEPTED
   MATCH_INVITATION_REJECTED
@@ -320,6 +321,11 @@ model User {
   isBanned                Boolean                @default(false)
   bannedAt                DateTime?
   banReason               String?
+  pushNotificationsEnabled Boolean               @default(true)
+  pushDirectMessages       Boolean               @default(true)
+  pushFriendRequests       Boolean               @default(true)
+  pushClubNotifications    Boolean               @default(true)
+  pushMatchNotifications   Boolean               @default(true)
   posts                   Post[]
   comments                Comment[]
   likes                   PostLike[]
@@ -360,6 +366,23 @@ model User {
   feedbacks               Feedback[]
   submittedPostReports    PostReport[]           @relation("PostReportReporter")
   receivedPostReports     PostReport[]           @relation("PostReportAuthor")
+  pushSubscriptions       PushSubscription[]
+}
+
+model PushSubscription {
+  id         String    @id @default(cuid())
+  userId     String
+  endpoint   String    @unique @db.Text
+  p256dh     String    @db.Text
+  auth       String    @db.Text
+  userAgent  String?
+  platform   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  lastUsedAt DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model UserFavoriteTeam {

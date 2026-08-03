@@ -9,6 +9,7 @@ import {
 } from "@/server/services/ably.service";
 import type { AppNotification, NotificationType } from "@/types/notification.types";
 import { measureAsync } from "@/lib/performance";
+import { sendPushForNotification } from "@/server/services/push-notification.service";
 
 export const notificationActorSelect = {
   id: true,
@@ -65,6 +66,7 @@ export async function createNotification(input: CreateNotificationInput): Promis
   const dto = toAppNotification(notification);
 
   await publishNotificationBestEffort(input.recipientId, dto);
+  await sendPushNotificationBestEffort(input.recipientId, dto);
 
   return dto;
 }
@@ -258,6 +260,24 @@ export async function createMessageNotification({
   });
 }
 
+export async function createClubInvitationNotification({
+  actorId,
+  clubName,
+  recipientId
+}: {
+  actorId: string;
+  clubName: string;
+  recipientId: string;
+}) {
+  return createNotification({
+    actorId,
+    recipientId,
+    type: "CLUB_INVITATION",
+    title: "Yeni klub dəvəti",
+    body: `${clubName} klubuna dəvət aldınız.`
+  });
+}
+
 export async function markNotificationRead(notificationId: string, userId: string) {
   const notification = await measureAsync("notification.service.findFirst", () =>
     prisma.notification.findFirst({
@@ -379,6 +399,18 @@ async function publishNotificationBestEffort(userId: string, notification: AppNo
     await publishNotificationCreated(userId, notification);
   } catch (error) {
     logAblyFailure("notification publish failed", error);
+  }
+}
+
+async function sendPushNotificationBestEffort(userId: string, notification: AppNotification) {
+  try {
+    await sendPushForNotification(userId, notification);
+  } catch (error) {
+    console.error("[web-push] notification delivery failed", {
+      userId,
+      notificationType: notification.type,
+      error: error instanceof Error ? error.message : "Unknown push error"
+    });
   }
 }
 

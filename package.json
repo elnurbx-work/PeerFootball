@@ -12,6 +12,8 @@
     "test:matches": "tsx src/server/services/match-domain.test.ts",
     "test:tactics": "tsx src/lib/tactics/tactic-domain.test.ts",
     "test:messages": "tsx src/lib/messaging/navigation.test.ts",
+    "test:push": "tsx src/lib/push-payload.test.ts",
+    "test:push-api": "tsx src/lib/push-api.test.ts",
     "perf:pages": "node scripts/benchmark-pages.mjs",
     "i18n:check": "node scripts/check-i18n.mjs",
     "content:audit": "tsx scripts/audit-low-quality-content.ts",
@@ -41,12 +43,14 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.53.2",
     "tailwind-merge": "^2.5.5",
+    "web-push": "^3.6.7",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.16.0",
     "eslint-config-next": "^15.0.0",

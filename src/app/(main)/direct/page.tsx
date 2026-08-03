@@ -70,8 +70,9 @@ export default async function DirectPage({ searchParams }: DirectPageProps) {
         unreadCount: conversation?.unreadCount ?? 0
       };
     });
-    const initialFriend = directFriends.find((friend) => friend.conversationId === params.conversationId)
-      ?? directFriends[0];
+    const initialFriend = params.conversationId
+      ? directFriends.find((friend) => friend.conversationId === params.conversationId)
+      : undefined;
     const initialConversationId = initialFriend?.conversationId ?? null;
     const messagesByConversationId = initialConversationId
       ? { [initialConversationId]: await getConversationMessages(initialConversationId, currentUser.id) }

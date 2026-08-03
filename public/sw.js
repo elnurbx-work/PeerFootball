@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "fanpitch-pwa";
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const STATIC_CACHE = `${CACHE_PREFIX}-${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_PREFIX}-${CACHE_VERSION}-runtime`;
 const CURRENT_CACHES = new Set([STATIC_CACHE, RUNTIME_CACHE]);
@@ -68,6 +68,81 @@ self.addEventListener("fetch", (event) => {
   if (isSafeRuntimeAsset(request, url)) {
     event.respondWith(staleWhileRevalidate(request, RUNTIME_CACHE, RUNTIME_CACHE_MAX_ENTRIES));
   }
+});
+
+self.addEventListener("push", (event) => {
+  const fallback = {
+    title: "PeerFootball",
+    body: "Yeni bildirişiniz var.",
+    icon: "/icons/icon-192",
+    badge: "/icons/icon-192",
+    tag: "peerfootball-notification",
+    url: "/notifications"
+  };
+  let payload = fallback;
+
+  try {
+    const parsed = event.data?.json();
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.title === "string" &&
+      typeof parsed.body === "string" &&
+      typeof parsed.url === "string"
+    ) {
+      payload = { ...fallback, ...parsed };
+    }
+  } catch {
+    // A malformed provider payload must still produce a useful notification.
+  }
+
+  const options = {
+    body: payload.body,
+    icon: payload.icon || fallback.icon,
+    badge: payload.badge || fallback.badge,
+    tag: payload.tag || fallback.tag,
+    renotify: false,
+    data: {
+      url: toSafeAppPath(payload.url) || fallback.url,
+      notificationId: typeof payload.notificationId === "string" ? payload.notificationId : undefined,
+      type: typeof payload.type === "string" ? payload.type : undefined
+    }
+  };
+  if (typeof payload.image === "string") {
+    options.image = payload.image;
+  }
+
+  event.waitUntil(self.registration.showNotification(payload.title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetPath = toSafeAppPath(event.notification.data?.url);
+  if (!targetPath) return;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (windowClients) => {
+      const targetUrl = new URL(targetPath, self.location.origin).href;
+      const client = windowClients.find((candidate) => new URL(candidate.url).origin === self.location.origin);
+
+      if (client) {
+        try {
+          if ("navigate" in client && client.url !== targetUrl) {
+            await client.navigate(targetUrl);
+          }
+          return client.focus();
+        } catch {
+          return self.clients.openWindow(targetUrl);
+        }
+      }
+
+      return self.clients.openWindow(targetUrl);
+    })
+  );
+});
+
+self.addEventListener("notificationclose", () => {
+  // Reserved for privacy-safe aggregate telemetry in a future version.
 });
 
 async function precacheSafeAssets() {
@@ -204,5 +279,16 @@ async function trimCache(cacheName, maximumEntries) {
 
   if (overflow > 0) {
     await Promise.all(keys.slice(0, overflow).map((key) => cache.delete(key)));
+  }
+}
+
+function toSafeAppPath(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value, self.location.origin);
+    if (url.origin !== self.location.origin) return null;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
   }
 }

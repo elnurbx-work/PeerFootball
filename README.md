@@ -201,6 +201,53 @@ Deploy the Next.js app to Vercel and add these project environment variables:
 
 After Vercel gives you the production domain, add the production Google callback URL in Google Cloud and redeploy.
 
+## Web Push notifications
+
+PeerFootball uses the existing `/sw.js`, the browser Push/Notifications APIs and `web-push` with VAPID. Push is an additional delivery channel; database notifications and `/notifications` remain the source of truth. A separate subscription is retained for each browser profile/device.
+
+Generate VAPID keys once:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Configure all deployment environments (the private key must never use a `NEXT_PUBLIC_` prefix):
+
+```env
+NEXT_PUBLIC_WEB_PUSH_ENABLED=true
+NEXT_PUBLIC_VAPID_PUBLIC_KEY="..."
+VAPID_PRIVATE_KEY="..."
+VAPID_SUBJECT="mailto:admin@peerfootball.app"
+```
+
+Apply and generate the database schema:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+For a new local migration workflow use `npx prisma migrate dev`. In development, `/sw.js` is registered only when `NEXT_PUBLIC_WEB_PUSH_ENABLED=true`; otherwise old PeerFootball service workers and `fanpitch-pwa-*` caches are removed to avoid stale debugging state. Chrome DevTools → Application → Service Workers can also unregister a stale worker manually.
+
+Manual verification checklist:
+
+1. Install dependencies, generate VAPID keys, configure the four environment variables, and apply the Prisma migration.
+2. Sign in on Android Chrome and open Settings → Notifications.
+3. Press “Enable push notifications”; confirm permission is requested only after this click.
+4. In development, press “Send test notification”.
+5. Close the browser and trigger another notification from a second account.
+6. Click the system notification and verify the same-origin PeerFootball destination opens or focuses.
+7. Disable notifications in Settings and verify this device no longer receives pushes.
+8. Repeat with a second browser/device to verify independent subscriptions.
+9. On iOS/iPadOS 16.4+, add PeerFootball from Safari with “Add to Home Screen”, open the installed PWA, and repeat the enable/test/disable flow.
+
+Automated push unit checks run with:
+
+```bash
+npm run test:push
+npm run test:push-api
+```
+
 ## Project Structure
 
 ```text

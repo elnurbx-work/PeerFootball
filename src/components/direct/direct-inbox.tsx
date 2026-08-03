@@ -48,7 +48,9 @@ export function DirectInbox({
   const router = useRouter();
   const [friendsState, setFriendsState] = useState(friends);
   const [messagesByConversationIdState, setMessagesByConversationIdState] = useState(messagesByConversationId);
-  const initialFriend = friends.find((friend) => friend.conversationId === initialConversationId) ?? friends[0];
+  const initialFriend = initialConversationId
+    ? friends.find((friend) => friend.conversationId === initialConversationId)
+    : undefined;
   const [selectedFriendId, setSelectedFriendId] = useState(initialFriend?.id ?? "");
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(Boolean(initialConversationId));
   const [content, setContent] = useState("");
@@ -57,7 +59,7 @@ export function DirectInbox({
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
   const [pending, startTransition] = useTransition();
   const currentUserId = currentUser.id;
-  const selectedFriend = friendsState.find((friend) => friend.id === selectedFriendId) ?? friendsState[0] ?? null;
+  const selectedFriend = friendsState.find((friend) => friend.id === selectedFriendId) ?? null;
   const selectedConversationId = selectedFriend?.conversationId ?? null;
   const selectedConversationIdRef = useRef<string | null>(selectedConversationId);
   const loadingConversationIdsRef = useRef(new Set<string>());
@@ -681,7 +683,12 @@ export function DirectInbox({
                 </div>
               </form>
             </>
-          ) : null}
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+              <MessageCircle className="h-12 w-12 text-muted-foreground" />
+              <h2 className="mt-3 text-lg font-semibold">{t("direct.startConversation")}</h2>
+            </div>
+          )}
         </section>
       </div>
     </>

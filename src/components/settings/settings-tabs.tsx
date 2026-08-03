@@ -3,11 +3,11 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Lock, Paintbrush, UserCircle } from "lucide-react";
+import { Bell, Lock, Paintbrush, UserCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export type SettingsTabKey = "profile" | "account" | "appearance";
+export type SettingsTabKey = "profile" | "account" | "notifications" | "appearance";
 
 type SettingsTab = {
   key: SettingsTabKey;
@@ -26,6 +26,7 @@ type SettingsTabsProps = {
 const TAB_ICONS = {
   profile: UserCircle,
   account: Lock,
+  notifications: Bell,
   appearance: Paintbrush
 } satisfies Record<SettingsTabKey, typeof UserCircle>;
 

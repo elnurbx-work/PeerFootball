@@ -30,6 +30,7 @@ const typeIcon: Record<NotificationType, typeof Bell> = {
   CLUB_CHAT_REPLY: MessageCircle,
   CLUB_CHAT_MESSAGE_PINNED: Bell,
   CLUB_CHAT_ANNOUNCEMENT: Bell,
+  CLUB_INVITATION: Users,
   MATCH_INVITATION_RECEIVED: Users,
   MATCH_INVITATION_ACCEPTED: CheckCircle2,
   MATCH_INVITATION_REJECTED: Bell,

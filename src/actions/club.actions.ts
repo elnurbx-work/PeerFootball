@@ -43,6 +43,7 @@ import type { ApiResponse } from "@/types/api.types";
 import { addUserToClubChat, removeUserFromClubChat } from "@/server/services/club-chat.service";
 import { getServerTranslator } from "@/i18n/server";
 import type { Translate } from "@/i18n/dictionary";
+import { createClubInvitationNotification } from "@/server/services/notification.service";
 
 type ActionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 type ClubImageUploadData = {
@@ -648,7 +649,7 @@ export async function inviteUserToClubAction(input: unknown): Promise<ApiRespons
   const [club, invitedUser, existingMembership] = await Promise.all([
     prisma.club.findUnique({
       where: { id: clubId },
-      select: { slug: true }
+      select: { slug: true, name: true }
     }),
     prisma.user.findUnique({
       where: { id: userId },
@@ -688,6 +689,18 @@ export async function inviteUserToClubAction(input: unknown): Promise<ApiRespons
     },
     select: { id: true }
   });
+
+  try {
+    await createClubInvitationNotification({
+      actorId: user.id,
+      clubName: club.name,
+      recipientId: userId
+    });
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[notifications] club invitation creation failed", error);
+    }
+  }
 
   revalidateClubSurfaces(club.slug);
 

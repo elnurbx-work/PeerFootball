@@ -24,6 +24,7 @@ import {
 import type { ApiResponse } from "@/types/api.types";
 import type { ChatMessage, ConversationUpdatePayload, RealtimeChatMessage, SendMessageInput } from "@/types/message.types";
 import { getServerTranslator } from "@/i18n/server";
+import { createMessageNotification, createNotification } from "@/server/services/notification.service";
 
 type ActionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
@@ -105,7 +106,7 @@ export async function pinClubMessageAction(
     if (!message) return { ok: false, message: t("responses.message.notFound") };
   }
 
-  await prisma.$transaction(async (tx) => {
+  const notificationRecipientIds = await prisma.$transaction(async (tx) => {
     await tx.conversation.update({
       where: { id: conversationId },
       data: {
@@ -114,7 +115,7 @@ export async function pinClubMessageAction(
         pinnedAt: messageId ? new Date() : null
       }
     });
-    if (!messageId) return;
+    if (!messageId) return [];
 
     const recipients = await tx.clubMember.findMany({
       where: {
@@ -129,20 +130,17 @@ export async function pinClubMessageAction(
       },
       select: { userId: true }
     });
-    if (recipients.length) {
-      await tx.notification.createMany({
-        data: recipients.map((recipient) => ({
-          recipientId: recipient.userId,
-          actorId: user.id,
-          type: "CLUB_CHAT_MESSAGE_PINNED" as const,
-          conversationId,
-          messageId,
-          title: "Klub söhbətində mesaj sabitləndi",
-          body: `${user.name ?? user.username ?? "Klub üzvü"} klub söhbətində mesaj sabitlədi.`
-        }))
-      });
-    }
+    return recipients.map((recipient) => recipient.userId);
   });
+  await Promise.allSettled(notificationRecipientIds.map((recipientId) => createNotification({
+    recipientId,
+    actorId: user.id,
+    type: "CLUB_CHAT_MESSAGE_PINNED",
+    conversationId,
+    messageId,
+    title: "Klub söhbətində mesaj sabitləndi",
+    body: `${user.name ?? user.username ?? "Klub üzvü"} klub söhbətində mesaj sabitlədi.`
+  })));
   revalidatePath("/direct");
   return { ok: true, message: "", data: { pinnedMessageId: messageId } };
 }
@@ -245,6 +243,7 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
       include: {
         conversation: {
           select: {
+            type: true,
             members: {
               select: {
                 userId: true
@@ -298,6 +297,19 @@ export async function sendMessageAction(input: SendMessageInput): Promise<ApiRes
     () => publishMessageCreated(message.conversationId, realtimeMessage),
     ...message.conversation.members.map((member) => () => publishConversationUpdated(member.userId, conversationUpdate))
   ]);
+
+  if (message.conversation.type === "DIRECT") {
+    await Promise.allSettled(
+      message.conversation.members
+        .filter((member) => member.userId !== user.id)
+        .map((member) => createMessageNotification({
+          actorId: user.id,
+          conversationId: message.conversationId,
+          messageId: message.id,
+          recipientId: member.userId
+        }))
+    );
+  }
 
   revalidateMessageSurfaces();
 

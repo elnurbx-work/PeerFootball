@@ -11,6 +11,7 @@ import {
   type SettingsTabKey
 } from "@/components/settings/settings-tabs";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
+import { PushNotificationSettings } from "@/components/settings/push-notification-settings";
 
 type SettingsPageProps = {
   searchParams: Promise<{ tab?: string }>;
@@ -19,6 +20,7 @@ type SettingsPageProps = {
 const SETTINGS_TABS: SettingsTabKey[] = [
   "profile",
   "account",
+  "notifications",
   "appearance"
 ];
 
@@ -62,6 +64,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           label: t("settings.account"),
           description: t("settings.accountDescription"),
           content: <AccountSettings />
+        },
+        {
+          key: "notifications",
+          label: t("settings.notifications"),
+          description: t("settings.notificationsDescription"),
+          content: <PushNotificationSettings />
         },
         {
           key: "appearance",

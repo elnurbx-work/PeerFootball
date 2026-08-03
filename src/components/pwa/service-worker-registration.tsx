@@ -8,7 +8,9 @@ export function ServiceWorkerRegistration() {
       return;
     }
 
-    if (process.env.NODE_ENV !== "production") {
+    const pushEnabled = process.env.NEXT_PUBLIC_WEB_PUSH_ENABLED === "true";
+
+    if (process.env.NODE_ENV !== "production" && !pushEnabled) {
       void removeDevelopmentServiceWorker().catch(() => undefined);
 
       return;
