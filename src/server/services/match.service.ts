@@ -470,6 +470,26 @@ async function applyClubStats(
   ]);
 }
 
+function getClubStatsResultFields(result: "W" | "D" | "L") {
+  switch (result) {
+    case "W":
+      return {
+        create: { wins: 1 },
+        update: { wins: { increment: 1 } }
+      };
+    case "D":
+      return {
+        create: { draws: 1 },
+        update: { draws: { increment: 1 } }
+      };
+    case "L":
+      return {
+        create: { losses: 1 },
+        update: { losses: { increment: 1 } }
+      };
+  }
+}
+
 async function upsertClubStats(
   tx: Prisma.TransactionClient,
   clubId: string,
@@ -478,7 +498,7 @@ async function upsertClubStats(
   result: "W" | "D" | "L",
   recentForm: unknown
 ) {
-  const resultFields = result === "W" ? { wins: 1 } : result === "D" ? { draws: 1 } : { losses: 1 };
+  const resultFields = getClubStatsResultFields(result);
   await tx.clubStats.upsert({
     where: { clubId },
     create: {
@@ -489,7 +509,7 @@ async function upsertClubStats(
       goalsAgainst,
       goalDifference: goalsFor - goalsAgainst,
       recentForm: [result],
-      ...resultFields
+      ...resultFields.create
     },
     update: {
       matchesPlayed: { increment: 1 },
@@ -497,7 +517,7 @@ async function upsertClubStats(
       goalsAgainst: { increment: goalsAgainst },
       goalDifference: { increment: goalsFor - goalsAgainst },
       recentForm: appendRecentForm(recentForm, result),
-      ...(result === "W" ? { wins: { increment: 1 } } : result === "D" ? { draws: { increment: 1 } } : { losses: { increment: 1 } })
+      ...resultFields.update
     }
   });
 }

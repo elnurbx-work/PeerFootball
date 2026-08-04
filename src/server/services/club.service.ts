@@ -224,13 +224,20 @@ export function toClubMetricDefinitionDto(metric: {
 }
 
 export function slugify(value: string) {
-  return value
+  const slug = value
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "")
-    .slice(0, 80);
+    .replace(/[^a-z0-9]+/g, "-");
+
+  const withoutLeadingHyphen = slug.startsWith("-")
+    ? slug.slice(1)
+    : slug;
+
+  const withoutBoundaryHyphens = withoutLeadingHyphen.endsWith("-")
+    ? withoutLeadingHyphen.slice(0, -1)
+    : withoutLeadingHyphen;
+
+  return withoutBoundaryHyphens.slice(0, 80);
 }
 
 function getDefaultSettingsRecord(clubId: string, createdAt: Date, updatedAt: Date): ClubSettingsRecord {
