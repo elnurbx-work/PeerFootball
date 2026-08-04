@@ -97,7 +97,12 @@ export function canRoleManageMatches(role: ClubRole | null | undefined, policy: 
 }
 
 export function clubFixtureKey(firstClubId: string, secondClubId: string, startTime: Date) {
-  return [[firstClubId, secondClubId].sort().join(":"), startTime.toISOString()].join("@");
+  return [
+    [firstClubId, secondClubId]
+      .sort((a, b) => a.localeCompare(b))
+      .join(":"),
+    startTime.toISOString()
+  ].join("@");
 }
 
 export class MatchDomainError extends Error {

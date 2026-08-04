@@ -19,11 +19,15 @@ function flatten(value, prefix = "", output = new Map()) {
 }
 
 const flattened = locales.map(({ locale, dictionary }) => ({ locale, messages: flatten(dictionary) }));
-const referenceKeys = [...flattened[0].messages.keys()].sort();
+const referenceKeys = [...flattened[0].messages.keys()].sort((a, b) =>
+  a.localeCompare(b)
+);
 const errors = [];
 
 for (const { locale, messages } of flattened.slice(1)) {
-  const keys = [...messages.keys()].sort();
+  const keys = [...messages.keys()].sort((a, b) =>
+    a.localeCompare(b)
+  );
   for (const key of referenceKeys.filter((item) => !messages.has(item))) errors.push(`${locale}: missing locale key ${key}`);
   for (const key of keys.filter((item) => !flattened[0].messages.has(item))) errors.push(`${locale}: extra locale key ${key}`);
 }

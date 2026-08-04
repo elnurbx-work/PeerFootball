@@ -57,7 +57,7 @@ function parseEnvFile(path: string) {
   const values: Record<string, string> = {};
 
   for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
-    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)?\s*$/);
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$/);
 
     if (!match) {
       continue;
