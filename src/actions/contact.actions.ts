@@ -2,13 +2,31 @@
 
 import type { ApiResponse } from "@/types/api.types";
 
+function isValidEmail(email: string) {
+  if (!email || email.includes(" ")) {
+    return false;
+  }
+
+  const firstAt = email.indexOf("@");
+  const lastAt = email.lastIndexOf("@");
+
+  if (firstAt <= 0 || firstAt !== lastAt) {
+    return false;
+  }
+
+  const domain = email.slice(firstAt + 1);
+  const dotIndex = domain.lastIndexOf(".");
+
+  return dotIndex > 0 && dotIndex < domain.length - 1;
+}
+
 export async function submitContactAction(formData: FormData): Promise<ApiResponse> {
   const email = String(formData.get("email") ?? "").trim();
   const subject = String(formData.get("subject") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const website = String(formData.get("website") ?? "").trim();
   if (website) return { ok: true, message: "Sorğunuz qəbul edildi." };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || subject.length < 3 || subject.length > 120 || message.length < 20 || message.length > 4000) {
+  if (!isValidEmail(email) || subject.length < 3 || subject.length > 120 || message.length < 20 || message.length > 4000) {
     return { ok: false, message: "E-poçt, mövzu və ən az 20 simvolluq mesaj daxil edin." };
   }
   const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim();
