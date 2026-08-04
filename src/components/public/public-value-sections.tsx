@@ -9,7 +9,6 @@ const guideLinks = [
 
 export function PublicValueSections({ stats }: { stats: PublicPlatformStats }) {
   const realStats = [
-    ["Açıq oyunçu profili", stats.players],
     ["Açıq komanda", stats.clubs],
     ["Tamamlanmış klub oyunu", stats.completedMatches]
   ].filter(([, value]) => Number(value) > 0);

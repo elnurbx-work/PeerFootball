@@ -4,7 +4,7 @@ import type { LandingCopy } from "./landing-data";
 
 export function FinalCtaSection({ copy }: { copy: LandingCopy }) {
   return (
-    <section className="bg-background px-4 pb-16 sm:px-5 md:px-8 md:pb-24 lg:px-12">
+    <section className="bg-background px-4 py-16 sm:px-5 md:px-8 md:pb-24 lg:px-12">
       <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[1.5rem] bg-brand px-5 py-14 text-center text-white sm:rounded-[2rem] sm:px-10 sm:py-16 md:py-20">
         <div className="absolute inset-6 rounded-[1.25rem] border border-white/10" aria-hidden="true"><span className="absolute left-1/2 top-0 h-full border-l border-white/10" /><span className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" /></div>
         <div className="relative mx-auto max-w-3xl">
