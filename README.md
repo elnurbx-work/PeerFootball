@@ -1,5 +1,7 @@
 # PeerFootball
 
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=elnurbx-work_PeerFootball&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=elnurbx-work_PeerFootball)
+
 PeerFootball is a football social network for amateur players and fans. Phase 2 wires Google and email/password authentication, Auth.js sessions, protected app routes, email verification, and persisted user profile editing.
 
 ## Privacy Architecture
