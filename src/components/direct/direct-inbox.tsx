@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState, useTransition, type RefObject } from "react";
 import { Realtime, type InboundMessage, type PresenceMessage } from "ably";
 import { ArrowLeft, MessageCircle, Send, Trash2, Users } from "lucide-react";
 import { deleteMessageAction, getConversationMessagesAction, markConversationReadAction, sendMessageAction } from "@/actions/message.actions";
@@ -38,6 +38,14 @@ type PresenceData = {
   userId: string;
 };
 
+type DirectFriendRow = DirectFriend & {
+  displayName: string;
+  preview: string;
+};
+
+type InboxTranslator = ReturnType<typeof useI18n>["t"];
+type InboxLocale = ReturnType<typeof useI18n>["locale"];
+
 export function DirectInbox({
   currentUser,
   friends,
@@ -48,10 +56,9 @@ export function DirectInbox({
   const router = useRouter();
   const [friendsState, setFriendsState] = useState(friends);
   const [messagesByConversationIdState, setMessagesByConversationIdState] = useState(messagesByConversationId);
-  const initialFriend = initialConversationId
-    ? friends.find((friend) => friend.conversationId === initialConversationId)
-    : undefined;
-  const [selectedFriendId, setSelectedFriendId] = useState(initialFriend?.id ?? "");
+  const [selectedFriendId, setSelectedFriendId] = useState(
+    getInitialSelectedFriendId(friends, initialConversationId)
+  );
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(Boolean(initialConversationId));
   const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -485,213 +492,434 @@ export function DirectInbox({
     );
   }
 
-  if (!friendsState.length) {
-    return (
-      <div className="rounded-md border bg-card p-8 text-center">
-        <Users className="mx-auto h-10 w-10 text-muted-foreground" />
-        <h2 className="mt-3 text-lg font-semibold">{t("direct.noFriendsTitle")}</h2>
-        <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-          {t("direct.noFriendsDescription")}
-        </p>
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <Button asChild>
-            <Link href="/search">{t("direct.findPlayers")}</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/friends?tab=incoming">{t("direct.friendRequests")}</Link>
-          </Button>
-        </div>
-      </div>
+  function handleSelectFriend(friend: DirectFriend) {
+    setSelectedFriendId(friend.id);
+    setIsMobileChatOpen(true);
+    router.push(directMessagingHref(friend.conversationId));
+    setError(null);
+    setFriendsState((currentFriends) =>
+      currentFriends.map((currentFriend) =>
+        currentFriend.id === friend.id ? { ...currentFriend, unreadCount: 0 } : currentFriend
+      )
     );
+  }
+
+  function handleMobileBack() {
+    setIsMobileChatOpen(false);
+    router.push(directMessagingHref());
+  }
+
+  function handleMessagesScroll() {
+    const viewport = messagesViewportRef.current;
+    if (viewport) shouldStickToBottomRef.current = isNearBottom(viewport);
+  }
+
+  function handleToastOpenChange(open: boolean) {
+    if (!open) setToastMessage(null);
+  }
+
+  const hasFriends = friendsState.length > 0;
+  const showMobileChat = isMobileChatOpen;
+
+  if (!hasFriends) {
+    return <DirectFriendsEmptyState t={t} />;
   }
 
   return (
     <>
-      <Toast message={toastMessage ?? ""} open={Boolean(toastMessage)} onOpenChange={(open) => !open && setToastMessage(null)} />
+      <Toast message={toastMessage ?? ""} open={Boolean(toastMessage)} onOpenChange={handleToastOpenChange} />
       <div className="grid h-full overflow-hidden bg-card md:grid-cols-[320px_1fr] md:border-r">
-        <aside className={cn("min-h-0 flex-col border-r", isMobileChatOpen ? "hidden md:flex" : "flex")}>
-          <div className="flex items-start justify-between gap-3 border-b p-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <MessageCircle className="h-4 w-4 text-primary" />
-                {t("direct.friends")}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">{t("direct.friendsDescription")}</p>
-            </div>
-            <Button asChild size="sm" variant="outline" className="shrink-0">
-              <Link href="/friends?tab=incoming">{t("direct.manage")}</Link>
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {friendRows.map((friend) => (
-              <button
-                key={friend.id}
-                className={cn(
-                  "flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-secondary",
-                  selectedFriend?.id === friend.id && "bg-secondary"
-                )}
-                type="button"
-                onClick={() => {
-                  setSelectedFriendId(friend.id);
-                  setIsMobileChatOpen(true);
-                  router.push(directMessagingHref(friend.conversationId));
-                  setError(null);
-                  setFriendsState((currentFriends) =>
-                    currentFriends.map((currentFriend) =>
-                      currentFriend.id === friend.id ? { ...currentFriend, unreadCount: 0 } : currentFriend
-                    )
-                  );
-                }}
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                  {friend.image ? <img src={friend.image} alt="" className="h-full w-full object-cover" /> : friend.displayName.charAt(0)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="min-w-0 flex-1 truncate text-sm font-semibold">{friend.displayName}</p>
-                    {friend.unreadCount ? (
-                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-semibold text-accent-foreground">
-                        {friend.unreadCount > 9 ? "9+" : friend.unreadCount}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="truncate text-xs text-muted-foreground">@{friend.username ?? t("profile.summary.profileFallback")}</p>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">{friend.preview}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </aside>
+        <DirectChatSidebar
+          friends={friendRows}
+          selectedFriendId={selectedFriend?.id ?? null}
+          showMobileChat={showMobileChat}
+          t={t}
+          onSelectFriend={handleSelectFriend}
+        />
 
         <section
           ref={mobileChatRef}
           className={cn(
             "min-h-0 flex-col bg-card",
-            isMobileChatOpen
+            showMobileChat
               ? "fixed inset-x-0 top-0 z-50 flex h-dvh overflow-hidden md:relative md:inset-auto md:z-auto md:h-auto"
               : "hidden md:flex"
           )}
         >
           {selectedFriend ? (
             <>
-              <div className="flex items-center gap-3 border-b p-3 sm:p-4">
-                <Button
-                  className="shrink-0 md:hidden"
-                  variant="outline"
-                  type="button"
-                  aria-label={t("direct.backToMessages")}
-                  onClick={() => {
-                    setIsMobileChatOpen(false);
-                    router.push(directMessagingHref());
-                  }}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                  {t("direct.chats")}
-                </Button>
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary font-semibold">
-                  {selectedFriend.image ? (
-                    <img src={selectedFriend.image} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    (selectedFriend.name ?? t("profile.summary.playerFallback")).charAt(0)
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate font-semibold">{selectedFriend.name ?? t("profile.summary.playerFallback")}</h2>
-                  <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className={cn("h-2 w-2 rounded-full", isOtherUserOnline ? "bg-primary" : "bg-muted-foreground")} />
-                    <span>{isOtherUserOnline ? t("direct.online") : t("direct.offline")}</span>
-                    <span className="truncate">@{selectedFriend.username ?? t("profile.summary.profileFallback")}</span>
-                  </div>
-                </div>
-              </div>
+              <SelectedFriendHeader
+                friend={selectedFriend}
+                isOnline={isOtherUserOnline}
+                t={t}
+                onMobileBack={handleMobileBack}
+              />
 
-              <div
-                ref={messagesViewportRef}
-                className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/50 p-3 sm:p-4"
-                onScroll={() => {
-                  const viewport = messagesViewportRef.current;
+              <DirectMessageList
+                messages={messages}
+                currentUserId={currentUserId}
+                locale={locale}
+                pending={pending}
+                messagesViewportRef={messagesViewportRef}
+                messagesEndRef={messagesEndRef}
+                t={t}
+                onScroll={handleMessagesScroll}
+                onDeleteMessage={handleDeleteMessage}
+              />
 
-                  if (viewport) {
-                    shouldStickToBottomRef.current = isNearBottom(viewport);
-                  }
-                }}
-              >
-                {messages.length ? (
-                  messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn("flex", message.isOwnMessage ? "justify-end" : "justify-start")}
-                    >
-                      <div
-                        className={cn(
-                          "group max-w-[82%] rounded-md border px-3 py-2",
-                          message.isOwnMessage ? "bg-primary text-primary-foreground" : "bg-card"
-                        )}
-                      >
-                        <p className={cn("whitespace-pre-wrap break-words text-sm leading-6", message.deletedAt && "italic opacity-75")}>
-                          {message.content}
-                        </p>
-                        <div className={cn("mt-1 flex items-center gap-2 text-[11px]", message.isOwnMessage ? "text-primary-foreground/75" : "text-muted-foreground")}>
-                          <RelativeTime value={message.createdAt} locale={locale} />
-                          {message.senderId === currentUserId && !message.deletedAt ? (
-                            <button
-                              className="inline-flex items-center gap-1 opacity-80 hover:opacity-100 disabled:opacity-50"
-                              type="button"
-                              disabled={pending}
-                              onClick={() => handleDeleteMessage(message.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              {t("direct.delete")}
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
-                    <MessageCircle className="h-10 w-10 text-muted-foreground" />
-                    <h3 className="mt-3 font-semibold">{t("direct.noMessagesTitle")}</h3>
-                    <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                      {t("direct.noMessagesDescription")}
-                    </p>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              <form className="grid shrink-0 gap-2 border-t p-3 pb-4 sm:p-4" onSubmit={handleSubmit}>
-                <Textarea
-                  className="min-h-20"
-                  maxLength={MESSAGE_CONTENT_MAX_LENGTH}
-                  placeholder={t("direct.messagePlaceholder", { name: selectedFriend.name ?? t("direct.yourFriend") })}
-                  value={content}
-                  onChange={(event) => setContent(event.target.value)}
-                  onKeyDown={handleComposerKeyDown}
-                />
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">
-                      {trimmedLength}/{MESSAGE_CONTENT_MAX_LENGTH}
-                    </p>
-                    {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
-                  </div>
-                  <Button type="submit" disabled={pending || !trimmedLength}>
-                    <Send className="h-4 w-4" />
-                    {pending ? t("direct.sending") : t("direct.send")}
-                  </Button>
-                </div>
-              </form>
+              <DirectMessageComposer
+                friend={selectedFriend}
+                content={content}
+                error={error}
+                pending={pending}
+                trimmedLength={trimmedLength}
+                t={t}
+                onContentChange={setContent}
+                onKeyDown={handleComposerKeyDown}
+                onSubmit={handleSubmit}
+              />
             </>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-              <MessageCircle className="h-12 w-12 text-muted-foreground" />
-              <h2 className="mt-3 text-lg font-semibold">{t("direct.startConversation")}</h2>
-            </div>
+            <DirectConversationEmptyState t={t} />
           )}
         </section>
       </div>
     </>
+  );
+}
+
+function getInitialSelectedFriendId(friends: DirectFriend[], initialConversationId?: string | null) {
+  if (!initialConversationId) return "";
+  return friends.find((friend) => friend.conversationId === initialConversationId)?.id ?? "";
+}
+
+function DirectFriendsEmptyState({ t }: { t: InboxTranslator }) {
+  return (
+    <div className="rounded-md border bg-card p-8 text-center">
+      <Users className="mx-auto h-10 w-10 text-muted-foreground" />
+      <h2 className="mt-3 text-lg font-semibold">{t("direct.noFriendsTitle")}</h2>
+      <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+        {t("direct.noFriendsDescription")}
+      </p>
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <Button asChild>
+          <Link href="/search">{t("direct.findPlayers")}</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/friends?tab=incoming">{t("direct.friendRequests")}</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function DirectChatSidebar({
+  friends,
+  selectedFriendId,
+  showMobileChat,
+  t,
+  onSelectFriend
+}: {
+  friends: DirectFriendRow[];
+  selectedFriendId: string | null;
+  showMobileChat: boolean;
+  t: InboxTranslator;
+  onSelectFriend: (friend: DirectFriend) => void;
+}) {
+  return (
+    <aside className={cn("min-h-0 flex-col border-r", showMobileChat ? "hidden md:flex" : "flex")}>
+      <div className="flex items-start justify-between gap-3 border-b p-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <MessageCircle className="h-4 w-4 text-primary" />
+            {t("direct.friends")}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">{t("direct.friendsDescription")}</p>
+        </div>
+        <Button asChild size="sm" variant="outline" className="shrink-0">
+          <Link href="/friends?tab=incoming">{t("direct.manage")}</Link>
+        </Button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {friends.map((friend) => (
+          <DirectFriendSidebarItem
+            key={friend.id}
+            friend={friend}
+            isSelected={selectedFriendId === friend.id}
+            t={t}
+            onSelectFriend={onSelectFriend}
+          />
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function DirectFriendSidebarItem({
+  friend,
+  isSelected,
+  t,
+  onSelectFriend
+}: {
+  friend: DirectFriendRow;
+  isSelected: boolean;
+  t: InboxTranslator;
+  onSelectFriend: (friend: DirectFriend) => void;
+}) {
+  const hasUnreadMessages = friend.unreadCount > 0;
+
+  return (
+    <button
+      className={cn(
+        "flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-secondary",
+        isSelected && "bg-secondary"
+      )}
+      type="button"
+      onClick={() => onSelectFriend(friend)}
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-primary-foreground">
+        {friend.image ? <img src={friend.image} alt="" className="h-full w-full object-cover" /> : friend.displayName.charAt(0)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold">{friend.displayName}</p>
+          {hasUnreadMessages ? (
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-semibold text-accent-foreground">
+              {formatUnreadCount(friend.unreadCount)}
+            </span>
+          ) : null}
+        </div>
+        <p className="truncate text-xs text-muted-foreground">@{friend.username ?? t("profile.summary.profileFallback")}</p>
+        <p className="mt-1 truncate text-xs text-muted-foreground">{friend.preview}</p>
+      </div>
+    </button>
+  );
+}
+
+function formatUnreadCount(unreadCount: number) {
+  return unreadCount > 9 ? "9+" : unreadCount;
+}
+
+function SelectedFriendHeader({
+  friend,
+  isOnline,
+  t,
+  onMobileBack
+}: {
+  friend: DirectFriend;
+  isOnline: boolean;
+  t: InboxTranslator;
+  onMobileBack: () => void;
+}) {
+  const displayName = friend.name ?? t("profile.summary.playerFallback");
+  const hasSelectedFriendImage = Boolean(friend.image);
+
+  return (
+    <div className="flex items-center gap-3 border-b p-3 sm:p-4">
+      <Button
+        className="shrink-0 md:hidden"
+        variant="outline"
+        type="button"
+        aria-label={t("direct.backToMessages")}
+        onClick={onMobileBack}
+      >
+        <ArrowLeft className="h-5 w-5" />
+        {t("direct.chats")}
+      </Button>
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary font-semibold">
+        {hasSelectedFriendImage ? (
+          <img src={friend.image!} alt="" className="h-full w-full object-cover" />
+        ) : (
+          displayName.charAt(0)
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate font-semibold">{displayName}</h2>
+        <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
+          <OnlineStatus isOnline={isOnline} t={t} />
+          <span className="truncate">@{friend.username ?? t("profile.summary.profileFallback")}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OnlineStatus({ isOnline, t }: { isOnline: boolean; t: InboxTranslator }) {
+  const indicatorClassName = isOnline ? "bg-primary" : "bg-muted-foreground";
+  const statusLabel = isOnline ? t("direct.online") : t("direct.offline");
+
+  return (
+    <>
+      <span className={cn("h-2 w-2 rounded-full", indicatorClassName)} />
+      <span>{statusLabel}</span>
+    </>
+  );
+}
+
+function DirectMessageList({
+  messages,
+  currentUserId,
+  locale,
+  pending,
+  messagesViewportRef,
+  messagesEndRef,
+  t,
+  onScroll,
+  onDeleteMessage
+}: {
+  messages: ChatMessage[];
+  currentUserId: string;
+  locale: InboxLocale;
+  pending: boolean;
+  messagesViewportRef: RefObject<HTMLDivElement | null>;
+  messagesEndRef: RefObject<HTMLDivElement | null>;
+  t: InboxTranslator;
+  onScroll: () => void;
+  onDeleteMessage: (messageId: string) => void;
+}) {
+  const hasMessages = messages.length > 0;
+
+  return (
+    <div
+      ref={messagesViewportRef}
+      className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/50 p-3 sm:p-4"
+      onScroll={onScroll}
+    >
+      {hasMessages ? (
+        messages.map((message) => (
+          <DirectMessageItem
+            key={message.id}
+            message={message}
+            currentUserId={currentUserId}
+            locale={locale}
+            pending={pending}
+            t={t}
+            onDeleteMessage={onDeleteMessage}
+          />
+        ))
+      ) : (
+        <DirectMessagesEmptyState t={t} />
+      )}
+      <div ref={messagesEndRef} />
+    </div>
+  );
+}
+
+function DirectMessageItem({
+  message,
+  currentUserId,
+  locale,
+  pending,
+  t,
+  onDeleteMessage
+}: {
+  message: ChatMessage;
+  currentUserId: string;
+  locale: InboxLocale;
+  pending: boolean;
+  t: InboxTranslator;
+  onDeleteMessage: (messageId: string) => void;
+}) {
+  const canDeleteMessage = message.senderId === currentUserId && !message.deletedAt;
+
+  return (
+    <div className={cn("flex", message.isOwnMessage ? "justify-end" : "justify-start")}>
+      <div
+        className={cn(
+          "group max-w-[82%] rounded-md border px-3 py-2",
+          message.isOwnMessage ? "bg-primary text-primary-foreground" : "bg-card"
+        )}
+      >
+        <p className={cn("whitespace-pre-wrap break-words text-sm leading-6", message.deletedAt && "italic opacity-75")}>
+          {message.content}
+        </p>
+        <div className={cn("mt-1 flex items-center gap-2 text-[11px]", message.isOwnMessage ? "text-primary-foreground/75" : "text-muted-foreground")}>
+          <RelativeTime value={message.createdAt} locale={locale} />
+          {canDeleteMessage ? (
+            <button
+              className="inline-flex items-center gap-1 opacity-80 hover:opacity-100 disabled:opacity-50"
+              type="button"
+              disabled={pending}
+              onClick={() => onDeleteMessage(message.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {t("direct.delete")}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DirectMessagesEmptyState({ t }: { t: InboxTranslator }) {
+  return (
+    <div className="flex h-full min-h-64 flex-col items-center justify-center text-center">
+      <MessageCircle className="h-10 w-10 text-muted-foreground" />
+      <h3 className="mt-3 font-semibold">{t("direct.noMessagesTitle")}</h3>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+        {t("direct.noMessagesDescription")}
+      </p>
+    </div>
+  );
+}
+
+function DirectMessageComposer({
+  friend,
+  content,
+  error,
+  pending,
+  trimmedLength,
+  t,
+  onContentChange,
+  onKeyDown,
+  onSubmit
+}: {
+  friend: DirectFriend;
+  content: string;
+  error: string | null;
+  pending: boolean;
+  trimmedLength: number;
+  t: InboxTranslator;
+  onContentChange: (value: string) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const isSendDisabled = pending || !trimmedLength;
+  const sendLabel = pending ? t("direct.sending") : t("direct.send");
+
+  return (
+    <form className="grid shrink-0 gap-2 border-t p-3 pb-4 sm:p-4" onSubmit={onSubmit}>
+      <Textarea
+        className="min-h-20"
+        maxLength={MESSAGE_CONTENT_MAX_LENGTH}
+        placeholder={t("direct.messagePlaceholder", { name: friend.name ?? t("direct.yourFriend") })}
+        value={content}
+        onChange={(event) => onContentChange(event.target.value)}
+        onKeyDown={onKeyDown}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">
+            {trimmedLength}/{MESSAGE_CONTENT_MAX_LENGTH}
+          </p>
+          {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
+        </div>
+        <Button type="submit" disabled={isSendDisabled}>
+          <Send className="h-4 w-4" />
+          {sendLabel}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function DirectConversationEmptyState({ t }: { t: InboxTranslator }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+      <MessageCircle className="h-12 w-12 text-muted-foreground" />
+      <h2 className="mt-3 text-lg font-semibold">{t("direct.startConversation")}</h2>
+    </div>
   );
 }
 

@@ -332,23 +332,72 @@ function toMatchVideoDto(video: {
 }
 
 function getPermissions(match: MatchRecord, manageableClubIds: Set<string>): MatchPermissions {
-  const creator = manageableClubIds.has(match.creatorClubId);
-  const home = match.homeClubId ? manageableClubIds.has(match.homeClubId) : false;
-  const away = match.awayClubId ? manageableClubIds.has(match.awayClubId) : false;
-  const editable = !["COMPLETED", "CANCELLED", "REJECTED"].includes(match.status);
-  const canManagePlayers = match.type === "INTERNAL"
-    ? creator && editable
-    : (home || away) && match.status === "SCHEDULED";
+  const isCreatorManaged = manageableClubIds.has(match.creatorClubId);
+  const isHomeManaged = isManagedClub(match.homeClubId, manageableClubIds);
+  const isAwayManaged = isManagedClub(match.awayClubId, manageableClubIds);
+  const canManageEitherSide = isHomeManaged || isAwayManaged;
+  const isExactlyOneSideManaged = canManageEitherSide && isHomeManaged !== isAwayManaged;
+  const isEditableStatus = !["COMPLETED", "CANCELLED", "REJECTED"].includes(match.status);
+  const isResultSubmissionAvailable =
+    ["SCHEDULED", "LIVE"].includes(match.status) &&
+    Date.now() >= (match.endTime ?? match.startTime).getTime();
+  const canReviewSubmittedResult =
+    match.type === "CLUB_VS_CLUB" &&
+    match.status === "RESULT_PENDING" &&
+    Boolean(match.resultSubmittedByClubId) &&
+    canManageEitherSide &&
+    !manageableClubIds.has(match.resultSubmittedByClubId!);
+  const canManageMatchPlayers = getCanManageMatchPlayers(
+    match,
+    isCreatorManaged,
+    canManageEitherSide,
+    isEditableStatus
+  );
+  const canSubmitResult = getCanSubmitResult(
+    match,
+    isCreatorManaged,
+    isExactlyOneSideManaged,
+    isResultSubmissionAvailable
+  );
+  const canManageMatch = match.type === "INTERNAL" ? isCreatorManaged : canManageEitherSide;
+
   return {
-    canEditMatch: creator && editable,
-    canAddPlayers: canManagePlayers,
-    canSubmitResult: (match.type === "INTERNAL" ? creator : (home || away) && home !== away) && ["SCHEDULED", "LIVE"].includes(match.status) && Date.now() >= (match.endTime ?? match.startTime).getTime(),
-    canConfirmResult: match.type === "CLUB_VS_CLUB" && match.status === "RESULT_PENDING" && Boolean(match.resultSubmittedByClubId) && (home || away) && !manageableClubIds.has(match.resultSubmittedByClubId!),
-    canDisputeResult: match.type === "CLUB_VS_CLUB" && match.status === "RESULT_PENDING" && Boolean(match.resultSubmittedByClubId) && (home || away) && !manageableClubIds.has(match.resultSubmittedByClubId!),
-    canAddMatchVideo: (match.type === "INTERNAL" ? creator : home || away) && match.status !== "COMPLETED",
-    canManagePlayers,
-    canCancelMatch: match.type === "CLUB_VS_CLUB" && (home || away) && home !== away && ["PENDING", "ACCEPTED", "SCHEDULED"].includes(match.status)
+    canEditMatch: isCreatorManaged && isEditableStatus,
+    canAddPlayers: canManageMatchPlayers,
+    canSubmitResult,
+    canConfirmResult: canReviewSubmittedResult,
+    canDisputeResult: canReviewSubmittedResult,
+    canAddMatchVideo: canManageMatch && match.status !== "COMPLETED",
+    canManagePlayers: canManageMatchPlayers,
+    canCancelMatch:
+      match.type === "CLUB_VS_CLUB" &&
+      isExactlyOneSideManaged &&
+      ["PENDING", "ACCEPTED", "SCHEDULED"].includes(match.status)
   };
+}
+
+function isManagedClub(clubId: string | null, manageableClubIds: Set<string>) {
+  return clubId ? manageableClubIds.has(clubId) : false;
+}
+
+function getCanManageMatchPlayers(
+  match: MatchRecord,
+  isCreatorManaged: boolean,
+  canManageEitherSide: boolean,
+  isEditableStatus: boolean
+) {
+  if (match.type === "INTERNAL") return isCreatorManaged && isEditableStatus;
+  return canManageEitherSide && match.status === "SCHEDULED";
+}
+
+function getCanSubmitResult(
+  match: MatchRecord,
+  isCreatorManaged: boolean,
+  isExactlyOneSideManaged: boolean,
+  isResultSubmissionAvailable: boolean
+) {
+  const canManageResult = match.type === "INTERNAL" ? isCreatorManaged : isExactlyOneSideManaged;
+  return canManageResult && isResultSubmissionAvailable;
 }
 
 async function getManageableClubIds(userId?: string) {

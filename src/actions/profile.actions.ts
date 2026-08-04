@@ -15,6 +15,7 @@ import {
 import { lookupTeamById } from "@/server/services/thesportsdb.service";
 import type { ApiResponse } from "@/types/api.types";
 import type { AddFavoriteTeamInput, UserFavoriteTeamSummary } from "@/types/profile.types";
+import type { Translate } from "@/i18n/dictionary";
 import { getServerTranslator } from "@/i18n/server";
 
 const MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -39,11 +40,19 @@ const favoriteTeamSelect = {
   badgeUrl: true
 } as const;
 
-export async function updateProfileAction(_prevState: ApiResponse, formData: FormData): Promise<ApiResponse> {
-  const t = await getServerTranslator();
-  const profileImageFile = getImageFile(formData, "imageFile");
-  const coverImageFile = getImageFile(formData, "coverImageFile");
+type ProfileInput = z.infer<typeof profileSchema>;
+type ProfileValidationResult =
+  | { success: true; data: ProfileInput }
+  | { success: false; response: ApiResponse<never> };
+type ImageUploadResult =
+  | { success: true; url: string | null }
+  | { success: false; response: ApiResponse<never> };
 
+function validateProfileImageFiles(
+  profileImageFile: File | null,
+  coverImageFile: File | null,
+  t: Translate
+): ApiResponse<never> | null {
   if (profileImageFile && !PROFILE_IMAGE_TYPES.has(profileImageFile.type)) {
     return {
       ok: false,
@@ -76,21 +85,29 @@ export async function updateProfileAction(_prevState: ApiResponse, formData: For
     };
   }
 
+  return null;
+}
+
+function validateProfileForm(formData: FormData, t: Translate): ProfileValidationResult {
   const result = profileSchema.safeParse(Object.fromEntries(formData));
 
   if (!result.success) {
-    return { ok: false, message: t("responses.profile.invalid"), issues: localizedFieldErrors(result.error, t) };
+    return {
+      success: false,
+      response: { ok: false, message: t("responses.profile.invalid"), issues: localizedFieldErrors(result.error, t) }
+    };
   }
 
-  const session = await auth();
-  const userId = session?.user?.id;
+  return { success: true, data: result.data };
+}
 
-  if (!userId) {
-    return { ok: false, message: t("responses.profile.signInEdit") };
-  }
-
+async function getUsernameUniquenessError(
+  username: string,
+  userId: string,
+  t: Translate
+): Promise<ApiResponse<never> | null> {
   const existingUsername = await prisma.user.findUnique({
-    where: { username: result.data.username },
+    where: { username },
     select: { id: true }
   });
 
@@ -102,77 +119,123 @@ export async function updateProfileAction(_prevState: ApiResponse, formData: For
     };
   }
 
-  const optional = (value?: string) => {
-    const trimmed = value?.trim();
-    return trimmed ? trimmed : null;
+  return null;
+}
+
+function getCloudinaryConfigurationError(
+  profileImageFile: File | null,
+  coverImageFile: File | null,
+  t: Translate
+): ApiResponse<never> | null {
+  if ((!profileImageFile && !coverImageFile) || isCloudinaryConfigured()) return null;
+
+  return {
+    ok: false,
+    message: t("responses.profile.uploadNotConfigured"),
+    issues: {
+      imageFile: profileImageFile ? [t("responses.profile.uploadUnavailable")] : undefined,
+      coverImageFile: coverImageFile ? [t("responses.profile.uploadUnavailable")] : undefined
+    }
   };
+}
 
-  let profileImageUrl = optional(result.data.image);
-  let coverImageUrl = optional(result.data.coverImage);
+function createUploadErrorResponse(
+  messageKey: Parameters<Translate>[0],
+  fieldName: "imageFile" | "coverImageFile",
+  t: Translate
+): ApiResponse<never> {
+  return {
+    ok: false,
+    message: t(messageKey),
+    issues: { [fieldName]: [t("responses.profile.uploadFailed")] }
+  };
+}
 
-  if (profileImageFile || coverImageFile) {
-    if (!isCloudinaryConfigured()) {
-      return {
-        ok: false,
-        message: t("responses.profile.uploadNotConfigured"),
-        issues: {
-          imageFile: profileImageFile ? [t("responses.profile.uploadUnavailable")] : undefined,
-          coverImageFile: coverImageFile ? [t("responses.profile.uploadUnavailable")] : undefined
-        }
-      };
-    }
+async function uploadProfileImage(
+  file: File | null,
+  currentUrl: string | null,
+  userId: string,
+  t: Translate
+): Promise<ImageUploadResult> {
+  if (!file) return { success: true, url: currentUrl };
+
+  const uploadedImageUrl = await uploadProfileImageFileToCloudinary(file, `${userId}/profile-photo`);
+  if (!uploadedImageUrl) {
+    return { success: false, response: createUploadErrorResponse("responses.profile.photoUploadFailed", "imageFile", t) };
   }
 
-  if (profileImageFile) {
-    const uploadedImageUrl = await uploadProfileImageFileToCloudinary(profileImageFile, `${userId}/profile-photo`);
+  return { success: true, url: uploadedImageUrl };
+}
 
-    if (!uploadedImageUrl) {
-      return {
-        ok: false,
-        message: t("responses.profile.photoUploadFailed"),
-        issues: { imageFile: [t("responses.profile.uploadFailed")] }
-      };
-    }
+async function uploadCoverImage(
+  file: File | null,
+  currentUrl: string | null,
+  userId: string,
+  t: Translate
+): Promise<ImageUploadResult> {
+  if (!file) return { success: true, url: currentUrl };
 
-    profileImageUrl = uploadedImageUrl;
+  const uploadedCoverUrl = await uploadProfileImageFileToCloudinary(file, `${userId}/cover-photo`);
+  if (!uploadedCoverUrl) {
+    return { success: false, response: createUploadErrorResponse("responses.profile.coverUploadFailed", "coverImageFile", t) };
   }
 
-  if (coverImageFile) {
-    const uploadedCoverUrl = await uploadProfileImageFileToCloudinary(coverImageFile, `${userId}/cover-photo`);
+  return { success: true, url: uploadedCoverUrl };
+}
 
-    if (!uploadedCoverUrl) {
-      return {
-        ok: false,
-        message: t("responses.profile.coverUploadFailed"),
-        issues: { coverImageFile: [t("responses.profile.uploadFailed")] }
-      };
-    }
+function revalidateUpdatedProfileRoutes(username: string | null) {
+  revalidatePath("/profile");
+  revalidatePath("/settings");
+  if (username) revalidatePath(`/profile/${username}`);
+}
 
-    coverImageUrl = uploadedCoverUrl;
+export async function updateProfileAction(_prevState: ApiResponse, formData: FormData): Promise<ApiResponse> {
+  const t = await getServerTranslator();
+  const profileImageFile = getImageFile(formData, "imageFile");
+  const coverImageFile = getImageFile(formData, "coverImageFile");
+  const fileValidationError = validateProfileImageFiles(profileImageFile, coverImageFile, t);
+  if (fileValidationError) return fileValidationError;
+
+  const validation = validateProfileForm(formData, t);
+  if (!validation.success) return validation.response;
+
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    return { ok: false, message: t("responses.profile.signInEdit") };
   }
+
+  const usernameError = await getUsernameUniquenessError(validation.data.username, userId, t);
+  if (usernameError) return usernameError;
+
+  const cloudinaryError = getCloudinaryConfigurationError(profileImageFile, coverImageFile, t);
+  if (cloudinaryError) return cloudinaryError;
+
+  const profileImage = await uploadProfileImage(profileImageFile, optional(validation.data.image), userId, t);
+  if (!profileImage.success) return profileImage.response;
+
+  const coverImage = await uploadCoverImage(coverImageFile, optional(validation.data.coverImage), userId, t);
+  if (!coverImage.success) return coverImage.response;
 
   const profile = await prisma.user.update({
     where: { id: userId },
     data: {
-      name: result.data.name.trim(),
-      username: result.data.username.trim(),
-      image: profileImageUrl,
-      coverImage: coverImageUrl,
-      bio: optional(result.data.bio),
-      favoriteClub: optional(result.data.favoriteClub),
-      preferredPosition: optional(result.data.preferredPosition),
-      avoidedPosition: optional(result.data.avoidedPosition),
-      location: optional(result.data.location),
-      profileVisibility: result.data.profileVisibility
+      name: validation.data.name.trim(),
+      username: validation.data.username.trim(),
+      image: profileImage.url,
+      coverImage: coverImage.url,
+      bio: optional(validation.data.bio),
+      favoriteClub: optional(validation.data.favoriteClub),
+      preferredPosition: optional(validation.data.preferredPosition),
+      avoidedPosition: optional(validation.data.avoidedPosition),
+      location: optional(validation.data.location),
+      profileVisibility: validation.data.profileVisibility
     },
     select: { username: true }
   });
 
-  revalidatePath("/profile");
-  revalidatePath("/settings");
-  if (profile.username) {
-    revalidatePath(`/profile/${profile.username}`);
-  }
+  revalidateUpdatedProfileRoutes(profile.username);
 
   return { ok: true, message: t("responses.profile.saved"), data: profile };
 }

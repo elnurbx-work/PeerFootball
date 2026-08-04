@@ -28,7 +28,7 @@ import { canCreateClubMatches, ensureClubActive } from "@/server/services/club-p
 import { deleteCloudinaryAsset } from "@/server/services/cloudinary.service";
 import { normalizeMatchVideoUrl } from "@/lib/videos/video-url";
 import type { ApiResponse } from "@/types/api.types";
-import { createTranslator } from "@/i18n/dictionary";
+import { createTranslator, type Translate } from "@/i18n/dictionary";
 import { getServerTranslator } from "@/i18n/server";
 import {
   cancelClubMatch,
@@ -135,6 +135,58 @@ export async function cancelClubMatchAction(input: unknown): Promise<ApiResponse
   }
 }
 
+type AddMatchPlayerInput = ReturnType<typeof addMatchPlayerSchema.parse>;
+type MatchWithSides = Prisma.MatchGetPayload<{ include: { sides: true } }>;
+type MatchSide = MatchWithSides["sides"][number];
+type MatchPlayerStatus = "SELECTED" | "INVITED";
+
+async function handleClubVsClubPlayerInvite(
+  userId: string,
+  data: AddMatchPlayerInput,
+  matchId: string,
+  t: Translate
+): Promise<ApiResponse> {
+  try {
+    await inviteClubMatchPlayer(userId, data);
+    revalidateMatchSurfaces(matchId);
+    return { ok: true, message: t("responses.match.playerInvited") };
+  } catch (error) {
+    return matchServiceError(error, t("responses.match.playerInvalid"));
+  }
+}
+
+function getManagingClubId(match: MatchWithSides, side: MatchSide) {
+  return match.type === "INTERNAL" ? match.creatorClubId : side.clubId;
+}
+
+async function resolveMatchPlayerStatus(
+  managingClubId: string,
+  userId: string | undefined
+): Promise<MatchPlayerStatus> {
+  if (!userId) return "SELECTED";
+
+  const membership = await prisma.clubMember.findFirst({
+    where: { clubId: managingClubId, userId, status: "ACTIVE" }, select: { id: true }
+  });
+  return membership ? "SELECTED" : "INVITED";
+}
+
+async function isActiveClubGuest(managingClubId: string, clubGuestId: string | undefined) {
+  if (!clubGuestId) return true;
+
+  const guest = await prisma.clubGuest.findFirst({
+    where: { id: clubGuestId, clubId: managingClubId, isActive: true }, select: { id: true }
+  });
+  return Boolean(guest);
+}
+
+function handleDuplicateMatchPlayerError(error: unknown, t: Translate): ApiResponse<never> {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    return invalid(t("responses.match.playerAlreadyAssigned"));
+  }
+  throw error;
+}
+
 export async function addMatchPlayerAction(input: unknown): Promise<ApiResponse> {
   const user = await getCurrentUser();
   const t = await actionTranslator(user);
@@ -146,31 +198,18 @@ export async function addMatchPlayerAction(input: unknown): Promise<ApiResponse>
     include: { sides: true }
   });
   if (match?.type === "CLUB_VS_CLUB") {
-    try {
-      await inviteClubMatchPlayer(user.id, parsed.data);
-      revalidateMatchSurfaces(match.id);
-      return { ok: true, message: t("responses.match.playerInvited") };
-    } catch (error) {
-      return matchServiceError(error, t("responses.match.playerInvalid"));
-    }
+    return handleClubVsClubPlayerInvite(user.id, parsed.data, match.id, t);
   }
   if (!match || ["COMPLETED", "CANCELLED"].includes(match.status)) return notFound(t("responses.match.cannotEdit"));
   const side = match.sides.find((item) => item.id === parsed.data.matchSideId);
   if (!side) return notFound(t("responses.match.sideNotFound"));
-  const managingClubId = match.type === "INTERNAL" ? match.creatorClubId : side.clubId;
+  const managingClubId = getManagingClubId(match, side);
   if (!managingClubId || !(await canCreateClubMatches(user.id, managingClubId))) return forbidden(t("responses.match.forbidden"));
   await ensureClubActive(managingClubId);
 
-  let status: "SELECTED" | "INVITED" = "SELECTED";
-  if (parsed.data.userId) {
-    const membership = await prisma.clubMember.findFirst({
-      where: { clubId: managingClubId, userId: parsed.data.userId, status: "ACTIVE" }, select: { id: true }
-    });
-    status = membership ? "SELECTED" : "INVITED";
-  }
-  if (parsed.data.clubGuestId) {
-    const guest = await prisma.clubGuest.findFirst({ where: { id: parsed.data.clubGuestId, clubId: managingClubId, isActive: true }, select: { id: true } });
-    if (!guest) return invalid(t("responses.match.activeGuestRequired"));
+  const status = await resolveMatchPlayerStatus(managingClubId, parsed.data.userId);
+  if (!(await isActiveClubGuest(managingClubId, parsed.data.clubGuestId))) {
+    return invalid(t("responses.match.activeGuestRequired"));
   }
 
   try {
@@ -183,10 +222,7 @@ export async function addMatchPlayerAction(input: unknown): Promise<ApiResponse>
       }
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return invalid(t("responses.match.playerAlreadyAssigned"));
-    }
-    throw error;
+    return handleDuplicateMatchPlayerError(error, t);
   }
   revalidateMatchSurfaces(match.id);
   return { ok: true, message: status === "INVITED" ? t("responses.match.playerInvited") : t("responses.match.playerAdded") };

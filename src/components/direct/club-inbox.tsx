@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState, useTransition, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { Realtime, type InboundMessage, type PresenceMessage } from "ably";
 import { ArrowLeft, Bell, BellOff, ExternalLink, Pin, PinOff, Send, Users } from "lucide-react";
@@ -28,6 +28,7 @@ import type {
   MessageSender,
   RealtimeChatMessage
 } from "@/types/message.types";
+import type { Locale } from "@/i18n/config";
 import { RelativeTime } from "@/components/i18n/relative-time";
 import { useI18n } from "@/components/i18n/i18n-provider";
 
@@ -42,9 +43,7 @@ export function ClubInbox({ currentUser, clubs, initialClubId, messagesByConvers
   const { locale } = useI18n();
   const router = useRouter();
   const [clubState, setClubState] = useState(clubs);
-  const [selectedClubId, setSelectedClubId] = useState(
-    clubs.some((club) => club.clubId === initialClubId) ? initialClubId! : clubs[0]?.clubId ?? ""
-  );
+  const [selectedClubId, setSelectedClubId] = useState(getInitialSelectedClubId(clubs, initialClubId));
   const [messagesState, setMessagesState] = useState(messagesByConversationId);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(Boolean(initialClubId));
   const [search, setSearch] = useState("");
@@ -237,147 +236,397 @@ export function ClubInbox({ currentUser, clubs, initialClubId, messagesByConvers
     }
   }
 
-  if (!clubState.length) {
-    return (
-      <div className="grid h-full place-items-center rounded-md border bg-card p-8 text-center">
-        <div>
-          <Users className="mx-auto h-10 w-10 text-muted-foreground" />
-          <h2 className="mt-3 font-semibold">Aktiv klub söhbəti yoxdur</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Yalnız aktiv üzv olduğunuz klublar burada görünür.</p>
-          <Button asChild className="mt-4">
-            <Link href="/clubs">Klublara keç</Link>
-          </Button>
-        </div>
-      </div>
-    );
+  function handleMobileBack() {
+    setIsMobileChatOpen(false);
+    router.push(clubMessagingHref());
   }
+
+  const hasClubs = clubState.length > 0;
+  const showMobileChat = isMobileChatOpen;
+
+  if (!hasClubs) return <ClubInboxEmptyState />;
 
   return (
     <div className="grid h-full min-h-0 overflow-hidden bg-card md:grid-cols-[320px_1fr] md:border-r">
-      <aside className={cn("min-h-0 flex-col border-r", isMobileChatOpen ? "hidden md:flex" : "flex")}>
-        <div className="grid gap-2 border-b p-4">
-          <div className="flex items-center gap-2 font-semibold"><Users className="h-4 w-4 text-primary" />Klublar</div>
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Klublarımda axtar..." />
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {filteredClubs.map((club) => (
-            <button
-              key={club.clubId}
-              type="button"
-              disabled={pending}
-              onClick={() => openClub(club)}
-              className={cn(
-                "flex w-full items-center gap-3 border-b px-4 py-3 text-left hover:bg-secondary",
-                selectedClub?.clubId === club.clubId && "bg-secondary"
-              )}
-            >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary font-bold text-primary-foreground">
-                {club.clubLogoUrl ? <img src={club.clubLogoUrl} alt="" className="h-full w-full object-cover" /> : club.clubName.charAt(0)}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <strong className="min-w-0 flex-1 truncate text-sm">{club.clubName}</strong>
-                  {club.unreadCount ? <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold">{club.unreadCount}</span> : null}
-                </span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {club.lastMessage ? `${club.lastMessage.sender.name ?? "Üzv"}: ${club.lastMessage.content}` : "Söhbəti aç"}
-                </span>
-                <span className="mt-1 block text-[11px] text-muted-foreground">{club.activeMemberCount} aktiv üzv</span>
-                <span className="mt-1 flex gap-2 text-[11px] text-muted-foreground">
-                  {club.hasPinnedMessage ? <span className="inline-flex items-center gap-1"><Pin className="h-3 w-3" />Sabitlənib</span> : null}
-                  {club.isMuted ? <span className="inline-flex items-center gap-1"><BellOff className="h-3 w-3" />Səssiz</span> : null}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
-      </aside>
-
-      <section className={cn(
-        "min-h-0 flex-col bg-card",
-        isMobileChatOpen ? "fixed inset-0 z-50 flex h-dvh md:relative md:z-auto md:h-auto" : "hidden md:flex"
-      )}>
-        {selectedClub ? (
-          <>
-            <header className="flex items-center gap-3 border-b p-3 sm:p-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0 md:hidden"
-                onClick={() => {
-                  setIsMobileChatOpen(false);
-                  router.push(clubMessagingHref());
-                }}
-              >
-                <ArrowLeft className="h-4 w-4" />Klublar
-              </Button>
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary font-bold text-primary-foreground">
-                {selectedClub.clubLogoUrl ? <img src={selectedClub.clubLogoUrl} alt="" className="h-full w-full object-cover" /> : selectedClub.clubName.charAt(0)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate font-semibold">{selectedClub.clubName}</h2>
-                <p className="text-xs text-muted-foreground">
-                  Klub söhbəti · {selectedClub.activeMemberCount} üzv{onlineCount ? ` · ${onlineCount} onlayn` : ""}
-                </p>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={toggleMute} disabled={pending} title={selectedClub.isMuted ? "Bildirişləri aç" : "Səssizə al"}>
-                {selectedClub.isMuted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/clubs/${selectedClub.clubSlug}`}><ExternalLink className="h-4 w-4" /><span className="hidden sm:inline">Kluba keç</span></Link>
-              </Button>
-            </header>
-            {selectedClub.pinnedMessage ? (
-              <div className="flex items-start gap-2 border-b bg-accent/20 px-4 py-2 text-xs">
-                <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                <div className="min-w-0 flex-1">
-                  <strong>{selectedClub.pinnedMessage.sender.name ?? "Üzv"}</strong>
-                  <p className="truncate text-muted-foreground">{selectedClub.pinnedMessage.content}</p>
-                </div>
-                {selectedClub.canModerate ? (
-                  <button type="button" onClick={() => setPinnedMessage(null)} title="Sabitləməni götür">
-                    <PinOff className="h-4 w-4" />
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/50 p-3 sm:p-4">
-              {messages.map((message) => (
-                <div key={message.id} className={cn("flex", message.isOwnMessage ? "justify-end" : "justify-start")}>
-                  <div className={cn("max-w-[85%] rounded-md border px-3 py-2", message.isOwnMessage ? "bg-primary text-primary-foreground" : "bg-card")}>
-                    {!message.isOwnMessage ? <p className="mb-1 text-xs font-semibold">{message.sender.name ?? message.sender.username ?? "Üzv"}</p> : null}
-                    <p className="whitespace-pre-wrap break-words text-sm">{message.content}</p>
-                    <div className="mt-1 flex items-center gap-2 text-[11px] opacity-75">
-                      <RelativeTime value={message.createdAt} locale={locale} />
-                      {selectedClub.canModerate && !message.deletedAt ? (
-                        <button type="button" onClick={() => setPinnedMessage(message.id)} className="inline-flex items-center gap-1">
-                          <Pin className="h-3 w-3" />Sabitlə
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {!messages.length ? <div className="grid h-full min-h-48 place-items-center text-sm text-muted-foreground">Klub söhbətində hələ mesaj yoxdur.</div> : null}
-              <div ref={messagesEndRef} />
-            </div>
-            <form className="grid shrink-0 gap-2 border-t p-3 sm:p-4" onSubmit={submit}>
-              <Textarea
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
-                onKeyDown={composerKeyDown}
-                maxLength={MESSAGE_CONTENT_MAX_LENGTH}
-                placeholder={`${selectedClub.clubName} söhbətinə mesaj`}
-              />
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-destructive">{error}</p>
-                <Button type="submit" disabled={pending || !content.trim()}><Send className="h-4 w-4" />Göndər</Button>
-              </div>
-            </form>
-          </>
-        ) : null}
-      </section>
+      <ClubConversationSidebar
+        clubs={filteredClubs}
+        selectedClubId={selectedClub?.clubId ?? null}
+        search={search}
+        pending={pending}
+        showMobileChat={showMobileChat}
+        onSearchChange={setSearch}
+        onOpenClub={openClub}
+      />
+      <ClubConversationPanel
+        selectedClub={selectedClub}
+        messages={messages}
+        locale={locale}
+        onlineCount={onlineCount}
+        pending={pending}
+        showMobileChat={showMobileChat}
+        content={content}
+        error={error}
+        messagesEndRef={messagesEndRef}
+        onMobileBack={handleMobileBack}
+        onToggleMute={toggleMute}
+        onSetPinnedMessage={setPinnedMessage}
+        onContentChange={setContent}
+        onComposerKeyDown={composerKeyDown}
+        onSubmit={submit}
+      />
     </div>
+  );
+}
+
+function getInitialSelectedClubId(clubs: ClubChatSummary[], initialClubId?: string | null) {
+  return clubs.some((club) => club.clubId === initialClubId) ? initialClubId! : clubs[0]?.clubId ?? "";
+}
+
+function ClubInboxEmptyState() {
+  return (
+    <div className="grid h-full place-items-center rounded-md border bg-card p-8 text-center">
+      <div>
+        <Users className="mx-auto h-10 w-10 text-muted-foreground" />
+        <h2 className="mt-3 font-semibold">Aktiv klub söhbəti yoxdur</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Yalnız aktiv üzv olduğunuz klublar burada görünür.</p>
+        <Button asChild className="mt-4">
+          <Link href="/clubs">Klublara keç</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ClubConversationSidebar({
+  clubs,
+  selectedClubId,
+  search,
+  pending,
+  showMobileChat,
+  onSearchChange,
+  onOpenClub
+}: {
+  clubs: ClubChatSummary[];
+  selectedClubId: string | null;
+  search: string;
+  pending: boolean;
+  showMobileChat: boolean;
+  onSearchChange: (value: string) => void;
+  onOpenClub: (club: ClubChatSummary) => void;
+}) {
+  return (
+    <aside className={cn("min-h-0 flex-col border-r", showMobileChat ? "hidden md:flex" : "flex")}>
+      <div className="grid gap-2 border-b p-4">
+        <div className="flex items-center gap-2 font-semibold"><Users className="h-4 w-4 text-primary" />Klublar</div>
+        <Input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Klublarımda axtar..." />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {clubs.map((club) => (
+          <ClubConversationSidebarItem
+            key={club.clubId}
+            club={club}
+            isSelected={selectedClubId === club.clubId}
+            pending={pending}
+            onOpen={onOpenClub}
+          />
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function ClubConversationSidebarItem({
+  club,
+  isSelected,
+  pending,
+  onOpen
+}: {
+  club: ClubChatSummary;
+  isSelected: boolean;
+  pending: boolean;
+  onOpen: (club: ClubChatSummary) => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => onOpen(club)}
+      className={cn(
+        "flex w-full items-center gap-3 border-b px-4 py-3 text-left hover:bg-secondary",
+        isSelected && "bg-secondary"
+      )}
+    >
+      <ClubAvatar club={club} />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2">
+          <strong className="min-w-0 flex-1 truncate text-sm">{club.clubName}</strong>
+          {club.unreadCount ? <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold">{club.unreadCount}</span> : null}
+        </span>
+        <span className="block truncate text-xs text-muted-foreground">{getClubPreviewText(club)}</span>
+        <span className="mt-1 block text-[11px] text-muted-foreground">{club.activeMemberCount} aktiv üzv</span>
+        <span className="mt-1 flex gap-2 text-[11px] text-muted-foreground">
+          {club.hasPinnedMessage ? <span className="inline-flex items-center gap-1"><Pin className="h-3 w-3" />Sabitlənib</span> : null}
+          {club.isMuted ? <span className="inline-flex items-center gap-1"><BellOff className="h-3 w-3" />Səssiz</span> : null}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function getClubPreviewText(club: ClubChatSummary) {
+  if (!club.lastMessage) return "Söhbəti aç";
+  return `${club.lastMessage.sender.name ?? "Üzv"}: ${club.lastMessage.content}`;
+}
+
+function ClubAvatar({ club }: { club: ClubChatSummary }) {
+  const hasClubLogo = Boolean(club.clubLogoUrl);
+
+  return (
+    <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary font-bold text-primary-foreground">
+      {hasClubLogo ? <img src={club.clubLogoUrl!} alt="" className="h-full w-full object-cover" /> : club.clubName.charAt(0)}
+    </span>
+  );
+}
+
+function ClubConversationPanel({
+  selectedClub,
+  messages,
+  locale,
+  onlineCount,
+  pending,
+  showMobileChat,
+  content,
+  error,
+  messagesEndRef,
+  onMobileBack,
+  onToggleMute,
+  onSetPinnedMessage,
+  onContentChange,
+  onComposerKeyDown,
+  onSubmit
+}: {
+  selectedClub: ClubChatSummary | null;
+  messages: ChatMessage[];
+  locale: Locale;
+  onlineCount: number;
+  pending: boolean;
+  showMobileChat: boolean;
+  content: string;
+  error: string;
+  messagesEndRef: RefObject<HTMLDivElement | null>;
+  onMobileBack: () => void;
+  onToggleMute: () => void;
+  onSetPinnedMessage: (messageId: string | null) => void;
+  onContentChange: (value: string) => void;
+  onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const className = cn(
+    "min-h-0 flex-col bg-card",
+    showMobileChat ? "fixed inset-0 z-50 flex h-dvh md:relative md:z-auto md:h-auto" : "hidden md:flex"
+  );
+
+  if (!selectedClub) return <section className={className} />;
+
+  return (
+    <section className={className}>
+      <ClubConversationHeader
+        club={selectedClub}
+        onlineCount={onlineCount}
+        pending={pending}
+        onMobileBack={onMobileBack}
+        onToggleMute={onToggleMute}
+      />
+      <PinnedClubMessage club={selectedClub} onSetPinnedMessage={onSetPinnedMessage} />
+      <ClubMessageList
+        messages={messages}
+        canModerate={selectedClub.canModerate}
+        locale={locale}
+        messagesEndRef={messagesEndRef}
+        onSetPinnedMessage={onSetPinnedMessage}
+      />
+      <ClubMessageComposer
+        clubName={selectedClub.clubName}
+        content={content}
+        error={error}
+        pending={pending}
+        onContentChange={onContentChange}
+        onKeyDown={onComposerKeyDown}
+        onSubmit={onSubmit}
+      />
+    </section>
+  );
+}
+
+function ClubConversationHeader({
+  club,
+  onlineCount,
+  pending,
+  onMobileBack,
+  onToggleMute
+}: {
+  club: ClubChatSummary;
+  onlineCount: number;
+  pending: boolean;
+  onMobileBack: () => void;
+  onToggleMute: () => void;
+}) {
+  const showOnlineCount = onlineCount > 0;
+  const onlineLabel = showOnlineCount ? ` · ${onlineCount} onlayn` : "";
+
+  return (
+    <header className="flex items-center gap-3 border-b p-3 sm:p-4">
+      <Button type="button" variant="outline" className="shrink-0 md:hidden" onClick={onMobileBack}>
+        <ArrowLeft className="h-4 w-4" />Klublar
+      </Button>
+      <ClubAvatar club={club} />
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate font-semibold">{club.clubName}</h2>
+        <p className="text-xs text-muted-foreground">
+          Klub söhbəti · {club.activeMemberCount} üzv{onlineLabel}
+        </p>
+      </div>
+      <ClubMuteButton club={club} pending={pending} onToggleMute={onToggleMute} />
+      <Button asChild variant="outline" size="sm">
+        <Link href={`/clubs/${club.clubSlug}`}><ExternalLink className="h-4 w-4" /><span className="hidden sm:inline">Kluba keç</span></Link>
+      </Button>
+    </header>
+  );
+}
+
+function ClubMuteButton({ club, pending, onToggleMute }: { club: ClubChatSummary; pending: boolean; onToggleMute: () => void }) {
+  const title = club.isMuted ? "Bildirişləri aç" : "Səssizə al";
+
+  return (
+    <Button type="button" variant="outline" size="sm" onClick={onToggleMute} disabled={pending} title={title}>
+      {club.isMuted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+    </Button>
+  );
+}
+
+function PinnedClubMessage({
+  club,
+  onSetPinnedMessage
+}: {
+  club: ClubChatSummary;
+  onSetPinnedMessage: (messageId: string | null) => void;
+}) {
+  const hasPinnedMessage = Boolean(club.pinnedMessage);
+  const canRemovePinnedMessage = club.canModerate && hasPinnedMessage;
+
+  if (!hasPinnedMessage) return null;
+  const pinnedMessage = club.pinnedMessage!;
+
+  return (
+    <div className="flex items-start gap-2 border-b bg-accent/20 px-4 py-2 text-xs">
+      <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+      <div className="min-w-0 flex-1">
+        <strong>{pinnedMessage.sender.name ?? "Üzv"}</strong>
+        <p className="truncate text-muted-foreground">{pinnedMessage.content}</p>
+      </div>
+      {canRemovePinnedMessage ? (
+        <button type="button" onClick={() => onSetPinnedMessage(null)} title="Sabitləməni götür">
+          <PinOff className="h-4 w-4" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function ClubMessageList({
+  messages,
+  canModerate,
+  locale,
+  messagesEndRef,
+  onSetPinnedMessage
+}: {
+  messages: ChatMessage[];
+  canModerate: boolean;
+  locale: Locale;
+  messagesEndRef: RefObject<HTMLDivElement | null>;
+  onSetPinnedMessage: (messageId: string | null) => void;
+}) {
+  const hasMessages = messages.length > 0;
+
+  return (
+    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-background/50 p-3 sm:p-4">
+      {messages.map((message) => (
+        <ClubMessageItem
+          key={message.id}
+          message={message}
+          canModerate={canModerate}
+          locale={locale}
+          onSetPinnedMessage={onSetPinnedMessage}
+        />
+      ))}
+      {!hasMessages ? <div className="grid h-full min-h-48 place-items-center text-sm text-muted-foreground">Klub söhbətində hələ mesaj yoxdur.</div> : null}
+      <div ref={messagesEndRef} />
+    </div>
+  );
+}
+
+function ClubMessageItem({
+  message,
+  canModerate,
+  locale,
+  onSetPinnedMessage
+}: {
+  message: ChatMessage;
+  canModerate: boolean;
+  locale: Locale;
+  onSetPinnedMessage: (messageId: string | null) => void;
+}) {
+  const canPinMessage = canModerate && !message.deletedAt;
+
+  return (
+    <div className={cn("flex", message.isOwnMessage ? "justify-end" : "justify-start")}>
+      <div className={cn("max-w-[85%] rounded-md border px-3 py-2", message.isOwnMessage ? "bg-primary text-primary-foreground" : "bg-card")}>
+        {!message.isOwnMessage ? <p className="mb-1 text-xs font-semibold">{message.sender.name ?? message.sender.username ?? "Üzv"}</p> : null}
+        <p className="whitespace-pre-wrap break-words text-sm">{message.content}</p>
+        <div className="mt-1 flex items-center gap-2 text-[11px] opacity-75">
+          <RelativeTime value={message.createdAt} locale={locale} />
+          {canPinMessage ? (
+            <button type="button" onClick={() => onSetPinnedMessage(message.id)} className="inline-flex items-center gap-1">
+              <Pin className="h-3 w-3" />Sabitlə
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClubMessageComposer({
+  clubName,
+  content,
+  error,
+  pending,
+  onContentChange,
+  onKeyDown,
+  onSubmit
+}: {
+  clubName: string;
+  content: string;
+  error: string;
+  pending: boolean;
+  onContentChange: (value: string) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className="grid shrink-0 gap-2 border-t p-3 sm:p-4" onSubmit={onSubmit}>
+      <Textarea
+        value={content}
+        onChange={(event) => onContentChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        maxLength={MESSAGE_CONTENT_MAX_LENGTH}
+        placeholder={`${clubName} söhbətinə mesaj`}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-destructive">{error}</p>
+        <Button type="submit" disabled={pending || !content.trim()}><Send className="h-4 w-4" />Göndər</Button>
+      </div>
+    </form>
   );
 }
 

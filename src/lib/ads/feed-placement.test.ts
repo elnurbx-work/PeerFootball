@@ -57,10 +57,10 @@ test("createAdSenseConfig", () => {
 
 test("initializeAdSenseElement", () => {
   const pendingAdElement = {
-    getAttribute: () => null
+    dataset: {}
   };
   const completedAdElement = {
-    getAttribute: (name: string) => (name === "data-adsbygoogle-status" ? "done" : null)
+    dataset: { adsbygoogleStatus: "done" }
   };
   const queue: Array<Record<string, unknown>> = [];
 

@@ -73,18 +73,27 @@ function parseFormation(value: string) {
 
 function getLinePosition(lineIndex: number, lineCount: number, itemIndex: number, itemCount: number): FootballPosition {
   if (lineIndex === 0) {
-    if (itemCount >= 3 && itemIndex === 0) return "LB";
-    if (itemCount >= 3 && itemIndex === itemCount - 1) return "RB";
-    return "CB";
+    return getWidePosition(itemIndex, itemCount, "LB", "RB", "CB");
   }
+
   if (lineIndex === lineCount - 1) {
-    if (itemCount >= 3 && itemIndex === 0) return "LW";
-    if (itemCount >= 3 && itemIndex === itemCount - 1) return "RW";
-    return "ST";
+    return getWidePosition(itemIndex, itemCount, "LW", "RW", "ST");
   }
-  if (itemCount >= 3 && itemIndex === 0) return "LM";
-  if (itemCount >= 3 && itemIndex === itemCount - 1) return "RM";
-  return "CM";
+
+  return getWidePosition(itemIndex, itemCount, "LM", "RM", "CM");
+}
+
+function getWidePosition(
+  itemIndex: number,
+  itemCount: number,
+  left: FootballPosition,
+  right: FootballPosition,
+  center: FootballPosition
+): FootballPosition {
+  if (itemCount < 3) return center;
+  if (itemIndex === 0) return left;
+  if (itemIndex === itemCount - 1) return right;
+  return center;
 }
 
 function round(value: number) {
