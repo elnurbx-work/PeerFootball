@@ -146,7 +146,7 @@ async function buildUniqueUsername(user: { id: string; email?: string | null; na
   const fallback = base.length >= 3 ? base : `player${user.id.slice(0, 6)}`;
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const suffix = attempt === 0 ? "" : `_${Math.random().toString(36).slice(2, 6)}`;
+    const suffix = attempt === 0 ? "" : `_${randomBytes(2).toString("hex")}`;
     const username = `${fallback}${suffix}`.slice(0, 32);
     const existing = await prisma.user.findUnique({ where: { username } });
 

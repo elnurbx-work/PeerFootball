@@ -300,5 +300,5 @@ function signCloudinaryParams(params: Record<string, string>, apiSecret: string)
     .map(([key, value]) => `${key}=${value}`)
     .join("&");
 
-  return createHash("sha1").update(`${signatureBase}${apiSecret}`).digest("hex");
+  return createHash("sha256").update(`${signatureBase}${apiSecret}`).digest("hex");
 }
