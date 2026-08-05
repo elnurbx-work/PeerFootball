@@ -6,6 +6,8 @@ export interface BeforeInstallPromptEvent extends Event {
   }>;
 }
 
+export type PwaInstallResult = "accepted" | "dismissed" | "unavailable" | "error";
+
 export async function requestPwaInstall(
   promptEvent: BeforeInstallPromptEvent | null
 ): Promise<"accepted" | "dismissed" | "unavailable"> {

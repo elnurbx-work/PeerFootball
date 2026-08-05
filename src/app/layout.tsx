@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
+import { PwaInstallProvider } from "@/components/pwa/pwa-install-provider";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { getRequestLocale } from "@/i18n/server";
 import { getServerTranslator } from "@/i18n/server";
@@ -94,12 +95,14 @@ export default async function RootLayout({
       </head>
       <body className={cn("font-sans antialiased")}>
         <ThemeProvider>
-          <I18nProvider locale={locale}>
-            <ServiceWorkerRegistration />
-            {children}
-            <AdConsentBanner />
-            <AdSenseScript />
-          </I18nProvider>
+          <PwaInstallProvider>
+            <I18nProvider locale={locale}>
+              <ServiceWorkerRegistration />
+              {children}
+              <AdConsentBanner />
+              <AdSenseScript />
+            </I18nProvider>
+          </PwaInstallProvider>
         </ThemeProvider>
         <ConsentAwareAnalytics />
       </body>

@@ -10,6 +10,10 @@ import {
   type BeforeInstallPromptEvent
 } from "./install-prompt";
 import { getPwaCtaMode } from "./install-cta";
+import {
+  initialPwaProviderState,
+  pwaProviderReducer
+} from "./install-provider-state";
 
 function navigatorFixture(userAgent: string, platform: string, maxTouchPoints = 0): NavigatorLike {
   return { userAgent, platform, maxTouchPoints };
@@ -129,7 +133,7 @@ describe("PWA install CTA visibility", () => {
   const readyBrowser = {
     isReady: true,
     isInstalled: false,
-    isInstallable: false,
+    canInstall: false,
     platform: "windows" as const
   };
 
@@ -138,7 +142,7 @@ describe("PWA install CTA visibility", () => {
   });
 
   it("shows the native CTA only after beforeinstallprompt is stored", () => {
-    assert.equal(getPwaCtaMode({ ...readyBrowser, isInstallable: true }), "native");
+    assert.equal(getPwaCtaMode({ ...readyBrowser, canInstall: true }), "native");
   });
 
   it("does not show an install CTA without beforeinstallprompt", () => {
@@ -147,15 +151,50 @@ describe("PWA install CTA visibility", () => {
 
   it("shows the feed action instead of install when already installed", () => {
     assert.equal(
-      getPwaCtaMode({ ...readyBrowser, isInstalled: true, isInstallable: true }),
+      getPwaCtaMode({ ...readyBrowser, isInstalled: true, canInstall: true }),
       "installed"
     );
   });
 
   it("uses a distinct manual action on iPhone and never simulates native install", () => {
     assert.equal(
-      getPwaCtaMode({ ...readyBrowser, platform: "ios", isInstallable: true }),
+      getPwaCtaMode({ ...readyBrowser, platform: "ios", canInstall: true }),
       "ios-manual"
     );
+  });
+});
+
+describe("root PWA provider state", () => {
+  it("stores beforeinstallprompt so it survives page navigation", () => {
+    const calls: string[] = [];
+    const event = new Event("beforeinstallprompt") as BeforeInstallPromptEvent;
+    event.prompt = async () => {
+      calls.push("prompt");
+    };
+    Object.defineProperty(event, "userChoice", {
+      value: Promise.resolve({ outcome: "accepted", platform: "web" })
+    });
+
+    const captured = pwaProviderReducer(initialPwaProviderState, {
+      type: "prompt-available",
+      prompt: event
+    });
+    assert.equal(captured.deferredPrompt, event);
+    assert.equal(calls.length, 0);
+
+    const afterRouteNavigation = captured;
+    assert.equal(afterRouteNavigation.deferredPrompt, event);
+  });
+
+  it("clears the prompt and enters installed state on appinstalled", () => {
+    const event = new Event("beforeinstallprompt") as BeforeInstallPromptEvent;
+    const captured = pwaProviderReducer(initialPwaProviderState, {
+      type: "prompt-available",
+      prompt: event
+    });
+    const installed = pwaProviderReducer(captured, { type: "installed" });
+    assert.equal(installed.deferredPrompt, null);
+    assert.equal(installed.isInstalled, true);
+    assert.equal(installed.lastResult, "accepted");
   });
 });

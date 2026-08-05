@@ -92,10 +92,12 @@ function PwaInstallButtonContent({
   return (
     <Button
       type="button"
+      variant={isIosManualAction ? "secondary" : "default"}
       size={variant === "compact" ? "md" : "lg"}
       className={cn(variant === "default" && "w-full sm:w-auto", className)}
       onClick={handleClick}
       disabled={installState.isInstalling}
+      aria-label={label}
     >
       {installState.isInstalling ? (
         <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />

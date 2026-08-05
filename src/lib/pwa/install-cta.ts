@@ -5,17 +5,17 @@ export type PwaCtaMode = "loading" | "installed" | "native" | "ios-manual" | "no
 export function getPwaCtaMode({
   isReady,
   isInstalled,
-  isInstallable,
+  canInstall,
   platform
 }: {
   isReady: boolean;
   isInstalled: boolean;
-  isInstallable: boolean;
+  canInstall: boolean;
   platform: Platform;
 }): PwaCtaMode {
   if (!isReady) return "loading";
   if (isInstalled) return "installed";
   if (isAppleMobilePlatform(platform)) return "ios-manual";
-  if (isInstallable) return "native";
+  if (canInstall) return "native";
   return "none";
 }
