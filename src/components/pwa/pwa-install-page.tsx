@@ -69,19 +69,11 @@ const alternativeGuides: Array<{ platform: Platform; browser: Browser }> = [
 
 function getStatusMessage(state: ReturnType<typeof usePwaInstall>) {
   if (state.isInstalled) return "PeerFootball artıq tətbiq rejimində işləyir";
-  if (state.isInstallable) return "Cihazınız PeerFootball quraşdırılmasını dəstəkləyir";
+  if (state.isInstallable) return "Bu cihaz PeerFootball-u tətbiq kimi quraşdırmağı dəstəkləyir.";
   if (state.platform === "ios" || state.platform === "ipados") {
     return "iPhone və iPad-də tətbiq Safari vasitəsilə ana ekrana əlavə edilir";
   }
-  if (
-    state.browser === "chrome" ||
-    state.browser === "edge" ||
-    state.browser === "samsung" ||
-    (state.platform === "macos" && state.browser === "safari")
-  ) {
-    return "Bu brauzerdə quraşdırma brauzer menyusu vasitəsilə edilir";
-  }
-  return "Bu brauzerdə avtomatik quraşdırma mövcud deyil; saytdan normal istifadə edə bilərsiniz";
+  return "Bu brauzer hazırda birbaşa quraşdırma düyməsini təqdim etmir.";
 }
 
 export function PwaInstallPage() {
@@ -100,11 +92,11 @@ export function PwaInstallPage() {
   }, [consent?.analytics, installState.browser, installState.platform]);
 
   useEffect(() => {
-    if (!installState.isClient) return;
+    if (!installState.isReady) return;
     trackOnce("pwa_install_page_viewed");
     if (installState.isInstallable) trackOnce("pwa_install_prompt_available");
     if (installState.isInstalled) trackOnce("pwa_install_already_installed");
-  }, [installState.isClient, installState.isInstallable, installState.isInstalled, trackOnce]);
+  }, [installState.isReady, installState.isInstallable, installState.isInstalled, trackOnce]);
 
   const openGuide = () => {
     setGuideOpen(true);
@@ -118,7 +110,7 @@ export function PwaInstallPage() {
     if (result === "dismissed") trackOnce("pwa_install_dismissed");
   };
 
-  if (!installState.isClient) {
+  if (!installState.isReady) {
     return <InstallPageSkeleton />;
   }
 
@@ -153,8 +145,8 @@ export function PwaInstallPage() {
             </div>
             {installState.installError ? (
               <div className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm" role="alert">
-                <p className="font-semibold">Quraşdırma pəncərəsi açıla bilmədi</p>
-                <p className="mt-1 text-muted-foreground">Brauzer menyusundan “Install app” seçimini istifadə edin.</p>
+                <p className="font-semibold">Quraşdırma pəncərəsi açıla bilmədi.</p>
+                <p className="mt-1 text-muted-foreground">Brauzer menyusundakı “Install app” seçimini yoxlayın.</p>
               </div>
             ) : null}
           </div>
@@ -167,7 +159,13 @@ export function PwaInstallPage() {
               <div>
                 <p className="text-sm font-semibold text-primary">Quraşdırma statusu</p>
                 <h2 className="mt-1 text-xl font-bold">
-                  {installState.isInstalled ? "PeerFootball artıq bu cihazda quraşdırılıb" : "Cihazınız üçün hazırdır"}
+                  {installState.isInstalled
+                    ? "PeerFootball artıq bu cihazda quraşdırılıb"
+                    : installState.isInstallable
+                      ? "Quraşdırmağa hazırdır"
+                      : installState.platform === "ios" || installState.platform === "ipados"
+                        ? "Safari vasitəsilə ana ekrana əlavə edin"
+                        : "Manual quraşdırma məlumatı"}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{getStatusMessage(installState)}</p>
               </div>

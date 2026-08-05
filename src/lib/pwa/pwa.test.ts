@@ -9,6 +9,7 @@ import {
   requestPwaInstall,
   type BeforeInstallPromptEvent
 } from "./install-prompt";
+import { getPwaCtaMode } from "./install-cta";
 
 function navigatorFixture(userAgent: string, platform: string, maxTouchPoints = 0): NavigatorLike {
   return { userAgent, platform, maxTouchPoints };
@@ -121,5 +122,40 @@ describe("beforeinstallprompt handling", () => {
 
   it("returns unavailable without a stored prompt", async () => {
     assert.equal(await requestPwaInstall(null), "unavailable");
+  });
+});
+
+describe("PWA install CTA visibility", () => {
+  const readyBrowser = {
+    isReady: true,
+    isInstalled: false,
+    isInstallable: false,
+    platform: "windows" as const
+  };
+
+  it("keeps the CTA in a loading placeholder until client detection finishes", () => {
+    assert.equal(getPwaCtaMode({ ...readyBrowser, isReady: false }), "loading");
+  });
+
+  it("shows the native CTA only after beforeinstallprompt is stored", () => {
+    assert.equal(getPwaCtaMode({ ...readyBrowser, isInstallable: true }), "native");
+  });
+
+  it("does not show an install CTA without beforeinstallprompt", () => {
+    assert.equal(getPwaCtaMode(readyBrowser), "none");
+  });
+
+  it("shows the feed action instead of install when already installed", () => {
+    assert.equal(
+      getPwaCtaMode({ ...readyBrowser, isInstalled: true, isInstallable: true }),
+      "installed"
+    );
+  });
+
+  it("uses a distinct manual action on iPhone and never simulates native install", () => {
+    assert.equal(
+      getPwaCtaMode({ ...readyBrowser, platform: "ios", isInstallable: true }),
+      "ios-manual"
+    );
   });
 });

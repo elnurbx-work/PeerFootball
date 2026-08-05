@@ -6,7 +6,7 @@ import { BookOpen, Download, LoaderCircle, MoveRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PwaInstallInstructions } from "@/components/pwa/pwa-install-instructions";
 import { usePwaInstall, type PwaInstallResult, type PwaInstallState } from "@/hooks/use-pwa-install";
-import { isAppleMobilePlatform } from "@/lib/pwa/device-detection";
+import { getPwaCtaMode } from "@/lib/pwa/install-cta";
 import { cn } from "@/lib/utils";
 
 export type PwaInstallButtonProps = {
@@ -54,11 +54,13 @@ function PwaInstallButtonContent({
   onManualGuide,
   onInstallResult
 }: PwaInstallButtonProps & { installState: PwaInstallState }) {
-  if (!installState.isClient) {
+  const ctaMode = getPwaCtaMode(installState);
+
+  if (ctaMode === "loading") {
     return <div className={cn("h-11 animate-pulse rounded-md bg-muted", variant === "compact" ? "w-36" : "w-full sm:w-64", className)} aria-hidden="true" />;
   }
 
-  if (installState.isInstalled) {
+  if (ctaMode === "installed") {
     if (!showInstalledState) return null;
     return (
       <Button asChild size={variant === "compact" ? "md" : "lg"} className={className}>
@@ -70,22 +72,21 @@ function PwaInstallButtonContent({
     );
   }
 
-  const needsManualGuide = isAppleMobilePlatform(installState.platform) || !installState.isInstallable;
-  const label = isAppleMobilePlatform(installState.platform)
-    ? "Quraşdırma addımlarını göstər"
-    : installState.isInstallable
-      ? "PeerFootball-u quraşdır"
-      : "Brauzerdən necə quraşdırmalı?";
+  if (ctaMode === "none") return null;
+
+  const isIosManualAction = ctaMode === "ios-manual";
+  const label = isIosManualAction
+    ? "Ana ekrana necə əlavə etməli?"
+    : "PeerFootball-u yüklə";
 
   const handleClick = async () => {
-    if (needsManualGuide) {
+    if (isIosManualAction) {
       onManualGuide?.();
       return;
     }
 
     const result = await installState.install();
     onInstallResult?.(result);
-    if (result === "dismissed" || result === "unavailable") onManualGuide?.();
   };
 
   return (
@@ -98,7 +99,7 @@ function PwaInstallButtonContent({
     >
       {installState.isInstalling ? (
         <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-      ) : needsManualGuide ? (
+      ) : isIosManualAction ? (
         <BookOpen className="h-4 w-4" aria-hidden="true" />
       ) : (
         <Download className="h-4 w-4" aria-hidden="true" />

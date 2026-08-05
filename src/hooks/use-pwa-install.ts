@@ -11,7 +11,7 @@ import {
 export type PwaInstallResult = "accepted" | "dismissed" | "unavailable";
 
 export type PwaInstallState = {
-  isClient: boolean;
+  isReady: boolean;
   isInstalled: boolean;
   isInstallable: boolean;
   isInstalling: boolean;
@@ -22,7 +22,7 @@ export type PwaInstallState = {
 };
 
 export function usePwaInstall(): PwaInstallState {
-  const [isClient, setIsClient] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [installError, setInstallError] = useState(false);
@@ -33,9 +33,9 @@ export function usePwaInstall(): PwaInstallState {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    setIsClient(true);
     setDevice(detectDevice());
     setIsInstalled(isPwaInstalled());
+    setIsReady(true);
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -75,7 +75,7 @@ export function usePwaInstall(): PwaInstallState {
   }, [deferredPrompt]);
 
   return {
-    isClient,
+    isReady,
     isInstalled,
     isInstallable: deferredPrompt !== null,
     isInstalling,
