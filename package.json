@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx src/lib/ads/feed-placement.test.ts",
+    "test:pwa": "tsx src/lib/pwa/pwa.test.ts",
     "test:matches": "tsx src/server/services/match-domain.test.ts",
     "test:tactics": "tsx src/lib/tactics/tactic-domain.test.ts",
     "test:messages": "tsx src/lib/messaging/navigation.test.ts",

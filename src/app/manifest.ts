@@ -4,10 +4,11 @@ import { getServerTranslator } from "@/i18n/server";
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const t = await getServerTranslator();
   return {
+    id: "/",
     name: "PeerFootball",
     short_name: "PeerFootball",
     description: t("common.metadataDescription"),
-    start_url: "/",
+    start_url: "/feed?source=pwa",
     scope: "/",
     display: "standalone",
     background_color: "#f8f6f0",

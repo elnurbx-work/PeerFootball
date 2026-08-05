@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { Home, RefreshCw, WifiOff } from "lucide-react";
+import { Home, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getServerTranslator } from "@/i18n/server";
+import { OfflineRetryButton } from "@/components/pwa/offline-retry-button";
 
-export default async function OfflinePage() {
-  const t = await getServerTranslator();
+export default function OfflinePage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-4 py-12">
       <div className="space-y-7">
@@ -13,28 +12,23 @@ export default async function OfflinePage() {
         </div>
         <div className="space-y-3">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-            {t("offline.eyebrow")}
+            Offline rejim
           </p>
           <h1 className="text-4xl font-bold leading-tight text-foreground md:text-5xl">
-            {t("offline.title")}
+            İnternet bağlantısı yoxdur
           </h1>
           <p className="text-lg text-muted-foreground">
-            {t("offline.description")}
+            PeerFootball-a qoşulmaq üçün internet bağlantınızı yoxlayın.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild size="lg">
             <Link href="/">
               <Home className="h-4 w-4" aria-hidden="true" />
-              {t("offline.home")}
+              Ana səhifə
             </Link>
           </Button>
-          <Button asChild size="lg" variant="secondary">
-            <a href=".">
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-              {t("offline.retry")}
-            </a>
-          </Button>
+          <OfflineRetryButton />
         </div>
       </div>
     </main>

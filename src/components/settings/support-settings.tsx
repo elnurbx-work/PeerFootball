@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CircleHelp, LifeBuoy, Mail, MessageSquareText, ShieldCheck } from "lucide-react";
+import { ArrowRight, CircleHelp, Download, LifeBuoy, Mail, MessageSquareText, ShieldCheck } from "lucide-react";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const supportLinks = [
+  { href: "/install", titleKey: "pwa.install.title", descriptionKey: "pwa.page.metadataDescription", icon: Download },
   { href: "/feedback", titleKey: "settings.supportFeedback", descriptionKey: "settings.supportFeedbackDescription", icon: MessageSquareText },
   { href: "/contact", titleKey: "settings.supportContact", descriptionKey: "settings.supportContactDescription", icon: Mail },
   { href: "/help", titleKey: "settings.supportHelp", descriptionKey: "settings.supportHelpDescription", icon: CircleHelp },
