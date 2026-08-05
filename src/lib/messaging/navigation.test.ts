@@ -4,6 +4,7 @@ import {
   clubMessagingHref,
   directMessagingHref,
   resolveMessagingTab,
+  sortConversationsByLatestMessage,
   sumUnreadCounts
 } from "./navigation";
 
@@ -27,4 +28,18 @@ test("clubMessagingHref builds club messaging URLs", () => {
 test("sumUnreadCounts totals unread counts", () => {
   assert.equal(sumUnreadCounts({ directA: 4, directB: 2 }), 6);
   assert.equal(sumUnreadCounts({}), 0);
+});
+
+test("sortConversationsByLatestMessage puts the latest conversation first", () => {
+  const conversations = [
+    { id: "no-messages", lastMessage: null },
+    { id: "older", lastMessage: { createdAt: "2026-08-01T10:00:00.000Z" } },
+    { id: "latest", lastMessage: { createdAt: "2026-08-05T10:00:00.000Z" } }
+  ];
+
+  assert.deepEqual(
+    sortConversationsByLatestMessage(conversations).map(({ id }) => id),
+    ["latest", "older", "no-messages"]
+  );
+  assert.equal(conversations[0]?.id, "no-messages");
 });

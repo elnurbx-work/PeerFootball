@@ -25,7 +25,7 @@ export const profileSchema = z.object({
   preferredPosition: z.string().max(40).optional(),
   avoidedPosition: z.string().max(40).optional(),
   location: z.string().max(80).optional(),
-  profileVisibility: z.enum(["PUBLIC", "FRIENDS_ONLY"])
+  profileVisibility: z.enum(["PUBLIC", "FRIENDS_ONLY"]).optional()
 });
 
 export const teamSchema = z.object({

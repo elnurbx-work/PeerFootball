@@ -28,3 +28,29 @@ export async function updateLocaleAction(locale: Locale): Promise<ApiResponse> {
   revalidatePath("/", "layout");
   return { ok: true, message: createTranslator(locale)("responses.localeSaved") };
 }
+
+export async function updateProfileVisibilityAction(
+  visibility: "PUBLIC" | "FRIENDS_ONLY"
+): Promise<ApiResponse<{ visibility: "PUBLIC" | "FRIENDS_ONLY" }>> {
+  const user = await getCurrentUser();
+  const t = createTranslator(user?.locale ?? toLocale((await cookies()).get(localeCookieName)?.value));
+  if (!user) return { ok: false, message: t("responses.signInRequired") };
+  if (visibility !== "PUBLIC" && visibility !== "FRIENDS_ONLY") {
+    return { ok: false, message: t("responses.profile.invalid") };
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: { profileVisibility: visibility },
+    select: { username: true }
+  });
+
+  revalidatePath("/profile");
+  revalidatePath("/settings");
+  if (updated.username) revalidatePath(`/profile/${updated.username}`);
+  return {
+    ok: true,
+    message: t("settings.visibilitySaved"),
+    data: { visibility }
+  };
+}

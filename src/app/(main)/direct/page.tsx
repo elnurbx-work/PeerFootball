@@ -12,7 +12,7 @@ import {
 } from "@/server/queries/message.queries";
 import type { DirectFriend } from "@/types/message.types";
 import { cn } from "@/lib/utils";
-import { resolveMessagingTab, sumUnreadCounts } from "@/lib/messaging/navigation";
+import { resolveMessagingTab, sortConversationsByLatestMessage, sumUnreadCounts } from "@/lib/messaging/navigation";
 
 type DirectPageProps = {
   searchParams: Promise<{
@@ -59,7 +59,7 @@ export default async function DirectPage({ searchParams }: DirectPageProps) {
       getFriendsForUser(currentUser.id),
       getConversationSummaries(currentUser.id)
     ]);
-    const directFriends = friends.map((friendship): DirectFriend => {
+    const directFriends = sortConversationsByLatestMessage(friends.map((friendship): DirectFriend => {
       const conversation = conversations.find(
         (item) => item.members.some((member) => member.id === friendship.user.id)
       );
@@ -69,7 +69,7 @@ export default async function DirectPage({ searchParams }: DirectPageProps) {
         lastMessage: conversation?.lastMessage ?? null,
         unreadCount: conversation?.unreadCount ?? 0
       };
-    });
+    }));
     const initialFriend = params.conversationId
       ? directFriends.find((friend) => friend.conversationId === params.conversationId)
       : undefined;
@@ -92,8 +92,8 @@ export default async function DirectPage({ searchParams }: DirectPageProps) {
   const clubUnreadCount = sumUnreadCounts(unreadCounts.clubs);
 
   return (
-    <section className="grid h-[calc(100dvh-5rem)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:h-screen">
-      <nav className="flex items-center gap-2 border-b bg-card px-3 py-2 sm:px-4" aria-label="Mesaj növü">
+    <section className="grid h-[calc(100dvh-5rem)] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:h-screen">
+      <nav className="flex min-w-0 items-center gap-2 border-b bg-card px-2 py-2 min-[360px]:px-3 sm:px-4" aria-label="Mesaj növü">
         <MessagingTab href="/direct?tab=messages" active={activeTab === "messages"} label="Şəxsi mesajlar" count={directUnreadCount} />
         <MessagingTab href="/direct?tab=clubs" active={activeTab === "clubs"} label="Klublar" count={clubUnreadCount} />
       </nav>

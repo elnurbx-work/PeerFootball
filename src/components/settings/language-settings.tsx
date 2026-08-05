@@ -2,12 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Languages } from "lucide-react";
+import { Check, Languages } from "lucide-react";
 import { updateLocaleAction } from "@/actions/settings.actions";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Toast } from "@/components/ui/toast";
 import { locales, type Locale } from "@/i18n/config";
+import { cn } from "@/lib/utils";
+
+const flags: Record<Locale, string> = { az: "🇦🇿", en: "🇬🇧", ru: "🇷🇺" };
 
 export function LanguageSettings() {
   const router = useRouter();
@@ -43,9 +46,35 @@ export function LanguageSettings() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <select className="h-11 w-full rounded-md border bg-surface px-3 text-sm text-foreground outline-none hover:border-input-hover focus-visible:ring-2 focus-visible:ring-ring disabled:bg-muted disabled:text-muted-foreground" value={selected} disabled={pending} onChange={(event) => change(event.target.value as Locale)}>
-            {locales.map((item) => <option key={item} value={item}>{names[item]}</option>)}
-          </select>
+          <fieldset disabled={pending}>
+            <legend className="sr-only">{t("settings.language")}</legend>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {locales.map((item) => {
+                const active = selected === item;
+                return (
+                  <label
+                    key={item}
+                    className={cn(
+                      "relative flex cursor-pointer items-center gap-3 rounded-lg border bg-surface p-4 transition-colors hover:bg-surface-hover focus-within:ring-2 focus-within:ring-ring",
+                      active && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="locale"
+                      value={item}
+                      checked={active}
+                      className="sr-only"
+                      onChange={() => change(item)}
+                    />
+                    <span className="text-2xl" aria-hidden="true">{flags[item]}</span>
+                    <span className="min-w-0 flex-1 font-semibold">{names[item]}</span>
+                    {active ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
           <p className="text-xs text-muted-foreground">{t("settings.languageHint")}</p>
         </CardContent>
       </Card>

@@ -36,7 +36,7 @@ export function AppShell({
       />
       <main
         className={cn(
-          "min-h-screen pb-20 md:pb-0",
+          "min-h-screen min-w-0 pb-20 md:pb-0",
           hasSecondaryPanel ? "md:pl-80" : "md:pl-20"
         )}
       >

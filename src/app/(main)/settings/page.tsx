@@ -12,6 +12,7 @@ import {
 } from "@/components/settings/settings-tabs";
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
 import { PushNotificationSettings } from "@/components/settings/push-notification-settings";
+import { SupportSettings } from "@/components/settings/support-settings";
 
 type SettingsPageProps = {
   searchParams: Promise<{ tab?: string }>;
@@ -21,7 +22,8 @@ const SETTINGS_TABS: SettingsTabKey[] = [
   "profile",
   "account",
   "notifications",
-  "appearance"
+  "appearance",
+  "support"
 ];
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
@@ -63,7 +65,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           key: "account",
           label: t("settings.account"),
           description: t("settings.accountDescription"),
-          content: <AccountSettings />
+          content: <AccountSettings profileVisibility={editableProfile.profileVisibility} />
         },
         {
           key: "notifications",
@@ -81,6 +83,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <LanguageSettings />
             </>
           )
+        },
+        {
+          key: "support",
+          label: t("settings.support"),
+          description: t("settings.supportTabDescription"),
+          content: <SupportSettings />
         }
       ]}
     />

@@ -3,11 +3,11 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Lock, Paintbrush, UserCircle } from "lucide-react";
+import { Bell, LifeBuoy, Lock, Paintbrush, UserCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export type SettingsTabKey = "profile" | "account" | "notifications" | "appearance";
+export type SettingsTabKey = "profile" | "account" | "notifications" | "appearance" | "support";
 
 type SettingsTab = {
   key: SettingsTabKey;
@@ -27,7 +27,8 @@ const TAB_ICONS = {
   profile: UserCircle,
   account: Lock,
   notifications: Bell,
-  appearance: Paintbrush
+  appearance: Paintbrush,
+  support: LifeBuoy
 } satisfies Record<SettingsTabKey, typeof UserCircle>;
 
 export function SettingsTabs({ initialTab, title, subtitle, tabs }: SettingsTabsProps) {
@@ -47,7 +48,7 @@ export function SettingsTabs({ initialTab, title, subtitle, tabs }: SettingsTabs
   const activePanel = tabs.find((tab) => tab.key === activeTab) ?? tabs[0];
 
   return (
-    <section className="mx-auto grid max-w-6xl gap-6 px-4 py-10 lg:grid-cols-[280px_1fr]">
+    <section className="mx-auto grid max-w-6xl gap-4 px-3 py-5 min-[360px]:px-4 sm:gap-6 sm:py-8 lg:grid-cols-[280px_1fr] lg:py-10">
       <aside className="lg:sticky lg:top-6 lg:self-start">
         <Card>
           <CardContent className="p-3">

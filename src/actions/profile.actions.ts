@@ -229,8 +229,7 @@ export async function updateProfileAction(_prevState: ApiResponse, formData: For
       favoriteClub: optional(validation.data.favoriteClub),
       preferredPosition: optional(validation.data.preferredPosition),
       avoidedPosition: optional(validation.data.avoidedPosition),
-      location: optional(validation.data.location),
-      profileVisibility: validation.data.profileVisibility
+      location: optional(validation.data.location)
     },
     select: { username: true }
   });

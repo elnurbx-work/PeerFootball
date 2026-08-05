@@ -50,8 +50,7 @@ const panelContent = {
     descriptionKey: "nav.directDescription" as MessageKey,
     links: [
       { href: "/direct", labelKey: "nav.inbox" as MessageKey, descriptionKey: "nav.inboxDescription" as MessageKey, icon: MessageCircle },
-      { href: "/friends", labelKey: "nav.friends" as MessageKey, descriptionKey: "nav.friendsDescription" as MessageKey, icon: Users },
-      { href: "/profile", labelKey: "nav.contacts" as MessageKey, descriptionKey: "nav.contactsDescription" as MessageKey, icon: UserCircle }
+      { href: "/friends", labelKey: "nav.friends" as MessageKey, descriptionKey: "nav.friendsDescription" as MessageKey, icon: Users }
     ]
   },
   "/profile": {
@@ -207,7 +206,7 @@ export function SiteSidebarPanelNav() {
   }
 
   return (
-    <div className="hidden w-60 flex-col border-r px-4 py-5 md:flex">
+    <div className="hidden w-60 min-w-0 flex-col border-r px-4 py-5 md:flex">
       <div>
         <p className="text-lg font-bold">{t(content.titleKey)}</p>
         <p className="mt-1 text-xs text-muted-foreground">{t(content.descriptionKey)}</p>
@@ -246,7 +245,7 @@ export function MobileBottomNav({ hasUnreadDirectMessages = false }: DirectUnrea
   const items = [...primaryNavItems, createItem];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-6 border-t bg-sidebar/95 px-2 text-sidebar-foreground backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 grid h-16 min-w-[300px] grid-cols-6 border-t bg-sidebar/95 px-1 text-sidebar-foreground backdrop-blur min-[360px]:px-2 md:hidden">
       {items.map((item) => {
         const isActive = item.href === "/create" ? pathname.startsWith(item.href) : activeRoot === item.href;
 

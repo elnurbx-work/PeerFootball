@@ -13,7 +13,7 @@ import { getRoomChannelName, getUserInboxChannelName, INBOX_EVENTS, ROOM_EVENTS 
 import { closeRealtimeClient } from "@/lib/ably-client";
 import { MESSAGE_CONTENT_MAX_LENGTH } from "@/lib/validations/message";
 import { cn } from "@/lib/utils";
-import { directMessagingHref } from "@/lib/messaging/navigation";
+import { directMessagingHref, sortConversationsByLatestMessage } from "@/lib/messaging/navigation";
 import type {
   ChatMessage,
   ConversationUpdatePayload,
@@ -54,7 +54,7 @@ export function DirectInbox({
 }: DirectInboxProps) {
   const { locale, t } = useI18n();
   const router = useRouter();
-  const [friendsState, setFriendsState] = useState(friends);
+  const [friendsState, setFriendsState] = useState(() => sortConversationsByLatestMessage(friends));
   const [messagesByConversationIdState, setMessagesByConversationIdState] = useState(messagesByConversationId);
   const [selectedFriendId, setSelectedFriendId] = useState(
     getInitialSelectedFriendId(friends, initialConversationId)
@@ -78,7 +78,7 @@ export function DirectInbox({
   const trimmedLength = content.trim().length;
 
   useEffect(() => {
-    setFriendsState(friends);
+    setFriendsState(sortConversationsByLatestMessage(friends));
   }, [friends]);
 
   useEffect(() => {
@@ -352,7 +352,7 @@ export function DirectInbox({
       shouldStickToBottomRef.current = true;
       upsertMessage(data.message);
       setFriendsState((currentFriends) =>
-        sortFriendsByLastMessage(
+        sortConversationsByLatestMessage(
           currentFriends.map((friend) =>
             friend.id === selectedFriend.id
               ? {
@@ -413,7 +413,7 @@ export function DirectInbox({
       payload.conversationId !== selectedConversationIdRef.current;
 
     setFriendsState((currentFriends) =>
-      sortFriendsByLastMessage(
+      sortConversationsByLatestMessage(
         currentFriends.map((friend) => {
           const isExistingConversation = friend.conversationId === payload.conversationId;
           const isNewConversationFromFriend = !friend.conversationId && payload.lastMessage?.senderId === friend.id;
@@ -528,7 +528,7 @@ export function DirectInbox({
   return (
     <>
       <Toast message={toastMessage ?? ""} open={Boolean(toastMessage)} onOpenChange={handleToastOpenChange} />
-      <div className="grid h-full overflow-hidden bg-card md:grid-cols-[320px_1fr] md:border-r">
+      <div className="grid h-full min-w-0 overflow-hidden bg-card md:grid-cols-[320px_minmax(0,1fr)] md:border-r">
         <DirectChatSidebar
           friends={friendRows}
           selectedFriendId={selectedFriend?.id ?? null}
@@ -628,7 +628,7 @@ function DirectChatSidebar({
 }) {
   return (
     <aside className={cn("min-h-0 flex-col border-r", showMobileChat ? "hidden md:flex" : "flex")}>
-      <div className="flex items-start justify-between gap-3 border-b p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b p-3 min-[360px]:p-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <MessageCircle className="h-4 w-4 text-primary" />
@@ -636,7 +636,7 @@ function DirectChatSidebar({
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{t("direct.friendsDescription")}</p>
         </div>
-        <Button asChild size="sm" variant="outline" className="shrink-0">
+        <Button asChild size="sm" variant="outline" className="max-w-full shrink-0">
           <Link href="/friends?tab=incoming">{t("direct.manage")}</Link>
         </Button>
       </div>
@@ -724,7 +724,7 @@ function SelectedFriendHeader({
         onClick={onMobileBack}
       >
         <ArrowLeft className="h-5 w-5" />
-        {t("direct.chats")}
+        <span className="hidden min-[340px]:inline">{t("direct.chats")}</span>
       </Button>
       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary font-semibold">
         {hasSelectedFriendImage ? (
@@ -945,14 +945,6 @@ function toChatMessage(message: RealtimeChatMessage, currentUserId: string): Cha
 
 function sortMessages(messages: ChatMessage[]) {
   return [...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-}
-
-function sortFriendsByLastMessage(friends: DirectFriend[]) {
-  return [...friends].sort((a, b) => getLastMessageTime(b) - getLastMessageTime(a));
-}
-
-function getLastMessageTime(friend: DirectFriend) {
-  return friend.lastMessage ? new Date(friend.lastMessage.createdAt).getTime() : 0;
 }
 
 function isNearBottom(element: HTMLElement) {

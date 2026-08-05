@@ -47,8 +47,9 @@ export default async function ProfilePage() {
   const { friends, incoming: incomingRequests, outgoing: outgoingRequests } = friendshipLists;
 
   return (
-    <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">
+    <section className="mx-auto grid max-w-5xl gap-4 px-3 py-5 min-[360px]:px-4 sm:gap-5 sm:py-8 lg:py-10">
       <ProfileSummary
+        friendsHref="/friends?tab=friends"
         user={profile}
       />
       <FriendRequestsPanel
@@ -57,7 +58,7 @@ export default async function ProfilePage() {
         outgoingRequests={outgoingRequests}
         t={t}
       />
-      <div className="mx-auto grid w-full max-w-3xl gap-5">
+      <div className="grid w-full gap-5">
         <Suspense fallback={<PostListSkeleton count={2} />}>
           <ProfilePosts
             currentUserId={currentUser.id}
@@ -131,7 +132,7 @@ function FriendRequestsPanel({
   t: Translate;
 }) {
   return (
-    <section className="grid gap-5 rounded-md border bg-card p-4 sm:p-6">
+    <section className="grid gap-5 rounded-md border bg-card p-3 min-[360px]:p-4 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold">

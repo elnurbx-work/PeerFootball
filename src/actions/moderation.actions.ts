@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { requireAdmin } from "@/server/services/admin-auth.service";
 import type { ApiResponse } from "@/types/api.types";
+import { createTranslator } from "@/i18n/dictionary";
 
 export type FeedbackState = ApiResponse;
 
@@ -48,6 +49,70 @@ export async function reportPostAction(postId: string, noteValue: string): Promi
   });
   revalidatePath("/admin/reports");
   return { ok: true, message: "Report moderatorlara göndərildi." };
+}
+
+export async function reportUserAction(reportedUserId: string, noteValue: string): Promise<ApiResponse> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, message: "Report üçün daxil olun." };
+  const t = createTranslator(user.locale);
+
+  const note = cleanNote(noteValue, 500);
+  if (note.length < 5) return { ok: false, message: t("profile.report.reasonTooShort") };
+  if (reportedUserId === user.id) return { ok: false, message: t("profile.report.cannotReportSelf") };
+
+  const reportedUser = await prisma.user.findUnique({
+    where: { id: reportedUserId },
+    select: { id: true }
+  });
+  if (!reportedUser) return { ok: false, message: t("profile.report.userNotFound") };
+
+  await prisma.userReport.upsert({
+    where: { reportedUserId_reporterId: { reportedUserId, reporterId: user.id } },
+    create: { reportedUserId, reporterId: user.id, note },
+    update: { note, status: "OPEN", adminNote: null, resolvedAt: null }
+  });
+  revalidatePath("/admin/reports");
+  return { ok: true, message: t("profile.report.success") };
+}
+
+export async function moderateUserReportAction(formData: FormData) {
+  await requireAdmin();
+  const reportId = String(formData.get("reportId") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const adminNote = cleanNote(formData.get("adminNote"), 500) || null;
+  if (!reportId || !["DISMISS", "BAN_USER"].includes(decision)) return;
+
+  const report = await prisma.userReport.findUnique({
+    where: { id: reportId },
+    select: { id: true, reportedUserId: true }
+  });
+  if (!report) return;
+
+  if (decision === "DISMISS") {
+    await prisma.userReport.update({
+      where: { id: report.id },
+      data: { status: "DISMISSED", adminNote, resolvedAt: new Date() }
+    });
+  } else {
+    const reason = adminNote ?? "Profil reportu əsasında admin banı";
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: report.reportedUserId },
+        data: { isBanned: true, bannedAt: new Date(), banReason: reason }
+      }),
+      prisma.post.updateMany({
+        where: { authorId: report.reportedUserId },
+        data: { isHidden: true, hiddenAt: new Date(), moderationNote: reason }
+      }),
+      prisma.userReport.updateMany({
+        where: { reportedUserId: report.reportedUserId, status: "OPEN" },
+        data: { status: "RESOLVED", adminNote: reason, resolvedAt: new Date() }
+      })
+    ]);
+  }
+
+  revalidatePath("/admin/reports");
+  revalidatePath("/feed");
 }
 
 export async function updateFeedbackAction(formData: FormData) {

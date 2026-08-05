@@ -6,13 +6,14 @@ import { requireAdmin } from "@/server/services/admin-auth.service";
 
 export default async function AdminPage() {
   await requireAdmin();
-  const [users, clubs, matches, posts, feedbacks, reports] = await Promise.all([
+  const [users, clubs, matches, posts, feedbacks, postReports, userReports] = await Promise.all([
     prisma.user.count(),
     prisma.club.count(),
     prisma.match.count(),
     prisma.post.count(),
     prisma.feedback.count({ where: { status: "OPEN" } }),
-    prisma.postReport.count({ where: { status: "OPEN" } })
+    prisma.postReport.count({ where: { status: "OPEN" } }),
+    prisma.userReport.count({ where: { status: "OPEN" } })
   ]);
   const stats = [
     { label: "İstifadəçilər", value: users, icon: Users },
@@ -20,7 +21,7 @@ export default async function AdminPage() {
     { label: "Matçlar", value: matches, icon: Trophy },
     { label: "Postlar", value: posts, icon: Activity },
     { label: "Açıq feedback", value: feedbacks, icon: MessageSquareText },
-    { label: "Açıq report", value: reports, icon: ShieldAlert }
+    { label: "Açıq report", value: postReports + userReports, icon: ShieldAlert }
   ];
 
   return (

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Globe2, Image, Lock, Save } from "lucide-react";
+import { Camera, Image, Save } from "lucide-react";
 import { updateProfileAction } from "@/actions/profile.actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ApiResponse } from "@/types/api.types";
 import type { UserProfile } from "@/types/profile.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { AZERBAIJAN_CITIES, getPositionLabel, PROFILE_POSITIONS } from "@/lib/profile-options";
 
 const initialState: ApiResponse = {
   ok: true,
@@ -26,7 +27,7 @@ type ProfileEditFormProps = {
 };
 
 export function ProfileEditForm({ profile }: ProfileEditFormProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const router = useRouter();
   const [state, formAction, pending] = useActionState(updateProfileAction, initialState);
   const issues = state.ok ? undefined : state.issues;
@@ -100,35 +101,31 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
             </label>
           </div>
           <label className="grid gap-2 text-sm font-medium">
-            {t("profile.editForm.visibility")}
-            <select
-              name="profileVisibility"
-              defaultValue={profile.profileVisibility === "PUBLIC" ? "PUBLIC" : "FRIENDS_ONLY"}
-              className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="PUBLIC">{t("profile.editForm.publicAccount")}</option>
-              <option value="FRIENDS_ONLY">{t("profile.editForm.privateAccount")}</option>
-            </select>
-            <span className="flex items-center gap-2 text-xs text-muted-foreground">
-              {profile.profileVisibility === "PUBLIC" ? (
-                <Globe2 className="h-3.5 w-3.5" />
-              ) : (
-                <Lock className="h-3.5 w-3.5" />
-              )}
-              {t("profile.editForm.privateHint")}
-            </span>
-            {issues?.profileVisibility?.[0] ? (
-              <span className="text-xs text-destructive">{issues.profileVisibility[0]}</span>
-            ) : null}
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
             {t("profile.editForm.bio")}
             <Textarea name="bio" defaultValue={profile.bio ?? ""} rows={4} maxLength={240} />
           </label>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label={t("profile.editForm.city")} name="location" defaultValue={profile.location ?? ""} />
-            <Field label={t("profile.editForm.preferredPosition")} name="preferredPosition" defaultValue={profile.preferredPosition ?? ""} />
-            <Field label={t("profile.editForm.avoidedPosition")} name="avoidedPosition" defaultValue={profile.avoidedPosition ?? ""} />
+            <SelectField
+              label={t("profile.editForm.city")}
+              name="location"
+              defaultValue={profile.location ?? ""}
+              placeholder={t("profile.editForm.chooseCity")}
+              options={AZERBAIJAN_CITIES.map((city) => ({ label: city, value: city }))}
+            />
+            <SelectField
+              label={t("profile.editForm.preferredPosition")}
+              name="preferredPosition"
+              defaultValue={profile.preferredPosition ?? ""}
+              placeholder={t("profile.editForm.choosePosition")}
+              options={PROFILE_POSITIONS.map((position) => ({ label: getPositionLabel(position, locale), value: position }))}
+            />
+            <SelectField
+              label={t("profile.editForm.avoidedPosition")}
+              name="avoidedPosition"
+              defaultValue={profile.avoidedPosition ?? ""}
+              placeholder={t("profile.editForm.choosePosition")}
+              options={PROFILE_POSITIONS.map((position) => ({ label: getPositionLabel(position, locale), value: position }))}
+            />
           </div>
           {state.message ? (
             <p className={state.ok ? "text-sm text-primary" : "text-sm text-destructive"}>{state.message}</p>
@@ -140,6 +137,39 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+function SelectField({
+  label,
+  name,
+  defaultValue,
+  placeholder,
+  options
+}: {
+  label: string;
+  name: string;
+  defaultValue: string;
+  placeholder: string;
+  options: Array<{ label: string; value: string }>;
+}) {
+  const hasLegacyValue = Boolean(defaultValue) && !options.some((option) => option.value === defaultValue);
+
+  return (
+    <label className="grid gap-2 text-sm font-medium">
+      {label}
+      <select
+        name={name}
+        defaultValue={defaultValue}
+        className="flex h-10 w-full rounded-md border bg-surface px-3 py-2 text-sm text-foreground outline-none ring-offset-background hover:border-input-hover focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <option value="">{placeholder}</option>
+        {hasLegacyValue ? <option value={defaultValue}>{defaultValue}</option> : null}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </label>
   );
 }
 

@@ -247,7 +247,7 @@ export function ClubInbox({ currentUser, clubs, initialClubId, messagesByConvers
   if (!hasClubs) return <ClubInboxEmptyState />;
 
   return (
-    <div className="grid h-full min-h-0 overflow-hidden bg-card md:grid-cols-[320px_1fr] md:border-r">
+    <div className="grid h-full min-h-0 min-w-0 overflow-hidden bg-card md:grid-cols-[320px_minmax(0,1fr)] md:border-r">
       <ClubConversationSidebar
         clubs={filteredClubs}
         selectedClubId={selectedClub?.clubId ?? null}
@@ -477,7 +477,7 @@ function ClubConversationHeader({
   return (
     <header className="flex items-center gap-3 border-b p-3 sm:p-4">
       <Button type="button" variant="outline" className="shrink-0 md:hidden" onClick={onMobileBack}>
-        <ArrowLeft className="h-4 w-4" />Klublar
+        <ArrowLeft className="h-4 w-4" /><span className="hidden min-[340px]:inline">Klublar</span>
       </Button>
       <ClubAvatar club={club} />
       <div className="min-w-0 flex-1">

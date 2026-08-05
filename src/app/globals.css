@@ -135,10 +135,51 @@
   border-color: hsl(var(--border));
 }
 
+html {
+  min-width: 300px;
+  max-width: 100%;
+}
+
 body {
   min-height: 100vh;
+  min-width: 300px;
+  max-width: 100%;
+  overflow-x: clip;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+}
+
+main,
+section,
+article,
+aside,
+header,
+footer,
+nav,
+form,
+fieldset,
+div {
+  min-width: 0;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+li,
+dd,
+dt,
+a,
+button,
+label {
+  overflow-wrap: anywhere;
 }
 
 ::selection {

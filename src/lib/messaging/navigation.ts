@@ -19,3 +19,17 @@ export function clubMessagingHref(clubId?: string | null) {
 export function sumUnreadCounts(counts: Record<string, number>) {
   return Object.values(counts).reduce((total, count) => total + count, 0);
 }
+
+export function sortConversationsByLatestMessage<T extends { lastMessage: { createdAt: string } | null }>(
+  conversations: readonly T[]
+) {
+  return [...conversations].sort(
+    (a, b) => getMessageTime(b.lastMessage) - getMessageTime(a.lastMessage)
+  );
+}
+
+function getMessageTime(message: { createdAt: string } | null) {
+  if (!message) return 0;
+  const timestamp = Date.parse(message.createdAt);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}

@@ -13,6 +13,7 @@ import { canViewProfile } from "@/server/services/privacy.service";
 import { createTranslator, type Translate } from "@/i18n/dictionary";
 import { logPerformance, measureAsync, performanceNow } from "@/lib/performance";
 import { PostListSkeleton } from "@/components/skeletons";
+import { ProfileReportButton } from "@/components/profile/profile-report-button";
 
 type UserProfilePageProps = {
   params: Promise<{
@@ -72,15 +73,18 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
       isOwnProfile
     });
     return (
-      <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">
+      <section className="mx-auto grid max-w-5xl gap-4 px-3 py-5 min-[360px]:px-4 sm:gap-5 sm:py-8 lg:py-10">
         <PrivateProfileNotice
           action={
             friendshipStatus ? (
-              <FriendButton
-                targetUserId={profile.id}
-                initialState={friendshipStatus.state}
-                friendshipId={friendshipStatus.friendshipId}
-              />
+              <div className="flex flex-wrap gap-2">
+                <FriendButton
+                  targetUserId={profile.id}
+                  initialState={friendshipStatus.state}
+                  friendshipId={friendshipStatus.friendshipId}
+                />
+                <ProfileReportButton reportedUserId={profile.id} />
+              </div>
             ) : undefined
           }
           image={profile.image}
@@ -93,20 +97,23 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   }
 
   return (
-    <section className="mx-auto grid max-w-5xl gap-5 px-4 py-10">
+    <section className="mx-auto grid max-w-5xl gap-4 px-3 py-5 min-[360px]:px-4 sm:gap-5 sm:py-8 lg:py-10">
       <ProfileSummary
         action={
-          friendshipStatus ? (
-            <FriendButton
-              targetUserId={profile.id}
-              initialState={friendshipStatus.state}
-              friendshipId={friendshipStatus.friendshipId}
-            />
+          !isOwnProfile && friendshipStatus ? (
+            <div className="flex flex-wrap gap-2">
+              <FriendButton
+                targetUserId={profile.id}
+                initialState={friendshipStatus.state}
+                friendshipId={friendshipStatus.friendshipId}
+              />
+              <ProfileReportButton reportedUserId={profile.id} />
+            </div>
           ) : undefined
         }
         user={profile}
       />
-      <div className="mx-auto grid w-full max-w-3xl gap-5">
+      <div className="grid w-full gap-5">
         <Suspense fallback={<PostListSkeleton count={2} />}>
           <UserProfilePosts
             currentUserId={currentUser.id}

@@ -366,6 +366,8 @@ model User {
   feedbacks                Feedback[]
   submittedPostReports     PostReport[]           @relation("PostReportReporter")
   receivedPostReports      PostReport[]           @relation("PostReportAuthor")
+  submittedUserReports     UserReport[]           @relation("UserReportReporter")
+  receivedUserReports      UserReport[]           @relation("UserReportSubject")
   pushSubscriptions        PushSubscription[]
 }
 
@@ -520,6 +522,24 @@ model PostReport {
   @@unique([postId, reporterId])
   @@index([status, createdAt])
   @@index([postAuthorId, createdAt])
+}
+
+model UserReport {
+  id             String       @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  note           String
+  status         ReportStatus @default(OPEN)
+  adminNote      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  resolvedAt     DateTime?
+  reporter       User         @relation("UserReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser   User         @relation("UserReportSubject", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([reportedUserId, reporterId])
+  @@index([status, createdAt])
+  @@index([reportedUserId, createdAt])
 }
 
 model PostMedia {
