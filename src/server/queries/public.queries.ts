@@ -14,10 +14,18 @@ import type {
 const PAGE_SIZE = 18;
 const publicClubWhere = { isActive: true, visibility: "OPEN" as const };
 const publicMatchWhere: Prisma.MatchWhereInput = {
-  type: "CLUB_VS_CLUB" as const,
   status: { in: ["SCHEDULED", "LIVE", "COMPLETED"] },
-  homeClub: publicClubWhere,
-  awayClub: publicClubWhere
+  OR: [
+    {
+      type: "INTERNAL",
+      creatorClub: { isActive: true }
+    },
+    {
+      type: "CLUB_VS_CLUB",
+      homeClub: { isActive: true },
+      awayClub: { isActive: true }
+    }
+  ]
 };
 
 export async function getPublicPlayers(input: {

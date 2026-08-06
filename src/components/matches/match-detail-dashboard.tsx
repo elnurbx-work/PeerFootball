@@ -10,7 +10,7 @@ import { getVideoSecondForMatchMinute, type ExtractedTimestamp } from "@/lib/vid
 import type { MatchDto } from "@/types/match.types";
 import { useI18n } from "@/components/i18n/i18n-provider";
 
-export function MatchDetailDashboard({ match, options, manageableSideIds, summaryActions, sideEditor }: { match: MatchDto; options: MatchSideOptions; manageableSideIds: string[]; summaryActions?: React.ReactNode; sideEditor?: React.ReactNode }) {
+export function MatchDetailDashboard({ match, options, manageableSideIds, summaryActions, sideEditor, isAuthenticated = true }: { match: MatchDto; options: MatchSideOptions; manageableSideIds: string[]; summaryActions?: React.ReactNode; sideEditor?: React.ReactNode; isAuthenticated?: boolean }) {
   const { t } = useI18n();
   const [selectedVideoId, setSelectedVideoId] = useState<string | undefined>(match.videos[0]?.id);
   const [seekRequest, setSeekRequest] = useState<VideoSeekRequest>();
@@ -38,5 +38,5 @@ export function MatchDetailDashboard({ match, options, manageableSideIds, summar
     setSelectedVideoId(videoId); setSeekRequest(undefined); setSeekMessage(undefined);
   }
 
-  return <div className="grid min-w-0 gap-4 sm:gap-7"><MatchSummaryCard match={match} manageableSideIds={manageableSideIds} actions={summaryActions} onGoalMinuteClick={seekMatchMinute} />{sideEditor}<MatchPitchBoard sides={match.sides} goals={match.goals} manageableSideIds={manageableSideIds} /><MatchTabs match={match} options={options} selectedVideoId={selectedVideo?.id} onSelectVideo={selectVideo} seekRequest={seekRequest} onTimestampClick={handleTimestampClick} seekMessage={seekMessage} /></div>;
+  return <div className="grid min-w-0 gap-4 sm:gap-7"><MatchSummaryCard match={match} manageableSideIds={manageableSideIds} actions={summaryActions} onGoalMinuteClick={seekMatchMinute} />{sideEditor}<MatchPitchBoard sides={match.sides} goals={match.goals} manageableSideIds={manageableSideIds} /><MatchTabs match={match} options={options} selectedVideoId={selectedVideo?.id} onSelectVideo={selectVideo} seekRequest={seekRequest} onTimestampClick={handleTimestampClick} seekMessage={seekMessage} isAuthenticated={isAuthenticated} /></div>;
 }

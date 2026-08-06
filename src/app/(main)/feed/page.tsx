@@ -14,6 +14,7 @@ import { logPerformance, measureAsync, performanceNow } from "@/lib/performance"
 import { PostListSkeleton } from "@/components/skeletons";
 import type { Translate } from "@/i18n/dictionary";
 import { AdSenseScript } from "@/components/ads/adsense-script";
+import { PublicShell } from "@/components/public/public-shell";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = createTranslator(await getRequestLocale());
@@ -42,7 +43,7 @@ export default async function FeedPage() {
   const currentUser = await measureAsync("feed.currentUser", getCurrentUser, { route: "/feed" });
   const t = createTranslator(currentUser?.locale ?? await getRequestLocale());
 
-  return (
+  const content = (
     <>
       <AdSenseScript nonce={nonce} />
       <section className="mx-auto grid max-w-3xl gap-5 px-4 py-10">
@@ -65,6 +66,8 @@ export default async function FeedPage() {
       </section>
     </>
   );
+
+  return currentUser ? content : <PublicShell>{content}</PublicShell>;
 }
 
 async function FeedContent({

@@ -185,11 +185,7 @@ export function PostCard({ post, comments = [], isAuthenticated = true }: PostCa
             variant="ghost"
             size="sm"
             type="button"
-            onClick={() => {
-              if (!requireAuthentication()) {
-                setShowComments((value) => !value);
-              }
-            }}
+            onClick={() => setShowComments((value) => !value)}
           >
             <MessageCircle className="h-4 w-4" />
             {post.commentsCount}
@@ -240,6 +236,7 @@ export function PostCard({ post, comments = [], isAuthenticated = true }: PostCa
           <CommentList
             postId={post.id}
             comments={comments}
+            isAuthenticated={isAuthenticated}
             totalCount={post.commentsCount}
           />
         ) : null}

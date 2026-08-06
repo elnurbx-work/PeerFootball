@@ -15,9 +15,10 @@ import { RelativeTime } from "@/components/i18n/relative-time";
 type CommentItemProps = {
   comment: PostComment;
   canReply?: boolean;
+  isAuthenticated?: boolean;
 };
 
-export function CommentItem({ comment, canReply = true }: CommentItemProps) {
+export function CommentItem({ comment, canReply = true, isAuthenticated = true }: CommentItemProps) {
   const { locale, t } = useI18n();
   const router = useRouter();
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -82,7 +83,13 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
               <button
                 className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
                 type="button"
-                onClick={() => setShowReplyForm((value) => !value)}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    router.push("/auth/login");
+                    return;
+                  }
+                  setShowReplyForm((value) => !value);
+                }}
               >
                 <MessageCircle className="h-3.5 w-3.5" />
                 {t("posts.comments.reply")}
@@ -122,7 +129,7 @@ export function CommentItem({ comment, canReply = true }: CommentItemProps) {
       {replies.length ? (
         <div className="ml-8 grid gap-3 border-l pl-4">
           {replies.map((reply) => (
-            <CommentItem key={reply.id} comment={reply} canReply={false} />
+            <CommentItem key={reply.id} comment={reply} canReply={false} isAuthenticated={isAuthenticated} />
           ))}
           {canReply ? (
             <LoadMoreButton

@@ -11,7 +11,7 @@ import { useI18n } from "@/components/i18n/i18n-provider";
 
 const tabs = ["videos", "players", "comments"] as const;
 
-export function MatchTabs({ match, options, selectedVideoId, onSelectVideo, seekRequest, onTimestampClick, seekMessage }: {
+export function MatchTabs({ match, options, selectedVideoId, onSelectVideo, seekRequest, onTimestampClick, seekMessage, isAuthenticated = true }: {
   match: MatchDto;
   options: MatchSideOptions;
   selectedVideoId?: string;
@@ -19,6 +19,7 @@ export function MatchTabs({ match, options, selectedVideoId, onSelectVideo, seek
   seekRequest?: VideoSeekRequest;
   onTimestampClick: (timestamp: ExtractedTimestamp) => void;
   seekMessage?: string;
+  isAuthenticated?: boolean;
 }) {
   const { t } = useI18n();
   const [active, setActive] = useState<(typeof tabs)[number]>("videos");
@@ -37,10 +38,10 @@ export function MatchTabs({ match, options, selectedVideoId, onSelectVideo, seek
     <CardContent className="min-w-0 p-3 sm:p-7">
       {seekMessage ? <p className="mb-4 rounded-md bg-secondary p-3 text-sm text-muted-foreground">{seekMessage}</p> : null}
       {active === "videos"
-        ? <MatchVideosTab matchId={match.id} videos={match.videos} comments={match.comments} canManage={match.permissions.canAddMatchVideo} selectedVideoId={selectedVideoId} onSelectVideo={onSelectVideo} seekRequest={seekRequest} onTimestampClick={handleTimestampClick} />
+        ? <MatchVideosTab matchId={match.id} videos={match.videos} comments={match.comments} canManage={match.permissions.canAddMatchVideo} selectedVideoId={selectedVideoId} onSelectVideo={onSelectVideo} seekRequest={seekRequest} onTimestampClick={handleTimestampClick} isAuthenticated={isAuthenticated} />
         : active === "players"
           ? <MatchPlayersTab matchId={match.id} sides={match.sides} options={options} editable={editable} clubMatch={match.type === "CLUB_VS_CLUB"} />
-          : <MatchCommentsTab matchId={match.id} comments={match.comments} onTimestampClick={handleTimestampClick} />}
+          : <MatchCommentsTab matchId={match.id} comments={match.comments} onTimestampClick={handleTimestampClick} isAuthenticated={isAuthenticated} />}
     </CardContent>
   </Card>;
 }

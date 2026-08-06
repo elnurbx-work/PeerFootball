@@ -59,7 +59,20 @@ export default async function MatchDetailsPage({ params }: { params: Promise<{ m
   if (!user) {
     const publicMatch = await getPublicMatchById(matchId);
     if (!publicMatch) notFound();
-    return <PublicMatchPage match={publicMatch} />;
+    const match = await getMatchById(matchId);
+    if (!match) notFound();
+    return (
+      <PublicShell>
+        <section className="mx-auto grid w-full min-w-0 max-w-[1500px] gap-4 px-3 py-5 sm:gap-7 sm:px-6 sm:py-7 lg:px-8 lg:py-10">
+          <MatchDetailDashboard
+            match={match}
+            options={{}}
+            manageableSideIds={[]}
+            isAuthenticated={false}
+          />
+        </section>
+      </PublicShell>
+    );
   }
   const t = createTranslator(user.locale);
   const match = await getMatchById(matchId, user.id);
