@@ -223,7 +223,7 @@ function ClubActionButtons({
       </Button>
       {isActiveMember ? (
         <Button asChild variant="outline">
-          <Link href={`/clubs/${club.slug}/lineups`}>HeyЙ™t vЙ™ taktikalar</Link>
+          <Link href={`/clubs/${club.slug}/lineups`}>{t("clubs.pages.detail.lineupsAndTactics")}</Link>
         </Button>
       ) : null}
       {isOwner ? (
@@ -333,6 +333,6 @@ function MatchCollection({ title, matches }: { title: string; matches: ClubMatch
     <h2 className="text-xl font-semibold">{title}</h2>
     {matches.length
       ? <div className="grid gap-4 md:grid-cols-2">{matches.map((match) => <MatchCard key={match.id} match={match} />)}</div>
-      : <p className="rounded-md border bg-card p-5 text-sm text-muted-foreground">вЂ”</p>}
+      : <p className="rounded-md border bg-card p-5 text-sm text-muted-foreground">—</p>}
   </section>;
 }
