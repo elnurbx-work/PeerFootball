@@ -12,7 +12,8 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       return null;
     }
 
-    return getSessionUserById(userId);
+    // Await here so database failures are handled by this try/catch.
+    return await getSessionUserById(userId);
   } catch {
     return null;
   }

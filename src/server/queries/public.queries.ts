@@ -3,6 +3,7 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { isNeonComputeQuotaError } from "@/lib/database-errors";
 import type {
   PublicClub,
   PublicMatch,
@@ -198,12 +199,19 @@ export async function getPublicMatchesForClub(clubId: string, take = 6): Promise
 }
 
 export const getPublicPlatformStats = cache(async (): Promise<PublicPlatformStats> => {
-  const [players, clubs, completedMatches] = await Promise.all([
-    prisma.user.count({ where: { profileVisibility: "PUBLIC", isBanned: false, username: { not: null } } }),
-    prisma.club.count({ where: publicClubWhere }),
-    prisma.match.count({ where: { ...publicMatchWhere, status: "COMPLETED" } })
-  ]);
-  return { players, clubs, completedMatches };
+  try {
+    const [players, clubs, completedMatches] = await Promise.all([
+      prisma.user.count({ where: { profileVisibility: "PUBLIC", isBanned: false, username: { not: null } } }),
+      prisma.club.count({ where: publicClubWhere }),
+      prisma.match.count({ where: { ...publicMatchWhere, status: "COMPLETED" } })
+    ]);
+    return { players, clubs, completedMatches };
+  } catch (error) {
+    if (!isNeonComputeQuotaError(error)) throw error;
+
+    console.warn("[database] Neon compute quota exceeded; public platform stats are temporarily unavailable.");
+    return { players: 0, clubs: 0, completedMatches: 0 };
+  }
 });
 
 export const getPublicSitemapEntries = cache(async () => {
